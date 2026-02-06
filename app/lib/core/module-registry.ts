@@ -14,6 +14,7 @@ export interface ModuleConfig {
     menuItems: MenuItem[];
     isEnabled: boolean;
     order: number;
+    category?: string;
 }
 
 class ModuleRegistry {
@@ -78,6 +79,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'dashboard', action: 'view' },
     isEnabled: true,
     order: 1,
+    category: 'Main',
     menuItems: [
         {
             id: 'dashboard-overview',
@@ -100,6 +102,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'analytics', action: 'view' },
     isEnabled: true,
     order: 2,
+    category: 'Main',
     menuItems: [
         {
             id: 'analytics-overview',
@@ -136,6 +139,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'management', action: 'view' },
     isEnabled: true,
     order: 3,
+    category: 'Entities',
     menuItems: [
         {
             id: 'management-regions',
@@ -195,6 +199,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'hr', action: 'view' },
     isEnabled: true,
     order: 4,
+    category: 'HR & Staffing',
     menuItems: [
         {
             id: 'hr-staff',
@@ -233,6 +238,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'inventory', action: 'view' },
     isEnabled: true,
     order: 5,
+    category: 'Operations',
     menuItems: [
         {
             id: 'inventory-overview',
@@ -279,6 +285,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'budget', action: 'view' },
     isEnabled: true,
     order: 6,
+    category: 'Operations',
     menuItems: [
         {
             id: 'budget-overview',
@@ -325,6 +332,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'reports', action: 'view' },
     isEnabled: true,
     order: 7,
+    category: 'Reports',
     menuItems: [
         {
             id: 'reports-generator',
@@ -355,6 +363,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'settings', action: 'view' },
     isEnabled: true,
     order: 8,
+    category: 'System',
     menuItems: [
         {
             id: 'settings-general',
