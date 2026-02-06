@@ -20,14 +20,14 @@ const zoneColumns: GridColDef[] = [
         headerName: 'Students',
         width: 120,
         type: 'number',
-        valueFormatter: ({ value }) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
     {
         field: 'totalTeachers',
         headerName: 'Teachers',
         width: 110,
         type: 'number',
-        valueFormatter: ({ value }) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
     { field: 'status', headerName: 'Status', width: 100 },
 ];

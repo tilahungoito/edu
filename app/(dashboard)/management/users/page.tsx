@@ -6,11 +6,10 @@ import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { Add as AddIcon } from '@mui/icons-material';
 
-const mockUsers = [
-    { id: 'user-001', name: 'Amanuel Tesfaye', email: 'amanuel@edu.gov.et', role: 'Bureau Admin', tenant: 'Bureau', status: 'active' },
-    { id: 'user-002', name: 'Kidist Hailu', email: 'kidist@edu.gov.et', role: 'Zone Admin', tenant: 'Mekelle Zone', status: 'active' },
-    { id: 'user-003', name: 'Bereket Gebru', email: 'bereket@edu.gov.et', role: 'Woreda Admin', tenant: 'Ayder Woreda', status: 'active' },
-];
+import { usersService } from '@/app/lib/api/users.service';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
+import { useState, useEffect } from 'react';
+import type { User } from '@/app/lib/api/api-client';
 
 const columns: GridColDef[] = [
     {
@@ -36,6 +35,39 @@ const columns: GridColDef[] = [
 ];
 
 export default function UsersManagementPage() {
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchUsers = async () => {
+        setLoading(true);
+        try {
+            const data = await usersService.getAll();
+            setUsers(data);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    // Listen for real-time updates
+    useRealTime('STATS_UPDATED', () => {
+        fetchUsers();
+    });
+
+    const mappedUsers = users.map(u => ({
+        id: u.id,
+        name: u.username || u.email,
+        email: u.email,
+        role: (u.role as any)?.name || 'User',
+        tenant: u.scopeType || 'System',
+        status: u.isActive ? 'active' : 'inactive'
+    }));
+
     return (
         <Box>
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -54,9 +86,9 @@ export default function UsersManagementPage() {
 
             <DataTable
                 title="System Users"
-                rows={mockUsers}
+                rows={mappedUsers}
                 columns={columns}
-                loading={false}
+                loading={loading}
                 module="management"
             />
         </Box>

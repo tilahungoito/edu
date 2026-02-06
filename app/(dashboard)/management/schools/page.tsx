@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip, Autocomplete } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { institutionsService } from '@/app/lib/api/institutions.service';
@@ -39,21 +39,21 @@ const schoolColumns: GridColDef[] = [
         field: 'ownership',
         headerName: 'Ownership',
         width: 110,
-        valueFormatter: ({ value }) => typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : '',
+        valueFormatter: (value) => typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : '',
     },
     {
         field: 'totalStudents',
         headerName: 'Students',
         width: 120,
         type: 'number',
-        valueFormatter: ({ value }) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
     {
         field: 'totalTeachers',
         headerName: 'Teachers',
         width: 110,
         type: 'number',
-        valueFormatter: ({ value }) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
     { field: 'status', headerName: 'Status', width: 100 },
 ];
