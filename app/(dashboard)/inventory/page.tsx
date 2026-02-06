@@ -57,14 +57,14 @@ const assetColumns: GridColDef[] = [
         headerName: 'Unit Value',
         width: 120,
         type: 'number',
-        valueFormatter: ({ value }) => (typeof value === 'number' ? `${(value as number).toLocaleString()} ETB` : ''),
+        valueFormatter: (value) => (typeof value === 'number' ? `${(value as number).toLocaleString()} ETB` : ''),
     },
     {
         field: 'totalValue',
         headerName: 'Total Value',
         width: 130,
         type: 'number',
-        valueFormatter: ({ value }) => (typeof value === 'number' ? `${(value as number).toLocaleString()} ETB` : ''),
+        valueFormatter: (value) => (typeof value === 'number' ? `${(value as number).toLocaleString()} ETB` : ''),
     },
     {
         field: 'condition',

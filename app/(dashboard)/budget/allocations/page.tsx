@@ -17,14 +17,14 @@ const columns: GridColDef[] = [
         headerName: 'Allocated Amount',
         width: 200,
         type: 'number',
-        valueFormatter: ({ value }) => typeof value === 'number' ? `${(value / 1000000).toFixed(1)}M ETB` : '-'
+        valueFormatter: (value) => typeof value === 'number' ? `${(value / 1000000).toFixed(1)}M ETB` : '-'
     },
     { field: 'source', headerName: 'Funding Source', width: 220 },
     {
         field: 'date',
         headerName: 'Date',
         width: 130,
-        valueFormatter: ({ value }) => value && typeof value === 'object' && 'toLocaleDateString' in value ? (value as Date).toLocaleDateString() : ''
+        valueFormatter: (value) => value && typeof value === 'object' && 'toLocaleDateString' in value ? (value as Date).toLocaleDateString() : ''
     },
 ];
 

@@ -15,8 +15,8 @@ const mockScheduledReports = [
 const columns: GridColDef[] = [
     { field: 'name', headerName: 'Report Name', width: 250 },
     { field: 'frequency', headerName: 'Frequency', width: 120 },
-    { field: 'lastRun', headerName: 'Last Run', width: 130, valueFormatter: ({ value }) => value ? new Date(value).toLocaleDateString() : '-' },
-    { field: 'nextRun', headerName: 'Next Run', width: 130, valueFormatter: ({ value }) => value ? new Date(value).toLocaleDateString() : '-' },
+    { field: 'lastRun', headerName: 'Last Run', width: 130, valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '-' },
+    { field: 'nextRun', headerName: 'Next Run', width: 130, valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '-' },
     { field: 'recipients', headerName: 'Recipients', width: 220 },
     {
         field: 'status',

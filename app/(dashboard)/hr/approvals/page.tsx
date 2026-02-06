@@ -16,7 +16,7 @@ const columns: GridColDef[] = [
     { field: 'staffName', headerName: 'Staff Member', width: 200 },
     { field: 'type', headerName: 'Type', width: 120 },
     { field: 'submittedBy', headerName: 'Source', width: 180 },
-    { field: 'date', headerName: 'Date', width: 130, valueFormatter: ({ value }) => value ? new Date(value).toLocaleDateString() : '' },
+    { field: 'date', headerName: 'Date', width: 130, valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '' },
     {
         field: 'actions',
         headerName: 'Actions',

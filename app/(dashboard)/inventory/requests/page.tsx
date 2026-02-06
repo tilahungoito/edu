@@ -62,7 +62,7 @@ const columns: GridColDef[] = [
             );
         },
     },
-    { field: 'requestedAt', headerName: 'Date', width: 130, valueFormatter: ({ value }) => value ? new Date(value).toLocaleDateString() : '' },
+    { field: 'requestedAt', headerName: 'Date', width: 130, valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '' },
     { field: 'status', headerName: 'Status', width: 120 },
 ];
 

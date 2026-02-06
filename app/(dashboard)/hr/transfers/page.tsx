@@ -130,7 +130,7 @@ const transferColumns: GridColDef[] = [
         field: 'requestedAt',
         headerName: 'Requested',
         width: 120,
-        valueFormatter: ({ value }) => value ? new Date(value).toLocaleDateString() : '-',
+        valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '-',
     },
 ];
 
