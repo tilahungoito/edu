@@ -28,5 +28,19 @@ export const usersService = {
 
     delete: async (id: string): Promise<void> => {
         await apiClient.delete(`/users/${id}`);
+    },
+
+    getMe: async (): Promise<User> => {
+        const response = await apiClient.get<User>('/profile');
+        return response.data;
+    },
+
+    updateProfile: async (data: Partial<User>): Promise<User> => {
+        const response = await apiClient.patch<User>('/profile', data);
+        return response.data;
+    },
+
+    changePassword: async (data: any): Promise<void> => {
+        await apiClient.patch('/profile/password', data);
     }
 };

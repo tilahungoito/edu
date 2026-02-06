@@ -252,7 +252,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                     transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                     anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                 >
-                    <MenuItem>
+                    <MenuItem onClick={() => { handleMenuClose(); router.push('/profile'); }}>
                         <ListItemIcon>
                             <PersonIcon fontSize="small" />
                         </ListItemIcon>
