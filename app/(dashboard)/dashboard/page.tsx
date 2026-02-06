@@ -120,7 +120,7 @@ export default function Dashboard() {
     const filteredZones = useScopedData(zones, 'zone');
 
     const dashboardTitle = user?.tenantType === 'bureau'
-        ? 'Regional Education Bureau Dashboard'
+        ? (user.roles[0].name.includes('SYSTEM') ? 'System Administration Dashboard' : 'Regional Education Bureau Dashboard')
         : user?.tenantType === 'zone'
             ? `${user.tenantName} Zone Dashboard`
             : user?.tenantType === 'woreda'

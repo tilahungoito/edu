@@ -14,7 +14,8 @@ export type ModuleType =
     | 'inventory'
     | 'budget'
     | 'reports'
-    | 'settings';
+    | 'settings'
+    | 'audit';
 
 // Actions that can be performed
 export type ActionType =
@@ -43,7 +44,8 @@ export type ResourceType =
     | 'asset'
     | 'supply'
     | 'budget'
-    | 'user';
+    | 'user'
+    | 'region';
 
 // Single permission
 export interface Permission {

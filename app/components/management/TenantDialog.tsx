@@ -30,7 +30,7 @@ interface TenantDialogProps {
     open: boolean;
     onClose: () => void;
     onSubmit: (data: TenantFormData) => void;
-    type: 'zone' | 'woreda' | 'school';
+    type: 'region' | 'zone' | 'woreda' | 'school';
     parentType?: TenantType;
     parentId?: string;
     parentName?: string;

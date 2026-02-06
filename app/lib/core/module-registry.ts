@@ -138,6 +138,15 @@ moduleRegistry.register({
     order: 3,
     menuItems: [
         {
+            id: 'management-regions',
+            label: 'Regions',
+            labelAmharic: 'ክልሎች',
+            icon: 'Map',
+            path: '/management/regions',
+            permission: { module: 'management', action: 'view', resourceType: 'region' },
+            allowedTenantTypes: ['bureau'],
+        },
+        {
             id: 'management-zones',
             label: 'Zones',
             labelAmharic: 'ዞኖች',
@@ -362,6 +371,15 @@ moduleRegistry.register({
             icon: 'Security',
             path: '/settings/roles',
             permission: { module: 'settings', action: 'edit' },
+        },
+        {
+            id: 'settings-audit',
+            label: 'Audit Logs',
+            labelAmharic: 'የኦዲት ምዝግብ ማስታወሻዎች',
+            icon: 'Description',
+            path: '/management/audit',
+            permission: { module: 'audit', action: 'view' },
+            allowedTenantTypes: ['bureau'],
         },
     ],
 });
