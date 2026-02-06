@@ -229,12 +229,16 @@ export function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
     const theme = useTheme();
     const [searchValue, setSearchValue] = useState('');
-    const [rowSelection, setRowSelection] = useState<GridRowSelectionModel>([]);
+    const [rowSelection, setRowSelection] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
+    const [paginationModel, setPaginationModel] = useState({
+        pageSize: 10,
+        page: 0,
+    });
 
     const handleRowSelectionChange = (model: GridRowSelectionModel) => {
         setRowSelection(model);
         if (onSelectionChange) {
-            onSelectionChange(model.map(id => String(id)));
+            onSelectionChange(Array.from(model.ids).map(id => String(id)));
         }
     };
     const [actionMenuAnchor, setActionMenuAnchor] = useState<{
@@ -268,13 +272,13 @@ export function DataTable<T extends { id: string }>({
                 return {
                     ...col,
                     renderCell: (params: GridRenderCellParams) => {
-                        const status = params.value as any;
-                        const color = statusColors[status] || 'default';
+                        const status = params.value;
+                        const color = status ? statusColors[status as string] : 'default';
                         return (
                             <Chip
-                                label={typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : '-'}
+                                label={status ? (typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : String(status)) : '-'}
                                 size="small"
-                                color={color as any}
+                                color={(color as any) || 'default'}
                                 sx={{ fontWeight: 500 }}
                             />
                         );
@@ -321,7 +325,14 @@ export function DataTable<T extends { id: string }>({
                 getRowId={(row) => row.id}
                 rowSelectionModel={rowSelection}
                 onRowSelectionModelChange={handleRowSelectionChange}
+                paginationModel={paginationModel}
+                onPaginationModelChange={setPaginationModel}
                 pageSizeOptions={[10, 25, 50]}
+                initialState={{
+                    pagination: {
+                        paginationModel: { pageSize: 10, page: 0 },
+                    },
+                }}
                 slots={{
                     toolbar: CustomToolbar as any,
                 }}
@@ -340,7 +351,7 @@ export function DataTable<T extends { id: string }>({
                         showFilterButton,
                         showDensitySelector,
                         toolbarActions,
-                    },
+                    } as any,
                 }}
                 sx={{
                     border: 'none',

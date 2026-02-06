@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip, Autocomplete } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
-import { institutionsService } from '@/app/lib/api/institutions.service';
+import { institutionsService, Institution } from '@/app/lib/api/institutions.service';
 import { woredasService } from '@/app/lib/api/woredas.service';
 import { zonesService } from '@/app/lib/api/zones.service';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 
-const schoolColumns: GridColDef[] = [
+const schoolColumns: GridColDef<Institution>[] = [
     { field: 'name', headerName: 'School Name', flex: 1, minWidth: 200 },
     { field: 'code', headerName: 'Code', width: 120 },
     { field: 'zoneName', headerName: 'Zone', width: 100 },
@@ -28,7 +28,7 @@ const schoolColumns: GridColDef[] = [
             };
             return (
                 <Chip
-                    label={typeof params.value === 'string' ? (params.value.charAt(0).toUpperCase() + params.value.slice(1)) : ''}
+                    label={typeof params.value === 'string' ? ((params.value as string).charAt(0).toUpperCase() + (params.value as string).slice(1)) : ''}
                     size="small"
                     color={typeColors[params.value as string] || 'default'}
                 />
@@ -39,7 +39,7 @@ const schoolColumns: GridColDef[] = [
         field: 'ownership',
         headerName: 'Ownership',
         width: 110,
-        valueFormatter: (value) => typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : '',
+        valueFormatter: (value: any) => typeof value === 'string' ? (value as string).charAt(0).toUpperCase() + (value as string).slice(1) : '',
     },
     {
         field: 'totalStudents',
