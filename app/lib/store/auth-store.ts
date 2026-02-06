@@ -51,8 +51,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             const user: User = {
                 id: response.user.id,
                 email: response.user.email,
-                firstName: response.user.username, // Backend uses username, we'll use it as firstName
-                lastName: '', // Backend doesn't have lastName yet
+                firstName: (response.user as any).firstName || response.user.username,
+                lastName: (response.user as any).lastName || '',
                 tenantType: mapScopeTypeToTenantType(response.user.scopeType),
                 tenantId: response.user.scopeId || '',
                 tenantName: '', // Will be populated by /auth/me endpoint if needed
