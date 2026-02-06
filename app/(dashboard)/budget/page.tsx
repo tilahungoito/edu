@@ -191,7 +191,7 @@ export default function BudgetPage() {
 
             {/* Charts */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={6} {...{ item: true, xs: 12, md: 6 } as any}>
                     <AnalyticsChart
                         title="Budget by Category"
                         subtitle="Distribution of allocated budget"
@@ -201,7 +201,7 @@ export default function BudgetPage() {
                         height={300}
                     />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid item xs={12} md={6} {...{ item: true, xs: 12, md: 6 } as any}>
                     <AnalyticsChart
                         title="Budget Utilization by Zone"
                         subtitle="Spending vs allocation"

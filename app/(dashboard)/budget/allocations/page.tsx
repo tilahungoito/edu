@@ -24,7 +24,7 @@ const columns: GridColDef[] = [
         field: 'date',
         headerName: 'Date',
         width: 130,
-        valueFormatter: ({ value }) => value instanceof Date ? value.toLocaleDateString() : ''
+        valueFormatter: ({ value }) => value && typeof value === 'object' && 'toLocaleDateString' in value ? (value as Date).toLocaleDateString() : ''
     },
 ];
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { authApi, type LoginResponse } from '../api/api-client';
 import type {
     User,
     Permission,
@@ -7,7 +7,7 @@ import type {
     ModuleType,
     ActionType,
     ResourceType
-} from '../types';
+} from '../types/permissions';
 
 interface AuthState {
     user: User | null;
@@ -16,7 +16,7 @@ interface AuthState {
 
     // Actions
     setUser: (user: User | null) => void;
-    login: (email: string, password: string) => Promise<boolean>;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => void;
 
     // Permission checks
@@ -26,251 +26,131 @@ interface AuthState {
     getAllPermissions: () => Permission[];
 }
 
-export const useAuthStore = create<AuthState>()(
-    persist(
-        (set, get) => ({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
+// NO PERSISTENCE - users must login every time
+export const useAuthStore = create<AuthState>()((set, get) => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
 
-            setUser: (user) => set({
-                user,
-                isAuthenticated: !!user
-            }),
+    setUser: (user) => set({
+        user,
+        isAuthenticated: !!user
+    }),
 
-            login: async (email: string, password: string) => {
-                set({ isLoading: true });
+    login: async (email: string, password: string) => {
+        set({ isLoading: true });
 
-                try {
-                    // TODO: Replace with actual API call
-                    // Mock login for development
-                    const mockUser = getMockUser(email);
+        try {
+            // Call real backend API
+            const response: LoginResponse = await authApi.login({ email, password });
 
-                    if (mockUser && password === 'demo123') {
-                        set({ user: mockUser, isAuthenticated: true, isLoading: false });
-                        return true;
-                    }
+            // Store token in sessionStorage (cleared on browser close)
+            sessionStorage.setItem('access_token', response.access_token);
 
-                    set({ isLoading: false });
-                    return false;
-                } catch (error) {
-                    console.error('Login error:', error);
-                    set({ isLoading: false });
-                    return false;
-                }
-            },
+            // Map backend user to frontend User type
+            const user: User = {
+                id: response.user.id,
+                email: response.user.email,
+                firstName: response.user.username, // Backend uses username, we'll use it as firstName
+                lastName: '', // Backend doesn't have lastName yet
+                tenantType: mapScopeTypeToTenantType(response.user.scopeType),
+                tenantId: response.user.scopeId || '',
+                tenantName: '', // Will be populated by /auth/me endpoint if needed
+                roles: [{
+                    id: `role-${response.user.role}`,
+                    name: response.user.role,
+                    description: `${response.user.role} role`,
+                    tenantType: mapScopeTypeToTenantType(response.user.scopeType),
+                    isSystemRole: true,
+                    permissions: response.user.permissions || [], // Use real permissions from backend
+                }],
+                permissions: response.user.permissions || [], // Flattened permissions for easier access
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
 
-            logout: () => {
-                set({ user: null, isAuthenticated: false });
-            },
+            set({ user, isAuthenticated: true, isLoading: false });
+            return { success: true };
+        } catch (error) {
+            sessionStorage.removeItem('access_token');
+            set({ isLoading: false, user: null, isAuthenticated: false });
 
-            hasPermission: (check: PermissionCheck) => {
-                const { user } = get();
-                if (!user) return false;
+            const errorMessage = error instanceof Error
+                ? error.message
+                : 'Invalid email or password';
 
-                const allPermissions = get().getAllPermissions();
-
-                return allPermissions.some(p =>
-                    p.module === check.module &&
-                    p.action === check.action &&
-                    (!check.resourceType || p.resourceType === check.resourceType || !p.resourceType)
-                );
-            },
-
-            hasModuleAccess: (module: ModuleType) => {
-                const { user } = get();
-                if (!user) return false;
-
-                const allPermissions = get().getAllPermissions();
-                return allPermissions.some(p => p.module === module && p.action === 'view');
-            },
-
-            canPerformAction: (module: ModuleType, action: ActionType, resourceType?: ResourceType) => {
-                return get().hasPermission({ module, action, resourceType });
-            },
-
-            getAllPermissions: () => {
-                const { user } = get();
-                if (!user) return [];
-
-                // Combine role permissions and direct permissions
-                const rolePermissions = user.roles.flatMap(role => role.permissions);
-                const directPermissions = user.permissions;
-
-                // Direct permissions override role permissions
-                const permissionMap = new Map<string, Permission>();
-
-                rolePermissions.forEach(p => {
-                    const key = `${p.module}-${p.action}-${p.resourceType || 'all'}`;
-                    permissionMap.set(key, p);
-                });
-
-                directPermissions.forEach(p => {
-                    const key = `${p.module}-${p.action}-${p.resourceType || 'all'}`;
-                    permissionMap.set(key, p);
-                });
-
-                return Array.from(permissionMap.values());
-            },
-        }),
-        {
-            name: 'tigray-edu-auth',
-            storage: createJSONStorage(() => sessionStorage),
-            partialize: (state) => ({
-                user: state.user,
-                isAuthenticated: state.isAuthenticated
-            }),
+            return { success: false, error: errorMessage };
         }
-    )
-);
+    },
 
-// Mock user data for development
-function getMockUser(email: string): User | null {
-    const mockUsers: Record<string, User> = {
-        'bureau@edu.gov.et': {
-            id: 'user-bureau-001',
-            email: 'bureau@edu.gov.et',
-            firstName: 'Amanuel',
-            lastName: 'Tesfaye',
-            tenantType: 'bureau',
-            tenantId: 'bureau-001',
-            tenantName: 'Tigray Education Bureau',
-            roles: [{
-                id: 'role-bureau-admin',
-                name: 'Bureau Admin',
-                description: 'Full bureau access',
-                tenantType: 'bureau',
-                isSystemRole: true,
-                permissions: generateBureauPermissions(),
-            }],
-            permissions: [],
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        },
-        'zone@edu.gov.et': {
-            id: 'user-zone-001',
-            email: 'zone@edu.gov.et',
-            firstName: 'Kidist',
-            lastName: 'Hailu',
-            tenantType: 'zone',
-            tenantId: 'zone-001',
-            tenantName: 'Mekelle Zone',
-            roles: [{
-                id: 'role-zone-admin',
-                name: 'Zone Admin',
-                description: 'Full zone access',
-                tenantType: 'zone',
-                isSystemRole: true,
-                permissions: generateZonePermissions(),
-            }],
-            permissions: [],
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        },
-        'woreda@edu.gov.et': {
-            id: 'user-woreda-001',
-            email: 'woreda@edu.gov.et',
-            firstName: 'Bereket',
-            lastName: 'Gebru',
-            tenantType: 'woreda',
-            tenantId: 'woreda-001',
-            tenantName: 'Ayder Woreda',
-            roles: [{
-                id: 'role-woreda-admin',
-                name: 'Woreda Admin',
-                description: 'Full woreda access',
-                tenantType: 'woreda',
-                isSystemRole: true,
-                permissions: generateWoredaPermissions(),
-            }],
-            permissions: [],
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        },
-        'school@edu.gov.et': {
-            id: 'user-school-001',
-            email: 'school@edu.gov.et',
-            firstName: 'Yohannes',
-            lastName: 'Mehari',
-            tenantType: 'school',
-            tenantId: 'school-001',
-            tenantName: 'Ayder Primary School',
-            roles: [{
-                id: 'role-school-admin',
-                name: 'School Admin',
-                description: 'Full school access',
-                tenantType: 'school',
-                isSystemRole: true,
-                permissions: generateSchoolPermissions(),
-            }],
-            permissions: [],
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        },
+    logout: () => {
+        sessionStorage.removeItem('access_token');
+        set({ user: null, isAuthenticated: false });
+    },
+
+    hasPermission: (check: PermissionCheck) => {
+        const { user } = get();
+        if (!user) return false;
+
+        const allPermissions = get().getAllPermissions();
+
+        return allPermissions.some(p =>
+            p.module === check.module &&
+            p.action === check.action &&
+            (!check.resourceType || p.resourceType === check.resourceType || !p.resourceType)
+        );
+    },
+
+    hasModuleAccess: (module: ModuleType) => {
+        const { user } = get();
+        if (!user) return false;
+
+        const allPermissions = get().getAllPermissions();
+        return allPermissions.some(p => p.module === module && p.action === 'view');
+    },
+
+    canPerformAction: (module: ModuleType, action: ActionType, resourceType?: ResourceType) => {
+        return get().hasPermission({ module, action, resourceType });
+    },
+
+    getAllPermissions: () => {
+        const { user } = get();
+        if (!user) return [];
+
+        // Combine role permissions and direct permissions
+        const rolePermissions = user.roles.flatMap(role => role.permissions);
+        const directPermissions = user.permissions;
+
+        // Direct permissions override role permissions
+        const permissionMap = new Map<string, Permission>();
+
+        rolePermissions.forEach(p => {
+            const key = `${p.module}-${p.action}-${p.resourceType || 'all'}`;
+            permissionMap.set(key, p);
+        });
+
+        directPermissions.forEach(p => {
+            const key = `${p.module}-${p.action}-${p.resourceType || 'all'}`;
+            permissionMap.set(key, p);
+        });
+
+        return Array.from(permissionMap.values());
+    },
+}));
+
+// Helper to map backend scopeType to frontend TenantType
+function mapScopeTypeToTenantType(scopeType: string): 'bureau' | 'zone' | 'woreda' | 'school' {
+    const mapping: Record<string, 'bureau' | 'zone' | 'woreda' | 'school'> = {
+        'SYSTEM': 'bureau', // Map SYSTEM to bureau
+        'REGION': 'bureau',
+        'ZONE': 'zone',
+        'WOREDA': 'woreda',
+        'INSTITUTION': 'school',
+        'KEBELE': 'school', // Map kebele to school for now
     };
-
-    return mockUsers[email] || null;
-}
-
-// Permission generators for each level
-function generateBureauPermissions(): Permission[] {
-    const modules: ModuleType[] = ['dashboard', 'analytics', 'management', 'hr', 'inventory', 'budget', 'reports', 'settings'];
-    const actions: ActionType[] = ['view', 'create', 'edit', 'delete', 'approve', 'reject', 'export', 'assign'];
-
-    return modules.flatMap(module =>
-        actions.map(action => ({
-            id: `perm-bureau-${module}-${action}`,
-            module,
-            action,
-            scope: 'all' as const,
-        }))
-    );
-}
-
-function generateZonePermissions(): Permission[] {
-    const modules: ModuleType[] = ['dashboard', 'analytics', 'management', 'hr', 'inventory', 'budget', 'reports'];
-    const actions: ActionType[] = ['view', 'create', 'edit', 'delete', 'approve', 'export', 'assign'];
-
-    return modules.flatMap(module =>
-        actions.map(action => ({
-            id: `perm-zone-${module}-${action}`,
-            module,
-            action,
-            scope: 'children' as const,
-        }))
-    );
-}
-
-function generateWoredaPermissions(): Permission[] {
-    const modules: ModuleType[] = ['dashboard', 'analytics', 'management', 'hr', 'inventory', 'budget', 'reports'];
-    const actions: ActionType[] = ['view', 'create', 'edit', 'approve', 'export'];
-
-    return modules.flatMap(module =>
-        actions.map(action => ({
-            id: `perm-woreda-${module}-${action}`,
-            module,
-            action,
-            scope: 'children' as const,
-        }))
-    );
-}
-
-function generateSchoolPermissions(): Permission[] {
-    const modules: ModuleType[] = ['dashboard', 'analytics', 'hr', 'inventory', 'budget', 'reports'];
-    const actions: ActionType[] = ['view', 'create', 'edit', 'export'];
-
-    return modules.flatMap(module =>
-        actions.map(action => ({
-            id: `perm-school-${module}-${action}`,
-            module,
-            action,
-            scope: 'own' as const,
-        }))
-    );
+    return mapping[scopeType] || 'school';
 }
 
 export default useAuthStore;
+

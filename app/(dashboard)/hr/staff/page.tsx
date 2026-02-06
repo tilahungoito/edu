@@ -4,77 +4,86 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, Chip, Avatar, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
-import { useScopedData } from '@/app/lib/hooks/useScopedData';
-import { mockStaff, mockSchools } from '@/app/lib/mock-data';
+import { staffService } from '@/app/lib/api/staff.service';
 
 const staffColumns: GridColDef[] = [
     {
-        field: 'fullName',
-        headerName: 'Full Name',
+        field: 'username',
+        headerName: 'Username',
         flex: 1,
-        minWidth: 200,
-        valueGetter: (value, row) => `${row.firstName} ${row.lastName} ${row.fatherName}`,
+        minWidth: 150,
     },
-    { field: 'employeeId', headerName: 'Employee ID', width: 130 },
-    { field: 'schoolName', headerName: 'School', width: 180 },
+    { field: 'email', headerName: 'Email', flex: 1, minWidth: 200 },
+    { field: 'phone', headerName: 'Phone', width: 130 },
     {
-        field: 'position',
-        headerName: 'Position',
-        width: 130,
+        field: 'role',
+        headerName: 'Role',
+        width: 150,
+        valueGetter: (value, row) => row.role?.name || '',
         renderCell: (params) => {
-            const positionColors: Record<string, 'primary' | 'secondary' | 'warning' | 'success'> = {
-                principal: 'primary',
-                vice_principal: 'secondary',
-                department_head: 'warning',
-                teacher: 'success',
-            };
-            const label = typeof params.value === 'string' ? params.value.replace('_', ' ') : '';
+            // Simple mapping for role colors
+            const role = params.value as string;
+            let color: 'default' | 'primary' | 'secondary' | 'warning' | 'error' | 'success' = 'default';
+            if (role.includes('ADMIN')) color = 'primary';
+            if (role === 'INSTRUCTOR') color = 'success';
+            if (role === 'STUDENT') color = 'secondary';
+
             return (
                 <Chip
-                    label={label?.charAt(0).toUpperCase() + label?.slice(1)}
+                    label={role.replace('_', ' ')}
                     size="small"
-                    color={(positionColors[params.value as string] || 'default') as any}
+                    color={color}
                 />
             );
         }
     },
-    { field: 'subject', headerName: 'Subject', width: 120 },
+    { field: 'scopeType', headerName: 'Scope', width: 100 },
     {
-        field: 'educationLevel',
-        headerName: 'Education',
+        field: 'isActive',
+        headerName: 'Status',
         width: 100,
-        valueFormatter: ({ value }) => (typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : ''),
+        renderCell: (params) => (
+            <Chip
+                label={params.value ? 'Active' : 'Inactive'}
+                color={params.value ? 'success' : 'error'}
+                size="small"
+            />
+        )
     },
-    {
-        field: 'gender',
-        headerName: 'Gender',
-        width: 80,
-        valueFormatter: ({ value }) => (value === 'male' ? 'M' : 'F'),
-    },
-    { field: 'yearsOfExperience', headerName: 'Experience', width: 100, type: 'number' },
-    {
-        field: 'salary',
-        headerName: 'Salary',
-        width: 100,
-        type: 'number',
-        valueFormatter: ({ value }) => (typeof value === 'number' ? `${value.toLocaleString()} ETB` : '-'),
-    },
-    { field: 'status', headerName: 'Status', width: 100 },
 ];
 
 export default function StaffPage() {
     const [loading, setLoading] = useState(true);
     const [selectedSchool, setSelectedSchool] = useState<string>('');
-    const scopedStaff = useScopedData(mockStaff, 'staff');
+    const [staff, setStaff] = useState<any[]>([]);
+
+    // We would need a way to fetch schools for the filter too, 
+    // but for now let's just make the staff list distinct or remove the school filter if dependencies are missing.
+    // Assuming we want to fetch all staff for now.
+
+    const fetchStaff = async () => {
+        setLoading(true);
+        try {
+            // Ideally we get the school ID from the user's scope or context
+            // For now, let's fetch all users who are not students? Or just all users.
+            // The backend filter `role` can be used if we want specific roles.
+            // Let's fetch all users for now and we can filter client side if needed.
+            const data = await staffService.getAllStaff();
+            setStaff(data);
+        } catch (error) {
+            console.error('Failed to fetch staff', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 800);
-        return () => clearTimeout(timer);
+        fetchStaff();
     }, []);
 
     const filteredStaff = selectedSchool
-        ? scopedStaff.filter(s => s.schoolId === selectedSchool)
-        : scopedStaff;
+        ? staff.filter(s => s.scopeId === selectedSchool)
+        : staff;
 
     return (
         <Box>
@@ -98,28 +107,12 @@ export default function StaffPage() {
                 onEdit={(staff) => console.log('Edit staff', staff)}
                 onView={(staff) => console.log('View staff', staff)}
                 onDelete={(staff) => console.log('Delete staff', staff)}
-                statusField="status"
+                statusField="isActive"
                 statusColors={{
-                    active: 'success',
-                    inactive: 'error',
-                    suspended: 'warning',
+                    true: 'success',
+                    false: 'error',
                 }}
                 checkboxSelection
-                toolbarActions={
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel>Filter by School</InputLabel>
-                        <Select
-                            value={selectedSchool}
-                            label="Filter by School"
-                            onChange={(e) => setSelectedSchool(e.target.value)}
-                        >
-                            <MenuItem value="">All Schools</MenuItem>
-                            {mockSchools.map(school => (
-                                <MenuItem key={school.id} value={school.id}>{school.name}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                }
             />
         </Box>
     );

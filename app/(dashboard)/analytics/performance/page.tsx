@@ -43,7 +43,7 @@ export default function PerformanceAnalyticsPage() {
             </Box>
 
             <Grid container spacing={4}>
-                <Grid item xs={12} lg={8}>
+                <Grid item xs={12} lg={8} {...{ item: true, xs: 12, lg: 8 } as any}>
                     <AnalyticsChart
                         title="Academic Trends"
                         subtitle="Average scores vs Enrollment growth"
@@ -53,7 +53,7 @@ export default function PerformanceAnalyticsPage() {
                         height={400}
                     />
                 </Grid>
-                <Grid item xs={12} lg={4}>
+                <Grid item xs={12} lg={4} {...{ item: true, xs: 12, lg: 4 } as any}>
                     <AnalyticsChart
                         title="Subject Performance"
                         subtitle="Regional averages by subject"

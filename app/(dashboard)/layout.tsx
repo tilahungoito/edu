@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Box, useTheme } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, useTheme, CircularProgress } from '@mui/material';
 import { ThemeProvider, CssBaseline } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import { Sidebar, Header, Breadcrumbs } from '@/app/components/layout';
 import { TenantProvider } from '@/app/lib/core';
+import { useAuthStore } from '@/app/lib/store/auth-store';
 import theme from '@/app/theme/theme';
 
 interface DashboardLayoutProps {
@@ -13,7 +15,26 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const drawerWidth = sidebarCollapsed ? 72 : 280;
+    const { isAuthenticated, isLoading } = useAuthStore();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [isAuthenticated, isLoading, router]);
+
+    if (isLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (!isAuthenticated) {
+        return null; // Don't render anything while redirecting
+    }
 
     return (
         <ThemeProvider theme={theme}>

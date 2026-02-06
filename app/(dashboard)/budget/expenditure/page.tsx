@@ -18,13 +18,13 @@ const columns: GridColDef[] = [
         headerName: 'Spent Amount',
         width: 150,
         type: 'number',
-        valueFormatter: ({ value }) => typeof value === 'number' ? value.toLocaleString() + ' ETB' : '-'
+        valueFormatter: ({ value }) => typeof value === 'number' ? (value as number).toLocaleString() + ' ETB' : '-'
     },
     {
         field: 'date',
         headerName: 'Date',
         width: 130,
-        valueFormatter: ({ value }) => value instanceof Date ? value.toLocaleDateString() : ''
+        valueFormatter: ({ value }) => value && typeof value === 'object' && 'toLocaleDateString' in value ? (value as Date).toLocaleDateString() : ''
     },
 ];
 
