@@ -4,7 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
-import { mockWoredas, mockZones } from '@/app/lib/mock-data';
+import { woredasService } from '@/app/lib/api/woredas.service';
+import { zonesService } from '@/app/lib/api/zones.service';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 
@@ -33,20 +35,46 @@ const woredaColumns: GridColDef[] = [
 export default function WoredasPage() {
     const [loading, setLoading] = useState(true);
     const [selectedZone, setSelectedZone] = useState<string>('');
-    const scopedWoredas = useScopedData(mockWoredas, 'woreda');
+    const [woredas, setWoredas] = useState<any[]>([]);
+    const [zones, setZones] = useState<any[]>([]);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [woredasData, zonesData] = await Promise.all([
+                woredasService.getAll(selectedZone || undefined),
+                zonesService.getAll()
+            ]);
+            setWoredas(woredasData);
+            setZones(zonesData);
+        } catch (error) {
+            console.error('Error fetching woredas data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+        fetchData();
+    }, [selectedZone]);
 
+    // Listen for real-time updates
+    useRealTime('STATS_UPDATED', () => {
+        fetchData();
+    });
+
+    const scopedWoredas = useScopedData(woredas, 'woreda');
     const [dialogOpen, setDialogOpen] = useState(false);
-    const filteredWoredas = selectedZone
-        ? scopedWoredas.filter(w => w.zoneId === selectedZone)
-        : scopedWoredas;
+    const filteredWoredas = scopedWoredas;
 
-    const handleAddWoreda = (data: any) => {
-        console.log('Creating woreda:', data);
+    const handleAddWoreda = async (data: any) => {
+        try {
+            await woredasService.create(data);
+            setDialogOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error('Error creating woreda:', error);
+        }
     };
 
     return (
@@ -86,7 +114,7 @@ export default function WoredasPage() {
                             onChange={(e) => setSelectedZone(e.target.value)}
                         >
                             <MenuItem value="">All Zones</MenuItem>
-                            {mockZones.map(zone => (
+                            {zones.map(zone => (
                                 <MenuItem key={zone.id} value={zone.id}>{zone.name}</MenuItem>
                             ))}
                         </Select>
@@ -99,7 +127,7 @@ export default function WoredasPage() {
                 onClose={() => setDialogOpen(false)}
                 onSubmit={handleAddWoreda}
                 type="woreda"
-                parentName={selectedZone ? mockZones.find(z => z.id === selectedZone)?.name : undefined}
+                parentName={selectedZone ? zones.find(z => z.id === selectedZone)?.name : undefined}
             />
         </Box>
     );

@@ -24,11 +24,9 @@ import { AnalyticsChart } from '@/app/components/analytics';
 import { DataTable } from '@/app/components/tables';
 import { useAuthStore } from '@/app/lib/store';
 import { PermissionGate } from '@/app/lib/core';
-import {
-    mockZones,
-    mockWoredas,
-    bureauKPIs
-} from '@/app/lib/mock-data';
+import { dashboardService } from '@/app/lib/api/dashboard.service';
+import { zonesService } from '@/app/lib/api/zones.service';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import type { Zone, KPIData } from '@/app/lib/types';
 
@@ -89,13 +87,37 @@ export default function Dashboard() {
     const theme = useTheme();
     const user = useAuthStore(state => state.user);
     const [loading, setLoading] = useState(true);
-    const filteredZones = useScopedData(mockZones, 'zone');
+    const [stats, setStats] = useState<any>(null);
+    const [zones, setZones] = useState<Zone[]>([]);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [statsData, zonesData] = await Promise.all([
+                dashboardService.getStats(),
+                (user?.tenantType === 'bureau' || user?.tenantType === 'zone')
+                    ? zonesService.getAll(user?.tenantType === 'zone' ? user.tenantId : undefined)
+                    : Promise.resolve([])
+            ]);
+            setStats(statsData);
+            setZones(zonesData as any);
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        // Simulate data loading
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
-    }, []);
+        fetchData();
+    }, [user]);
+
+    // Listen for real-time updates
+    useRealTime('STATS_UPDATED', () => {
+        fetchData();
+    });
+
+    const filteredZones = useScopedData(zones, 'zone');
 
     const dashboardTitle = user?.tenantType === 'bureau'
         ? 'Regional Education Bureau Dashboard'
@@ -119,7 +141,25 @@ export default function Dashboard() {
 
             {/* KPI Cards */}
             <Box sx={{ mb: 4 }}>
-                <KPIGrid kpis={bureauKPIs} loading={loading} columns={6} />
+                <KPIGrid
+                    kpis={stats ? [
+                        {
+                            label: 'Institutions',
+                            value: stats.institutions || 0,
+                            icon: 'School',
+                            trend: 'stable'
+                        },
+                        {
+                            label: 'Total Students',
+                            value: stats.students || 0,
+                            icon: 'People',
+                            trend: 'stable'
+                        },
+                        // Map other stats as needed
+                    ] : []}
+                    loading={loading}
+                    columns={6}
+                />
             </Box>
 
             {/* Charts Section */}

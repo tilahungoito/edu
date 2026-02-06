@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
-import { mockZones } from '@/app/lib/mock-data';
-
+import { zonesService } from '@/app/lib/api/zones.service';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 
@@ -35,16 +35,39 @@ const zoneColumns: GridColDef[] = [
 export default function ZonesPage() {
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
-    const filteredZones = useScopedData(mockZones, 'zone');
+    const [zones, setZones] = useState<any[]>([]);
+
+    const fetchZones = async () => {
+        setLoading(true);
+        try {
+            const data = await zonesService.getAll();
+            setZones(data);
+        } catch (error) {
+            console.error('Error fetching zones:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 800);
-        return () => clearTimeout(timer);
+        fetchZones();
     }, []);
 
-    const handleAddZone = (data: any) => {
-        console.log('Creating zone:', data);
-        // In a real app, this would call an API
+    // Listen for real-time updates
+    useRealTime('STATS_UPDATED', () => {
+        fetchZones();
+    });
+
+    const filteredZones = useScopedData(zones, 'zone');
+
+    const handleAddZone = async (data: any) => {
+        try {
+            await zonesService.create(data);
+            setDialogOpen(false);
+            fetchZones();
+        } catch (error) {
+            console.error('Error creating zone:', error);
+        }
     };
 
     return (

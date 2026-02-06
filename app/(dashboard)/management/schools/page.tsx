@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
-import { mockSchools, mockZones, mockWoredas } from '@/app/lib/mock-data';
+import { institutionsService } from '@/app/lib/api/institutions.service';
+import { woredasService } from '@/app/lib/api/woredas.service';
+import { zonesService } from '@/app/lib/api/zones.service';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 
@@ -60,30 +63,52 @@ export default function SchoolsPage() {
     const [selectedZone, setSelectedZone] = useState<string>('');
     const [selectedWoreda, setSelectedWoreda] = useState<string>('');
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [schools, setSchools] = useState<any[]>([]);
+    const [zones, setZones] = useState<any[]>([]);
+    const [woredas, setWoredas] = useState<any[]>([]);
 
-    const scopedSchools = useScopedData(mockSchools, 'school');
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [schoolsData, zonesData, woredasData] = await Promise.all([
+                institutionsService.getAll({
+                    zoneId: selectedZone || undefined,
+                    woredaId: selectedWoreda || undefined,
+                }),
+                zonesService.getAll(),
+                woredasService.getAll(selectedZone || undefined)
+            ]);
+            setSchools(schoolsData);
+            setZones(zonesData);
+            setWoredas(woredasData);
+        } catch (error) {
+            console.error('Error fetching schools data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 800);
-        return () => clearTimeout(timer);
-    }, []);
+        fetchData();
+    }, [selectedZone, selectedWoreda]);
 
-    // Filter woredas by zone
-    const availableWoredas = selectedZone
-        ? mockWoredas.filter(w => w.zoneId === selectedZone)
-        : mockWoredas;
+    // Listen for real-time updates
+    useRealTime('STATS_UPDATED', () => {
+        fetchData();
+    });
 
-    // Filter schools
-    let filteredSchools = scopedSchools;
-    if (selectedZone) {
-        filteredSchools = filteredSchools.filter(s => s.zoneId === selectedZone);
-    }
-    if (selectedWoreda) {
-        filteredSchools = filteredSchools.filter(s => s.woredaId === selectedWoreda);
-    }
+    const scopedSchools = useScopedData(schools, 'school');
+    const availableWoredas = woredas;
+    const filteredSchools = scopedSchools;
 
-    const handleAddSchool = (data: any) => {
-        console.log('Creating school:', data);
+    const handleAddSchool = async (data: any) => {
+        try {
+            await institutionsService.create(data);
+            setDialogOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error('Error creating school:', error);
+        }
     };
 
     return (
@@ -127,7 +152,7 @@ export default function SchoolsPage() {
                                 }}
                             >
                                 <MenuItem value="">All Zones</MenuItem>
-                                {mockZones.map(zone => (
+                                {zones.map(zone => (
                                     <MenuItem key={zone.id} value={zone.id}>{zone.name}</MenuItem>
                                 ))}
                             </Select>
@@ -156,9 +181,9 @@ export default function SchoolsPage() {
                 onSubmit={handleAddSchool}
                 type="school"
                 parentName={selectedWoreda
-                    ? mockWoredas.find(w => w.id === selectedWoreda)?.name
+                    ? woredas.find(w => w.id === selectedWoreda)?.name
                     : selectedZone
-                        ? mockZones.find(z => z.id === selectedZone)?.name
+                        ? zones.find(z => z.id === selectedZone)?.name
                         : undefined}
             />
         </Box>
