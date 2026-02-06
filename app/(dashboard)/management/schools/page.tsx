@@ -28,7 +28,7 @@ const schoolColumns: GridColDef[] = [
             };
             return (
                 <Chip
-                    label={params.value?.charAt(0).toUpperCase() + params.value?.slice(1)}
+                    label={typeof params.value === 'string' ? (params.value.charAt(0).toUpperCase() + params.value.slice(1)) : ''}
                     size="small"
                     color={typeColors[params.value as string] || 'default'}
                 />
@@ -39,7 +39,7 @@ const schoolColumns: GridColDef[] = [
         field: 'ownership',
         headerName: 'Ownership',
         width: 110,
-        valueFormatter: ({ value }) => value ? value.charAt(0).toUpperCase() + value.slice(1) : '',
+        valueFormatter: ({ value }) => typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : '',
     },
     {
         field: 'totalStudents',
