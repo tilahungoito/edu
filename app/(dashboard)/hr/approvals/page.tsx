@@ -47,6 +47,7 @@ export default function ApprovalsPage() {
                 rows={mockApprovals}
                 columns={columns}
                 loading={false}
+                module="hr"
             />
         </Box>
     );

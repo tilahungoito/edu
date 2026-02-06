@@ -16,7 +16,7 @@ const columns: GridColDef[] = [
     { field: 'category', headerName: 'Category', width: 150 },
     { field: 'school', headerName: 'School', width: 180 },
     { field: 'condition', headerName: 'Condition', width: 120 },
-    { field: 'value', headerName: 'Value (ETB)', width: 150, type: 'number', valueFormatter: (value) => typeof value === 'number' ? value.toLocaleString() : '-' },
+    { field: 'value', headerName: 'Value (ETB)', width: 150, type: 'number', valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-' },
 ];
 
 export default function AssetsPage() {
