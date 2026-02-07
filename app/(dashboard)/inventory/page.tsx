@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box,
     Typography,
-    Grid,
     FormControl,
     InputLabel,
     Select,
@@ -15,17 +14,9 @@ import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { KPIGrid } from '@/app/components/analytics';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
+import { inventoryService, Asset } from '@/app/lib/api/inventory.service';
 import type { KPIData } from '@/app/lib/types';
-
-
-// Using imported mockAssets from central mock-data
-
-const inventoryKPIs: KPIData[] = [
-    { label: 'Total Assets', value: 4250, trend: 'up', changePercent: 5.2, icon: 'Inventory' },
-    { label: 'Total Value', value: 12500000, trend: 'up', changePercent: 8.1, icon: 'Budget' },
-    { label: 'Assets in Good Condition', value: 85, trend: 'stable', icon: 'Groups' },
-    { label: 'Pending Requests', value: 23, trend: 'down', changePercent: -12, icon: 'Badge' },
-];
 
 const assetColumns: GridColDef[] = [
     { field: 'assetCode', headerName: 'Asset Code', width: 140 },
@@ -40,12 +31,14 @@ const assetColumns: GridColDef[] = [
                 furniture: 'secondary',
                 equipment: 'warning',
                 vehicles: 'success',
+                books: 'info' as any,
+                science: 'secondary',
             };
             return (
                 <Chip
                     label={params.value?.charAt(0).toUpperCase() + params.value?.slice(1)}
                     size="small"
-                    color={categoryColors[params.value as string] || 'default'}
+                    color={(categoryColors[params.value?.toLowerCase() as string] || 'default') as any}
                     variant="outlined"
                 />
             );
@@ -81,7 +74,7 @@ const assetColumns: GridColDef[] = [
                 <Chip
                     label={params.value?.charAt(0).toUpperCase() + params.value?.slice(1)}
                     size="small"
-                    color={conditionColors[params.value as string] || 'default'}
+                    color={conditionColors[params.value?.toLowerCase() as string] || 'default'}
                 />
             );
         }
@@ -91,19 +84,60 @@ const assetColumns: GridColDef[] = [
 ];
 
 export default function InventoryPage() {
+    const [assets, setAssets] = useState<Asset[]>([]);
     const [loading, setLoading] = useState(true);
     const [categoryFilter, setCategoryFilter] = useState<string>('');
-    const scopedAssets = useScopedData(mockAssets, 'inventory');
+
+    // Scoped data hook (if applicable for filtering frontend-side)
+    const scopedAssets = useScopedData(assets, 'inventory');
+
+    const fetchAssets = async () => {
+        try {
+            setLoading(true);
+            const data = await inventoryService.getAll();
+            setAssets(data);
+        } catch (error) {
+            console.error('Failed to fetch assets:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 800);
-        return () => clearTimeout(timer);
+        fetchAssets();
     }, []);
 
-    let filteredAssets: any[] = scopedAssets;
-    if (categoryFilter) {
-        filteredAssets = filteredAssets.filter((a: any) => a.category === categoryFilter);
-    }
+    // Real-time updates
+    useRealTime('asset_created', (newAsset: Asset) => {
+        setAssets(prev => [newAsset, ...prev]);
+    });
+
+    useRealTime('asset_updated', (updatedAsset: Asset) => {
+        setAssets(prev => prev.map(a => a.id === updatedAsset.id ? updatedAsset : a));
+    });
+
+    useRealTime('asset_deleted', ({ id }: { id: string }) => {
+        setAssets(prev => prev.filter(a => a.id !== id));
+    });
+
+    const filteredAssets = useMemo(() => {
+        if (!categoryFilter) return scopedAssets;
+        return scopedAssets.filter((a) => a.category.toLowerCase() === categoryFilter.toLowerCase());
+    }, [scopedAssets, categoryFilter]);
+
+    const kpis: KPIData[] = useMemo(() => {
+        const totalAssets = assets.length;
+        const totalValue = assets.reduce((sum, a) => sum + (a.totalValue || 0), 0);
+        const goodCondition = assets.filter(a => ['new', 'good'].includes(a.condition.toLowerCase())).length;
+        const goodPercent = totalAssets > 0 ? Math.round((goodCondition / totalAssets) * 100) : 0;
+
+        return [
+            { label: 'Total Assets', value: totalAssets, trend: 'up', changePercent: 0, icon: 'Inventory' },
+            { label: 'Total Value', value: totalValue, trend: 'up', changePercent: 0, icon: 'Budget' },
+            { label: 'Good Condition', value: `${goodPercent}%`, trend: 'stable', icon: 'Groups' },
+            { label: 'Categories', value: new Set(assets.map(a => a.category)).size, trend: 'stable', icon: 'Badge' },
+        ];
+    }, [assets]);
 
     return (
         <Box>
@@ -117,8 +151,8 @@ export default function InventoryPage() {
             </Box>
 
             {/* KPIs */}
-            <Box sx={{ mb: 4 }}>
-                <KPIGrid kpis={inventoryKPIs} loading={loading} columns={4} />
+            <Box {... (loading ? {} : { sx: { mb: 4 } })}>
+                <KPIGrid kpis={kpis} loading={loading} columns={4} />
             </Box>
 
             {/* Assets Table */}
@@ -126,18 +160,25 @@ export default function InventoryPage() {
                 title="Assets Inventory"
                 subtitle={`${filteredAssets.length} assets`}
                 columns={assetColumns}
-                rows={filteredAssets.map(a => ({ ...a, id: a.id || String(Math.random()) }))}
+                rows={filteredAssets}
                 loading={loading}
                 module="inventory"
-                onAdd={() => console.log('Add asset')}
-                onEdit={(asset) => console.log('Edit asset', asset)}
-                onView={(asset) => console.log('View asset', asset)}
-                onDelete={(asset) => console.log('Delete asset', asset)}
+                onAdd={() => console.log('Add asset dialog')}
+                onEdit={(asset) => console.log('Edit asset dialog', asset)}
+                onView={(asset) => console.log('View asset dialog', asset)}
+                onDelete={async (asset) => {
+                    if (confirm('Are you sure you want to delete this asset?')) {
+                        await inventoryService.delete(asset.id);
+                    }
+                }}
                 statusField="status"
                 statusColors={{
                     active: 'success',
                     inactive: 'error',
                     disposed: 'warning',
+                    'in stock': 'success',
+                    'limited': 'warning',
+                    'out of stock': 'error',
                 }}
                 checkboxSelection
                 toolbarActions={
@@ -149,10 +190,9 @@ export default function InventoryPage() {
                             onChange={(e) => setCategoryFilter(e.target.value)}
                         >
                             <MenuItem value="">All Categories</MenuItem>
-                            <MenuItem value="electronics">Electronics</MenuItem>
-                            <MenuItem value="furniture">Furniture</MenuItem>
-                            <MenuItem value="equipment">Equipment</MenuItem>
-                            <MenuItem value="vehicles">Vehicles</MenuItem>
+                            {Array.from(new Set(assets.map(a => a.category))).map(cat => (
+                                <MenuItem key={cat} value={cat.toLowerCase()}>{cat}</MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
                 }
