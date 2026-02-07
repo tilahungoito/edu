@@ -324,7 +324,7 @@ export interface Expenditure extends BaseEntity {
 
 export interface KPIData {
     label: string;
-    value: number;
+    value: number | string;
     previousValue?: number;
     change?: number;
     changePercent?: number;

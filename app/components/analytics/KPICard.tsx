@@ -80,7 +80,8 @@ export function KPICard({
         return theme.palette.text.secondary;
     };
 
-    const formatValue = (value: number) => {
+    const formatValue = (value: number | string) => {
+        if (typeof value === 'string') return value;
         if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
         if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
         return value.toLocaleString();
