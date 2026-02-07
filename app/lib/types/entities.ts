@@ -346,3 +346,35 @@ export interface AnalyticsFilter {
     endDate?: Date;
     category?: string;
 }
+
+// ====================================
+// AUDIT LOG TYPES
+// ====================================
+
+export interface AuditLog {
+    id: string;
+    action: string;
+    entity: string;
+    entityId?: string;
+    payload?: any;
+    userId?: string;
+    user?: {
+        id: string;
+        username: string;
+        email: string;
+    };
+    ip?: string;
+    userAgent?: string;
+    createdAt: Date;
+}
+
+export interface AuditLogFilter {
+    limit?: number;
+    offset?: number;
+    action?: string;
+    entity?: string;
+    userId?: string;
+    startDate?: Date;
+    endDate?: Date;
+}
+

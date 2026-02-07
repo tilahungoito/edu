@@ -148,6 +148,7 @@ moduleRegistry.register({
             path: '/communication/announcements',
             permission: { module: 'communication', action: 'view', resourceType: 'announcement' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN'],
         },
         {
             id: 'comm-help',
@@ -156,6 +157,7 @@ moduleRegistry.register({
             path: '/communication/support',
             permission: { module: 'communication', action: 'view', resourceType: 'help_request' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN'],
         },
     ],
 });
@@ -180,6 +182,7 @@ moduleRegistry.register({
             path: '/management/regions',
             permission: { module: 'management', action: 'view', resourceType: 'region' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
         {
             id: 'management-master-list',
@@ -188,6 +191,7 @@ moduleRegistry.register({
             path: '/management/entities',
             permission: { module: 'management', action: 'view' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
             children: [
                 {
                     id: 'm-zones',
@@ -228,6 +232,7 @@ moduleRegistry.register({
             icon: 'People',
             path: '/students',
             permission: { module: 'students', action: 'view' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
         },
         {
             id: 'students-registration',
@@ -236,6 +241,7 @@ moduleRegistry.register({
             icon: 'Badge',
             path: '/students/register',
             permission: { module: 'students', action: 'create' },
+            allowedRoles: ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
         },
     ],
 });
@@ -259,6 +265,7 @@ moduleRegistry.register({
             icon: 'School',
             path: '/academic/courses',
             permission: { module: 'courses', action: 'view' },
+            allowedRoles: ['INSTRUCTOR', 'STUDENT'],
         },
         {
             id: 'academic-grades',
@@ -267,6 +274,7 @@ moduleRegistry.register({
             icon: 'Assessment',
             path: '/academic/grades',
             permission: { module: 'grading', action: 'view' },
+            allowedRoles: ['INSTRUCTOR', 'STUDENT', 'REGISTRAR'],
         },
     ],
 });
@@ -290,6 +298,7 @@ moduleRegistry.register({
             path: '/academic/config/periods',
             permission: { module: 'academic', action: 'edit', resourceType: 'calendar' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
         {
             id: 'ac-subjects',
@@ -298,6 +307,7 @@ moduleRegistry.register({
             path: '/academic/config/subjects',
             permission: { module: 'academic', action: 'edit', resourceType: 'subject' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
     ],
 });
@@ -321,6 +331,7 @@ moduleRegistry.register({
             icon: 'Badge',
             path: '/hr/staff',
             permission: { module: 'hr', action: 'view', resourceType: 'staff' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN'],
         },
         {
             id: 'hr-transfers',
@@ -329,6 +340,7 @@ moduleRegistry.register({
             icon: 'SwapHoriz',
             path: '/hr/transfers',
             permission: { module: 'hr', action: 'view', resourceType: 'transfer' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN'],
         },
     ],
 });
@@ -352,6 +364,7 @@ moduleRegistry.register({
             icon: 'Inventory2',
             path: '/inventory',
             permission: { module: 'inventory', action: 'view' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT'],
         },
     ],
 });
@@ -375,6 +388,7 @@ moduleRegistry.register({
             icon: 'Receipt',
             path: '/finance/payments',
             permission: { module: 'payments', action: 'view' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT'],
         },
     ],
 });
@@ -398,6 +412,7 @@ moduleRegistry.register({
             icon: 'PieChart',
             path: '/budget',
             permission: { module: 'budget', action: 'view' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT'],
         },
     ],
 });
@@ -421,6 +436,7 @@ moduleRegistry.register({
             icon: 'Description',
             path: '/reports',
             permission: { module: 'reports', action: 'view' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT'],
         },
         {
             id: 'reports-scheduled',
@@ -429,6 +445,7 @@ moduleRegistry.register({
             icon: 'Schedule',
             path: '/reports/scheduled',
             permission: { module: 'reports', action: 'view' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT'],
         },
     ],
 });
@@ -452,6 +469,7 @@ moduleRegistry.register({
             path: '/system/monitoring/audit',
             permission: { module: 'monitoring', action: 'view', resourceType: 'staff' }, // Reusing staff for now or adjust
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
         {
             id: 'mon-health',
@@ -460,6 +478,7 @@ moduleRegistry.register({
             path: '/system/monitoring/health',
             permission: { module: 'monitoring', action: 'view' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
     ],
 });
@@ -483,6 +502,7 @@ moduleRegistry.register({
             path: '/system/settings/config',
             permission: { module: 'system', action: 'edit' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
         {
             id: 'sys-modules',
@@ -491,6 +511,7 @@ moduleRegistry.register({
             path: '/system/settings/modules',
             permission: { module: 'system', action: 'edit' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
         {
             id: 'sys-backups',
@@ -499,6 +520,7 @@ moduleRegistry.register({
             path: '/system/settings/backups',
             permission: { module: 'system', action: 'edit', resourceType: 'backup' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
         {
             id: 'sys-users',
@@ -507,6 +529,7 @@ moduleRegistry.register({
             path: '/system/users',
             permission: { module: 'system', action: 'view', resourceType: 'user' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
     ],
 });
@@ -537,6 +560,7 @@ moduleRegistry.register({
             path: '/settings/roles',
             permission: { module: 'settings', action: 'edit' },
             allowedTenantTypes: ['bureau'],
+            allowedRoles: ['SYSTEM_ADMIN'],
         },
     ],
 });

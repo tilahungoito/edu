@@ -127,14 +127,38 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         const modules = moduleRegistry.getAll();
         const groups: Record<string, MenuItemType[]> = {};
 
+        // DEBUG: Log user info
+        console.log('🔍 RBAC Debug - User Info:', {
+            roles: user?.roles?.map(r => r.name),
+            tenantType: user?.tenantType,
+            permissionCount: user?.permissions?.length,
+        });
+
+        // SYSTEM_ADMIN sees everything
+        const isSystemAdmin = user?.roles?.some(r => r.name === 'SYSTEM_ADMIN');
+
         modules.forEach(m => {
-            if (!hasPermission(m.requiredPermission)) return;
+            // SYSTEM_ADMIN bypasses permission checks
+            if (!isSystemAdmin && !hasPermission(m.requiredPermission)) return;
 
             const visibleItems = m.menuItems.filter(item => {
+                // SYSTEM_ADMIN sees all items
+                if (isSystemAdmin) return true;
+
+                // Permission check
                 if (item.permission && !hasPermission(item.permission)) return false;
+
+                // Tenant type check
                 if (item.allowedTenantTypes && user && !item.allowedTenantTypes.includes(user.tenantType)) {
                     return false;
                 }
+
+                // Role check - only enforce if allowedRoles is explicitly set
+                if (item.allowedRoles && item.allowedRoles.length > 0) {
+                    const hasRequiredRole = item.allowedRoles.some(role => useAuthStore.getState().hasRole(role));
+                    if (!hasRequiredRole) return false;
+                }
+
                 return true;
             });
 
@@ -145,6 +169,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             }
         });
 
+        console.log('🔍 RBAC Debug - Visible Groups:', Object.keys(groups));
         return groups;
     }, [user, hasPermission]);
 
@@ -168,6 +193,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             if (child.permission && !hasPermission(child.permission)) return false;
             if (child.allowedTenantTypes && user && !child.allowedTenantTypes.includes(user.tenantType)) {
                 return false;
+            }
+            if (child.allowedRoles && child.allowedRoles.length > 0) {
+                const hasRequiredRole = child.allowedRoles.some(role => useAuthStore.getState().hasRole(role));
+                if (!hasRequiredRole) return false;
             }
             return true;
         });

@@ -8,6 +8,8 @@ import type {
     ActionType,
     ResourceType
 } from '../types/permissions';
+import { hasHierarchicalAccess } from '../utils/rbac-utils';
+import type { Role } from '../types/roles';
 
 interface AuthState {
     user: User | null;
@@ -22,8 +24,21 @@ interface AuthState {
     // Permission checks
     hasPermission: (check: PermissionCheck) => boolean;
     hasModuleAccess: (module: ModuleType) => boolean;
+    hasRole: (roleName: string) => boolean;
     canPerformAction: (module: ModuleType, action: ActionType, resourceType?: ResourceType) => boolean;
     getAllPermissions: () => Permission[];
+}
+
+// Helper to set cookie
+function setCookie(name: string, value: string, days: number = 1) {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+}
+
+// Helper to delete cookie
+function deleteCookie(name: string) {
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
 }
 
 // NO PERSISTENCE - users must login every time
@@ -44,8 +59,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             // Call real backend API
             const response: LoginResponse = await authApi.login({ email, password });
 
-            // Store token in sessionStorage (cleared on browser close)
+            // Store token in BOTH sessionStorage (client-side) AND cookie (server-side middleware)
             sessionStorage.setItem('access_token', response.access_token);
+            setCookie('access_token', response.access_token, 1); // Expires in 1 day
 
             // Map backend user to frontend User type
             const user: User = {
@@ -74,6 +90,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             return { success: true };
         } catch (error) {
             sessionStorage.removeItem('access_token');
+            deleteCookie('access_token');
             set({ isLoading: false, user: null, isAuthenticated: false });
 
             const errorMessage = error instanceof Error
@@ -86,12 +103,16 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
     logout: () => {
         sessionStorage.removeItem('access_token');
+        deleteCookie('access_token');
         set({ user: null, isAuthenticated: false });
     },
 
     hasPermission: (check: PermissionCheck) => {
         const { user } = get();
         if (!user) return false;
+
+        // SYSTEM_ADMIN has all permissions
+        if (user.roles.some(r => r.name === 'SYSTEM_ADMIN')) return true;
 
         const allPermissions = get().getAllPermissions();
 
@@ -106,8 +127,26 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         const { user } = get();
         if (!user) return false;
 
+        // SYSTEM_ADMIN has access to all modules
+        if (user.roles.some(r => r.name === 'SYSTEM_ADMIN')) return true;
+
         const allPermissions = get().getAllPermissions();
         return allPermissions.some(p => p.module === module && p.action === 'view');
+    },
+
+    hasRole: (roleName: string) => {
+        const { user } = get();
+        if (!user) return false;
+
+        // Direct role check
+        const hasDirectRole = user.roles.some(role => role.name === roleName);
+        if (hasDirectRole) return true;
+
+        // Hierarchical check - SYSTEM_ADMIN has all roles
+        const userRole = user.roles[0]?.name as Role;
+        if (!userRole) return false;
+
+        return hasHierarchicalAccess(userRole, roleName as Role);
     },
 
     canPerformAction: (module: ModuleType, action: ActionType, resourceType?: ResourceType) => {

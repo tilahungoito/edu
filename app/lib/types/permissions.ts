@@ -161,6 +161,7 @@ export interface MenuItem {
     path: string;
     permission?: PermissionCheck;
     allowedTenantTypes?: TenantType[];
+    allowedRoles?: string[];
     children?: MenuItem[];
     badge?: number;
 }
