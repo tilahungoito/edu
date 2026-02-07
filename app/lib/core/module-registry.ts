@@ -189,6 +189,68 @@ moduleRegistry.register({
     ],
 });
 
+// Students Module (Registrar Focus)
+moduleRegistry.register({
+    id: 'students',
+    name: 'Students',
+    description: 'Student registration and records',
+    icon: 'People',
+    basePath: '/students',
+    requiredPermission: { module: 'students', action: 'view' },
+    isEnabled: true,
+    order: 4,
+    category: 'Core',
+    menuItems: [
+        {
+            id: 'students-list',
+            label: 'All Students',
+            labelAmharic: 'ሁሉም ተማሪዎች',
+            icon: 'People',
+            path: '/students',
+            permission: { module: 'students', action: 'view' },
+        },
+        {
+            id: 'students-registration',
+            label: 'Registration',
+            labelAmharic: 'ምዝገባ',
+            icon: 'Badge',
+            path: '/students/register',
+            permission: { module: 'students', action: 'create' },
+        },
+    ],
+});
+
+// Academic Module (Instructor/Student Focus)
+moduleRegistry.register({
+    id: 'academic',
+    name: 'Academic',
+    description: 'Course and grade management',
+    icon: 'School',
+    basePath: '/academic',
+    requiredPermission: { module: 'academic', action: 'view' },
+    isEnabled: true,
+    order: 5,
+    category: 'Core',
+    menuItems: [
+        {
+            id: 'academic-courses',
+            label: 'My Courses',
+            labelAmharic: 'የእኔ ኮርሶች',
+            icon: 'School',
+            path: '/academic/courses',
+            permission: { module: 'courses', action: 'view' },
+        },
+        {
+            id: 'academic-grades',
+            label: 'Grades',
+            labelAmharic: 'ውጤቶች',
+            icon: 'Assessment',
+            path: '/academic/grades',
+            permission: { module: 'grading', action: 'view' },
+        },
+    ],
+});
+
 // HR Module
 moduleRegistry.register({
     id: 'hr',
@@ -198,13 +260,13 @@ moduleRegistry.register({
     basePath: '/hr',
     requiredPermission: { module: 'hr', action: 'view' },
     isEnabled: true,
-    order: 4,
-    category: 'HR & Staffing',
+    order: 6,
+    category: 'Staffing',
     menuItems: [
         {
             id: 'hr-staff',
-            label: 'Staff',
-            labelAmharic: 'ሠራተኞች',
+            label: 'Staff List',
+            labelAmharic: 'የሠራተኞች ዝርዝር',
             icon: 'Badge',
             path: '/hr/staff',
             permission: { module: 'hr', action: 'view', resourceType: 'staff' },
@@ -216,14 +278,6 @@ moduleRegistry.register({
             icon: 'SwapHoriz',
             path: '/hr/transfers',
             permission: { module: 'hr', action: 'view', resourceType: 'transfer' },
-        },
-        {
-            id: 'hr-approvals',
-            label: 'Approvals',
-            labelAmharic: 'ማጽደቆች',
-            icon: 'HowToReg',
-            path: '/hr/approvals',
-            permission: { module: 'hr', action: 'approve', resourceType: 'transfer' },
         },
     ],
 });
@@ -237,40 +291,39 @@ moduleRegistry.register({
     basePath: '/inventory',
     requiredPermission: { module: 'inventory', action: 'view' },
     isEnabled: true,
-    order: 5,
+    order: 7,
     category: 'Operations',
     menuItems: [
         {
             id: 'inventory-overview',
-            label: 'Inventory Overview',
-            labelAmharic: 'የእቃ ቆጠራ አጠቃላይ እይታ',
+            label: 'Inventory',
+            labelAmharic: 'ንብረት',
             icon: 'Inventory2',
             path: '/inventory',
             permission: { module: 'inventory', action: 'view' },
         },
+    ],
+});
+
+// Finance Module
+moduleRegistry.register({
+    id: 'finance',
+    name: 'Finance & Payments',
+    description: 'Payment and financial management',
+    icon: 'AccountBalance',
+    basePath: '/finance',
+    requiredPermission: { module: 'finance', action: 'view' },
+    isEnabled: true,
+    order: 8,
+    category: 'Finance',
+    menuItems: [
         {
-            id: 'inventory-assets',
-            label: 'Assets',
-            labelAmharic: 'ንብረቶች',
-            icon: 'Devices',
-            path: '/inventory/assets',
-            permission: { module: 'inventory', action: 'view', resourceType: 'asset' },
-        },
-        {
-            id: 'inventory-supplies',
-            label: 'Supplies',
-            labelAmharic: 'አቅርቦቶች',
-            icon: 'LocalShipping',
-            path: '/inventory/supplies',
-            permission: { module: 'inventory', action: 'view', resourceType: 'supply' },
-        },
-        {
-            id: 'inventory-requests',
-            label: 'Requests',
-            labelAmharic: 'ጥያቄዎች',
-            icon: 'Inbox',
-            path: '/inventory/requests',
-            permission: { module: 'inventory', action: 'view' },
+            id: 'finance-payments',
+            label: 'Payments',
+            labelAmharic: 'ክፍያዎች',
+            icon: 'Receipt',
+            path: '/finance/payments',
+            permission: { module: 'payments', action: 'view' },
         },
     ],
 });
@@ -278,14 +331,14 @@ moduleRegistry.register({
 // Budget Module
 moduleRegistry.register({
     id: 'budget',
-    name: 'Budget',
-    description: 'Budget allocation and expenditure',
+    name: 'Budget & Planning',
+    description: 'Budget allocation and planning',
     icon: 'AccountBalance',
     basePath: '/budget',
     requiredPermission: { module: 'budget', action: 'view' },
     isEnabled: true,
-    order: 6,
-    category: 'Operations',
+    order: 9,
+    category: 'Finance',
     menuItems: [
         {
             id: 'budget-overview',
@@ -293,30 +346,6 @@ moduleRegistry.register({
             labelAmharic: 'የበጀት አጠቃላይ እይታ',
             icon: 'PieChart',
             path: '/budget',
-            permission: { module: 'budget', action: 'view' },
-        },
-        {
-            id: 'budget-allocations',
-            label: 'Allocations',
-            labelAmharic: 'ምደባዎች',
-            icon: 'AccountTree',
-            path: '/budget/allocations',
-            permission: { module: 'budget', action: 'view' },
-        },
-        {
-            id: 'budget-expenditure',
-            label: 'Expenditure',
-            labelAmharic: 'ወጪዎች',
-            icon: 'Receipt',
-            path: '/budget/expenditure',
-            permission: { module: 'budget', action: 'view' },
-        },
-        {
-            id: 'budget-requests',
-            label: 'Budget Requests',
-            labelAmharic: 'የበጀት ጥያቄዎች',
-            icon: 'RequestQuote',
-            path: '/budget/requests',
             permission: { module: 'budget', action: 'view' },
         },
     ],

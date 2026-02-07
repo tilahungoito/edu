@@ -29,11 +29,12 @@ export default function DashboardRedirect() {
                 router.push('/dashboard/institution');
             } else if (roleName === 'REGISTRAR') {
                 router.push('/dashboard/registrar');
+            } else if (roleName === 'ACCOUNTANT') {
+                router.push('/dashboard/accountant');
             } else if (roleName === 'INSTRUCTOR' || roleName === 'STUDENT') {
                 router.push('/dashboard/academic');
             } else {
-                // Fallback
-                router.push('/dashboard/overview');
+                router.push('/dashboard/dashboard');
             }
         } else if (!isLoading && !isAuthenticated) {
             router.push('/login');

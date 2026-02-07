@@ -15,7 +15,14 @@ export type ModuleType =
     | 'budget'
     | 'reports'
     | 'settings'
-    | 'audit';
+    | 'audit'
+    | 'students'
+    | 'enrollment'
+    | 'grading'
+    | 'courses'
+    | 'academic'
+    | 'finance'
+    | 'payments';
 
 // Actions that can be performed
 export type ActionType =
@@ -45,7 +52,12 @@ export type ResourceType =
     | 'supply'
     | 'budget'
     | 'user'
-    | 'region';
+    | 'region'
+    | 'enrollment'
+    | 'course'
+    | 'grade'
+    | 'payment'
+    | 'institution';
 
 // Single permission
 export interface Permission {
