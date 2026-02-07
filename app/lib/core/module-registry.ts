@@ -87,7 +87,6 @@ moduleRegistry.register({
             labelAmharic: 'አጠቃላይ እይታ',
             icon: 'Dashboard',
             path: '/dashboard',
-            permission: { module: 'dashboard', action: 'view' },
         },
     ],
 });
@@ -110,13 +109,11 @@ moduleRegistry.register({
             labelAmharic: 'የትንታኔ አጠቃላይ እይታ',
             icon: 'BarChart',
             path: '/analytics',
-            permission: { module: 'analytics', action: 'view' },
             children: [
                 {
                     id: 'analytics-performance',
                     label: 'Performance',
                     path: '/analytics/performance',
-                    permission: { module: 'analytics', action: 'view' },
                 },
                 {
                     id: 'analytics-enrollment',
@@ -155,9 +152,6 @@ moduleRegistry.register({
             label: 'Help Requests',
             icon: 'ContactSupport',
             path: '/communication/support',
-            permission: { module: 'communication', action: 'view', resourceType: 'help_request' },
-            allowedTenantTypes: ['bureau'],
-            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN'],
         },
     ],
 });
