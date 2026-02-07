@@ -44,6 +44,16 @@ import {
     PieChart as PieChartIcon,
     Receipt as ReceiptIcon,
     VerifiedUser as VerifiedIcon,
+    Notifications as AnnouncementsIcon,
+    ContactSupport as SupportIcon,
+    Storage as BackupIcon,
+    HealthAndSafety as HealthIcon,
+    CalendarMonth as CalendarIcon,
+    Assignment as SubjectIcon,
+    Dns as SystemHealthIcon,
+    SettingsSuggest as GlobalConfigIcon,
+    AppRegistration as ModuleIcon,
+    ManageAccounts as UserMgmtIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
 import { moduleRegistry } from '@/app/lib/core';
@@ -81,6 +91,16 @@ const iconMap: Record<string, React.ReactNode> = {
     Tune: <SettingsIcon />,
     Security: <SettingsIcon />,
     Inbox: <InventoryIcon />,
+    Notifications: <AnnouncementsIcon />,
+    ContactSupport: <SupportIcon />,
+    Storage: <BackupIcon />,
+    HealthAndSafety: <HealthIcon />,
+    CalendarMonth: <CalendarIcon />,
+    Assignment: <SubjectIcon />,
+    Dns: <SystemHealthIcon />,
+    SettingsSuggest: <GlobalConfigIcon />,
+    AppRegistration: <ModuleIcon />,
+    ManageAccounts: <UserMgmtIcon />,
 };
 
 interface SidebarProps {

@@ -129,6 +129,37 @@ moduleRegistry.register({
     ],
 });
 
+// Communication Module (System Admin Broadcaster)
+moduleRegistry.register({
+    id: 'communication',
+    name: 'Communication',
+    description: 'System-wide announcements and support',
+    icon: 'Notifications',
+    basePath: '/communication',
+    requiredPermission: { module: 'communication', action: 'view' },
+    isEnabled: true,
+    order: 3,
+    category: 'Main',
+    menuItems: [
+        {
+            id: 'comm-announcements',
+            label: 'Announcements',
+            icon: 'Notifications',
+            path: '/communication/announcements',
+            permission: { module: 'communication', action: 'view', resourceType: 'announcement' },
+            allowedTenantTypes: ['bureau'],
+        },
+        {
+            id: 'comm-help',
+            label: 'Help Requests',
+            icon: 'ContactSupport',
+            path: '/communication/support',
+            permission: { module: 'communication', action: 'view', resourceType: 'help_request' },
+            allowedTenantTypes: ['bureau'],
+        },
+    ],
+});
+
 // Management Module
 moduleRegistry.register({
     id: 'management',
@@ -138,8 +169,8 @@ moduleRegistry.register({
     basePath: '/management',
     requiredPermission: { module: 'management', action: 'view' },
     isEnabled: true,
-    order: 3,
-    category: 'Entities',
+    order: 4,
+    category: 'Hierarchy',
     menuItems: [
         {
             id: 'management-regions',
@@ -151,40 +182,29 @@ moduleRegistry.register({
             allowedTenantTypes: ['bureau'],
         },
         {
-            id: 'management-zones',
-            label: 'Zones',
-            labelAmharic: 'ዞኖች',
-            icon: 'Map',
-            path: '/management/zones',
-            permission: { module: 'management', action: 'view', resourceType: 'zone' },
+            id: 'management-master-list',
+            label: 'Master Entity List',
+            icon: 'Business',
+            path: '/management/entities',
+            permission: { module: 'management', action: 'view' },
             allowedTenantTypes: ['bureau'],
-        },
-        {
-            id: 'management-woredas',
-            label: 'Woredas',
-            labelAmharic: 'ወረዳዎች',
-            icon: 'LocationCity',
-            path: '/management/woredas',
-            permission: { module: 'management', action: 'view', resourceType: 'woreda' },
-            allowedTenantTypes: ['bureau', 'zone'],
-        },
-        {
-            id: 'management-schools',
-            label: 'Schools',
-            labelAmharic: 'ትምህርት ቤቶች',
-            icon: 'School',
-            path: '/management/schools',
-            permission: { module: 'management', action: 'view', resourceType: 'school' },
-            allowedTenantTypes: ['bureau', 'zone', 'woreda'],
-        },
-        {
-            id: 'management-users',
-            label: 'Users',
-            labelAmharic: 'ተጠቃሚዎች',
-            icon: 'People',
-            path: '/management/users',
-            permission: { module: 'management', action: 'view', resourceType: 'user' },
-            allowedTenantTypes: ['bureau', 'zone', 'woreda'],
+            children: [
+                {
+                    id: 'm-zones',
+                    label: 'Zones',
+                    path: '/management/zones',
+                },
+                {
+                    id: 'm-woredas',
+                    label: 'Woredas',
+                    path: '/management/woredas',
+                },
+                {
+                    id: 'm-schools',
+                    label: 'Schools',
+                    path: '/management/schools',
+                },
+            ],
         },
     ],
 });
@@ -198,7 +218,7 @@ moduleRegistry.register({
     basePath: '/students',
     requiredPermission: { module: 'students', action: 'view' },
     isEnabled: true,
-    order: 4,
+    order: 5,
     category: 'Core',
     menuItems: [
         {
@@ -229,7 +249,7 @@ moduleRegistry.register({
     basePath: '/academic',
     requiredPermission: { module: 'academic', action: 'view' },
     isEnabled: true,
-    order: 5,
+    order: 6,
     category: 'Core',
     menuItems: [
         {
@@ -251,6 +271,37 @@ moduleRegistry.register({
     ],
 });
 
+// Academic Config Module (System Admin Standardizer)
+moduleRegistry.register({
+    id: 'academic-config',
+    name: 'Academic Config',
+    description: 'Global academic standards',
+    icon: 'CalendarMonth',
+    basePath: '/academic/config',
+    requiredPermission: { module: 'academic', action: 'edit' },
+    isEnabled: true,
+    order: 7,
+    category: 'Academic Config',
+    menuItems: [
+        {
+            id: 'ac-calendar',
+            label: 'Academic Year/Periods',
+            icon: 'CalendarMonth',
+            path: '/academic/config/periods',
+            permission: { module: 'academic', action: 'edit', resourceType: 'calendar' },
+            allowedTenantTypes: ['bureau'],
+        },
+        {
+            id: 'ac-subjects',
+            label: 'Subject Registry',
+            icon: 'Assignment',
+            path: '/academic/config/subjects',
+            permission: { module: 'academic', action: 'edit', resourceType: 'subject' },
+            allowedTenantTypes: ['bureau'],
+        },
+    ],
+});
+
 // HR Module
 moduleRegistry.register({
     id: 'hr',
@@ -260,7 +311,7 @@ moduleRegistry.register({
     basePath: '/hr',
     requiredPermission: { module: 'hr', action: 'view' },
     isEnabled: true,
-    order: 6,
+    order: 8,
     category: 'Staffing',
     menuItems: [
         {
@@ -291,7 +342,7 @@ moduleRegistry.register({
     basePath: '/inventory',
     requiredPermission: { module: 'inventory', action: 'view' },
     isEnabled: true,
-    order: 7,
+    order: 9,
     category: 'Operations',
     menuItems: [
         {
@@ -314,7 +365,7 @@ moduleRegistry.register({
     basePath: '/finance',
     requiredPermission: { module: 'finance', action: 'view' },
     isEnabled: true,
-    order: 8,
+    order: 10,
     category: 'Finance',
     menuItems: [
         {
@@ -337,7 +388,7 @@ moduleRegistry.register({
     basePath: '/budget',
     requiredPermission: { module: 'budget', action: 'view' },
     isEnabled: true,
-    order: 9,
+    order: 11,
     category: 'Finance',
     menuItems: [
         {
@@ -360,7 +411,7 @@ moduleRegistry.register({
     basePath: '/reports',
     requiredPermission: { module: 'reports', action: 'view' },
     isEnabled: true,
-    order: 7,
+    order: 12,
     category: 'Reports',
     menuItems: [
         {
@@ -382,22 +433,99 @@ moduleRegistry.register({
     ],
 });
 
-// Settings Module
+// Monitoring Module (System Health)
+moduleRegistry.register({
+    id: 'monitoring',
+    name: 'Monitoring',
+    description: 'System health and audit logs',
+    icon: 'Dns',
+    basePath: '/system/monitoring',
+    requiredPermission: { module: 'monitoring', action: 'view' },
+    isEnabled: true,
+    order: 13,
+    category: 'System',
+    menuItems: [
+        {
+            id: 'mon-audit',
+            label: 'Audit Logs',
+            icon: 'Description',
+            path: '/system/monitoring/audit',
+            permission: { module: 'monitoring', action: 'view', resourceType: 'staff' }, // Reusing staff for now or adjust
+            allowedTenantTypes: ['bureau'],
+        },
+        {
+            id: 'mon-health',
+            label: 'System Health',
+            icon: 'Dns',
+            path: '/system/monitoring/health',
+            permission: { module: 'monitoring', action: 'view' },
+            allowedTenantTypes: ['bureau'],
+        },
+    ],
+});
+
+// System Settings Module
+moduleRegistry.register({
+    id: 'system',
+    name: 'System Settings',
+    description: 'Global configuration and management',
+    icon: 'SettingsSuggest',
+    basePath: '/system/settings',
+    requiredPermission: { module: 'system', action: 'edit' },
+    isEnabled: true,
+    order: 14,
+    category: 'System',
+    menuItems: [
+        {
+            id: 'sys-config',
+            label: 'Global Configuration',
+            icon: 'SettingsSuggest',
+            path: '/system/settings/config',
+            permission: { module: 'system', action: 'edit' },
+            allowedTenantTypes: ['bureau'],
+        },
+        {
+            id: 'sys-modules',
+            label: 'Module Management',
+            icon: 'AppRegistration',
+            path: '/system/settings/modules',
+            permission: { module: 'system', action: 'edit' },
+            allowedTenantTypes: ['bureau'],
+        },
+        {
+            id: 'sys-backups',
+            label: 'Backups',
+            icon: 'Storage',
+            path: '/system/settings/backups',
+            permission: { module: 'system', action: 'edit', resourceType: 'backup' },
+            allowedTenantTypes: ['bureau'],
+        },
+        {
+            id: 'sys-users',
+            label: 'All Users',
+            icon: 'ManageAccounts',
+            path: '/system/users',
+            permission: { module: 'system', action: 'view', resourceType: 'user' },
+            allowedTenantTypes: ['bureau'],
+        },
+    ],
+});
+
+// Settings Module (Standard Settings)
 moduleRegistry.register({
     id: 'settings',
     name: 'Settings',
-    description: 'System configuration',
+    description: 'General configuration',
     icon: 'Settings',
     basePath: '/settings',
     requiredPermission: { module: 'settings', action: 'view' },
     isEnabled: true,
-    order: 8,
+    order: 15,
     category: 'System',
     menuItems: [
         {
             id: 'settings-general',
-            label: 'General Settings',
-            labelAmharic: 'አጠቃላይ ቅንብሮች',
+            label: 'Profile Settings',
             icon: 'Tune',
             path: '/settings',
             permission: { module: 'settings', action: 'view' },
@@ -405,18 +533,9 @@ moduleRegistry.register({
         {
             id: 'settings-roles',
             label: 'Roles & Permissions',
-            labelAmharic: 'ሚናዎች እና ፈቃዶች',
-            icon: 'Security',
+            icon: 'VerifiedUser',
             path: '/settings/roles',
             permission: { module: 'settings', action: 'edit' },
-        },
-        {
-            id: 'settings-audit',
-            label: 'Audit Logs',
-            labelAmharic: 'የኦዲት ምዝግብ ማስታወሻዎች',
-            icon: 'Description',
-            path: '/management/audit',
-            permission: { module: 'audit', action: 'view' },
             allowedTenantTypes: ['bureau'],
         },
     ],

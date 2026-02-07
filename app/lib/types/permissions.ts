@@ -21,8 +21,13 @@ export type ModuleType =
     | 'grading'
     | 'courses'
     | 'academic'
+    | 'academic-config'
     | 'finance'
-    | 'payments';
+    | 'payments'
+    | 'communication'
+    | 'monitoring'
+    | 'infrastructure'
+    | 'system';
 
 // Actions that can be performed
 export type ActionType =
@@ -57,7 +62,12 @@ export type ResourceType =
     | 'course'
     | 'grade'
     | 'payment'
-    | 'institution';
+    | 'institution'
+    | 'announcement'
+    | 'help_request'
+    | 'backup'
+    | 'calendar'
+    | 'subject';
 
 // Single permission
 export interface Permission {
