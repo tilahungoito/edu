@@ -11,9 +11,12 @@ import {
 import { KPIGrid, AnalyticsChart } from '@/app/components/analytics';
 import { useAuthStore } from '@/app/lib/store';
 import { KPIData } from '@/app/lib/types';
+import { UserDialog } from '@/app/components/management/UserDialog';
 
 export default function RegionalAdminDashboard() {
     const { user } = useAuthStore();
+    const [openUserDialog, setOpenUserDialog] = React.useState(false);
+
     const kpis: KPIData[] = [
         {
             label: 'Total Zones',
@@ -94,9 +97,10 @@ export default function RegionalAdminDashboard() {
                             fullWidth
                             size="large"
                             startIcon={<PeopleIcon />}
+                            onClick={() => setOpenUserDialog(true)}
                             sx={{ py: 1.5 }}
                         >
-                            Manage Zonal Admins
+                            Create Zone Admin
                         </Button>
                         <Button
                             variant="outlined"
@@ -110,6 +114,15 @@ export default function RegionalAdminDashboard() {
                     </Box>
                 </Grid>
             </Grid>
+
+            <UserDialog
+                open={openUserDialog}
+                onClose={() => setOpenUserDialog(false)}
+                onSuccess={() => {
+                    console.log('User created');
+                    // refresh data if needed
+                }}
+            />
         </Box>
     );
 }

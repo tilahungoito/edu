@@ -12,9 +12,12 @@ import {
 import { KPIGrid, AnalyticsChart } from '@/app/components/analytics';
 import { useAuthStore } from '@/app/lib/store';
 import { KPIData } from '@/app/lib/types';
+import { UserDialog } from '@/app/components/management/UserDialog';
 
 export default function SystemAdminDashboard() {
     const { user } = useAuthStore();
+    const [openUserDialog, setOpenUserDialog] = React.useState(false);
+
     const kpis: KPIData[] = [
         {
             label: 'Active Regions',
@@ -95,9 +98,10 @@ export default function SystemAdminDashboard() {
                             fullWidth
                             size="large"
                             startIcon={<UsersIcon />}
+                            onClick={() => setOpenUserDialog(true)}
                             sx={{ py: 1.5 }}
                         >
-                            Manage All Users
+                            Create Regional Admin
                         </Button>
                         <Button
                             variant="outlined"
@@ -120,6 +124,15 @@ export default function SystemAdminDashboard() {
                     </Box>
                 </Grid>
             </Grid>
+
+            <UserDialog
+                open={openUserDialog}
+                onClose={() => setOpenUserDialog(false)}
+                onSuccess={() => {
+                    console.log('User created');
+                    // Refresh data if needed
+                }}
+            />
         </Box>
     );
 }

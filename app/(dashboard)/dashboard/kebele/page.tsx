@@ -11,9 +11,12 @@ import {
 import { KPIGrid, AnalyticsChart } from '@/app/components/analytics';
 import { useAuthStore } from '@/app/lib/store';
 import { KPIData } from '@/app/lib/types';
+import { UserDialog } from '@/app/components/management/UserDialog';
 
 export default function KebeleAdminDashboard() {
     const { user } = useAuthStore();
+    const [openUserDialog, setOpenUserDialog] = React.useState(false);
+
     const kpis: KPIData[] = [
         {
             label: 'Institutions',
@@ -87,7 +90,17 @@ export default function KebeleAdminDashboard() {
                             startIcon={<AddIcon />}
                             sx={{ py: 1.5 }}
                         >
-                            New School Request
+                            Register New Institution
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            fullWidth
+                            size="large"
+                            startIcon={<PeopleIcon />}
+                            onClick={() => setOpenUserDialog(true)}
+                            sx={{ py: 1.5 }}
+                        >
+                            Create Institution Admin
                         </Button>
                         <Button
                             variant="outlined"
@@ -98,18 +111,15 @@ export default function KebeleAdminDashboard() {
                         >
                             Manage Institutions
                         </Button>
-                        <Button
-                            variant="outlined"
-                            fullWidth
-                            size="large"
-                            startIcon={<PeopleIcon />}
-                            sx={{ py: 1.5 }}
-                        >
-                            Staff Directory
-                        </Button>
                     </Box>
                 </Grid>
             </Grid>
+
+            <UserDialog
+                open={openUserDialog}
+                onClose={() => setOpenUserDialog(false)}
+                onSuccess={() => console.log('User created')}
+            />
         </Box>
     );
 }

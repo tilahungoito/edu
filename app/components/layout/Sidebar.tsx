@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -118,28 +118,29 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const [mounted, setMounted] = useState(false);
 
     // Handle hydration
-    React.useEffect(() => {
+    useEffect(() => {
         setMounted(true);
     }, []);
+
+    // Helper checking role directly from user object to avoidgetState issues in render
+    const hasRole = (role: string) => {
+        return user?.roles?.some(r => r.name === role) ?? false;
+    };
+
+    const isSystemAdmin = hasRole('SYSTEM_ADMIN');
 
     // Get menu items grouped by category
     const groupedMenuItems = useMemo(() => {
         const modules = moduleRegistry.getAll();
         const groups: Record<string, MenuItemType[]> = {};
 
-        // DEBUG: Log user info
-        console.log('🔍 RBAC Debug - User Info:', {
-            roles: user?.roles?.map(r => r.name),
-            tenantType: user?.tenantType,
-            permissionCount: user?.permissions?.length,
-        });
-
-        // SYSTEM_ADMIN sees everything
-        const isSystemAdmin = user?.roles?.some(r => r.name === 'SYSTEM_ADMIN');
+        if (!user) return {};
 
         modules.forEach(m => {
-            // SYSTEM_ADMIN bypasses permission checks
-            if (!isSystemAdmin && !hasPermission(m.requiredPermission)) return;
+            // SYSTEM_ADMIN bypasses module permission checks
+            if (!isSystemAdmin && m.requiredPermission && !hasPermission(m.requiredPermission)) {
+                return;
+            }
 
             const visibleItems = m.menuItems.filter(item => {
                 // SYSTEM_ADMIN sees all items
@@ -149,14 +150,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 if (item.permission && !hasPermission(item.permission)) return false;
 
                 // Tenant type check
-                if (item.allowedTenantTypes && user && !item.allowedTenantTypes.includes(user.tenantType)) {
+                if (item.allowedTenantTypes && !item.allowedTenantTypes.includes(user.tenantType)) {
                     return false;
                 }
 
-                // Role check - only enforce if allowedRoles is explicitly set
+                // Role check
                 if (item.allowedRoles && item.allowedRoles.length > 0) {
-                    const hasRequiredRole = item.allowedRoles.some(role => useAuthStore.getState().hasRole(role));
-                    if (!hasRequiredRole) return false;
+                    const userHasRole = item.allowedRoles.some(role => hasRole(role));
+                    if (!userHasRole) return false;
                 }
 
                 return true;
@@ -169,9 +170,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             }
         });
 
-        console.log('🔍 RBAC Debug - Visible Groups:', Object.keys(groups));
         return groups;
-    }, [user, hasPermission]);
+    }, [user, hasPermission, isSystemAdmin]);
 
     const handleToggleMenu = (menuId: string) => {
         setOpenMenus(prev => ({
@@ -190,16 +190,26 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         const active = isActive(item.path);
 
         const visibleChildren = item.children?.filter(child => {
+            // SYSTEM_ADMIN bypass
+            if (isSystemAdmin) return true;
+
             if (child.permission && !hasPermission(child.permission)) return false;
+
             if (child.allowedTenantTypes && user && !child.allowedTenantTypes.includes(user.tenantType)) {
                 return false;
             }
+
             if (child.allowedRoles && child.allowedRoles.length > 0) {
-                const hasRequiredRole = child.allowedRoles.some(role => useAuthStore.getState().hasRole(role));
-                if (!hasRequiredRole) return false;
+                const userHasRole = child.allowedRoles.some(role => hasRole(role));
+                if (!userHasRole) return false;
             }
             return true;
         });
+
+        // If item has children but none are visible, hide parent (unless parent is a link itself)
+        if (hasChildren && (!visibleChildren || visibleChildren.length === 0) && !item.path) {
+            return null;
+        }
 
         return (
             <React.Fragment key={item.id}>

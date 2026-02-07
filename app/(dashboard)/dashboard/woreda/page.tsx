@@ -11,9 +11,12 @@ import {
 import { KPIGrid, AnalyticsChart } from '@/app/components/analytics';
 import { useAuthStore } from '@/app/lib/store';
 import { KPIData } from '@/app/lib/types';
+import { UserDialog } from '@/app/components/management/UserDialog';
 
 export default function WoredaAdminDashboard() {
     const { user } = useAuthStore();
+    const [openUserDialog, setOpenUserDialog] = React.useState(false);
+
     const kpis: KPIData[] = [
         {
             label: 'Woreda Schools',
@@ -88,16 +91,17 @@ export default function WoredaAdminDashboard() {
                             startIcon={<AddIcon />}
                             sx={{ py: 1.5 }}
                         >
-                            Register New School
+                            Create New Kebele
                         </Button>
                         <Button
                             variant="outlined"
                             fullWidth
                             size="large"
                             startIcon={<PeopleIcon />}
+                            onClick={() => setOpenUserDialog(true)}
                             sx={{ py: 1.5 }}
                         >
-                            Manage School Admins
+                            Create Kebele Admin
                         </Button>
                         <Button
                             variant="outlined"
@@ -111,6 +115,12 @@ export default function WoredaAdminDashboard() {
                     </Box>
                 </Grid>
             </Grid>
+
+            <UserDialog
+                open={openUserDialog}
+                onClose={() => setOpenUserDialog(false)}
+                onSuccess={() => console.log('User created')}
+            />
         </Box>
     );
 }

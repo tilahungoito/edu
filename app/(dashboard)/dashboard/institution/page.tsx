@@ -11,9 +11,12 @@ import {
 import { KPIGrid, AnalyticsChart } from '@/app/components/analytics';
 import { useAuthStore } from '@/app/lib/store';
 import { KPIData } from '@/app/lib/types';
+import { UserDialog } from '@/app/components/management/UserDialog';
 
 export default function SchoolAdminDashboard() {
     const { user } = useAuthStore();
+    const [openUserDialog, setOpenUserDialog] = React.useState(false);
+
     const kpis: KPIData[] = [
         {
             label: 'Total Students',
@@ -83,19 +86,20 @@ export default function SchoolAdminDashboard() {
                             variant="contained"
                             fullWidth
                             size="large"
-                            startIcon={<AttendanceIcon />}
+                            startIcon={<AddIcon />}
+                            onClick={() => setOpenUserDialog(true)}
                             sx={{ py: 1.5 }}
                         >
-                            Record Daily Attendance
+                            Create Staff/Student
                         </Button>
                         <Button
                             variant="outlined"
                             fullWidth
                             size="large"
-                            startIcon={<AddIcon />}
+                            startIcon={<AttendanceIcon />}
                             sx={{ py: 1.5 }}
                         >
-                            New Student Intake
+                            Record Daily Attendance
                         </Button>
                         <Button
                             variant="outlined"
@@ -109,6 +113,12 @@ export default function SchoolAdminDashboard() {
                     </Box>
                 </Grid>
             </Grid>
+
+            <UserDialog
+                open={openUserDialog}
+                onClose={() => setOpenUserDialog(false)}
+                onSuccess={() => console.log('User created')}
+            />
         </Box>
     );
 }

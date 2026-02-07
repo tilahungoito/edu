@@ -412,7 +412,7 @@ moduleRegistry.register({
             icon: 'PieChart',
             path: '/budget',
             permission: { module: 'budget', action: 'view' },
-            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'ACCOUNTANT'],
         },
     ],
 });
@@ -436,7 +436,7 @@ moduleRegistry.register({
             icon: 'Description',
             path: '/reports',
             permission: { module: 'reports', action: 'view' },
-            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'REGISTRAR'],
         },
         {
             id: 'reports-scheduled',

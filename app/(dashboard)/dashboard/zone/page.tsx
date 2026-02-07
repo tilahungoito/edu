@@ -11,9 +11,12 @@ import {
 import { KPIGrid, AnalyticsChart } from '@/app/components/analytics';
 import { useAuthStore } from '@/app/lib/store';
 import { KPIData } from '@/app/lib/types';
+import { UserDialog } from '@/app/components/management/UserDialog';
 
 export default function ZoneAdminDashboard() {
     const { user } = useAuthStore();
+    const [openUserDialog, setOpenUserDialog] = React.useState(false);
+
     const kpis: KPIData[] = [
         {
             label: 'Total Woredas',
@@ -95,9 +98,10 @@ export default function ZoneAdminDashboard() {
                             fullWidth
                             size="large"
                             startIcon={<PeopleIcon />}
+                            onClick={() => setOpenUserDialog(true)}
                             sx={{ py: 1.5 }}
                         >
-                            Manage Woreda Admins
+                            Create Woreda Admin
                         </Button>
                         <Button
                             variant="outlined"
@@ -111,6 +115,12 @@ export default function ZoneAdminDashboard() {
                     </Box>
                 </Grid>
             </Grid>
+
+            <UserDialog
+                open={openUserDialog}
+                onClose={() => setOpenUserDialog(false)}
+                onSuccess={() => console.log('User created')}
+            />
         </Box>
     );
 }
