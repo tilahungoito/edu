@@ -42,5 +42,22 @@ export const usersService = {
 
     changePassword: async (data: any): Promise<void> => {
         await apiClient.patch('/profile/password', data);
+    },
+
+    activate: async (id: string): Promise<void> => {
+        await apiClient.patch(`/users/${id}/activate`);
+    },
+
+    deactivate: async (id: string): Promise<void> => {
+        await apiClient.patch(`/users/${id}/deactivate`);
+    },
+
+    remove: async (id: string): Promise<void> => {
+        await apiClient.delete(`/users/${id}`);
+    },
+
+    updateRole: async (id: string, roleId: string): Promise<User> => {
+        const response = await apiClient.patch<User>(`/users/${id}/role`, { roleId });
+        return response.data;
     }
 };

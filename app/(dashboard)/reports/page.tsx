@@ -30,7 +30,7 @@ export default function ReportsPage() {
 
             <Grid container spacing={3}>
                 {reportTypes.map((report, index) => (
-                    <Grid item xs={12} md={6} lg={4} key={index}>
+                    <Grid size={{ xs: 12, md: 6, lg: 4 }} key={index}>
                         <Card sx={{ height: '100%', borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', '&:hover': { transform: 'translateY(-4px)', transition: 'all 0.3s' } }}>
                             <CardContent sx={{ p: 3 }}>
                                 <Box sx={{ mb: 2, p: 1.5, borderRadius: 2, backgroundColor: 'primary.light', display: 'inline-flex', opacity: 0.1 }}>

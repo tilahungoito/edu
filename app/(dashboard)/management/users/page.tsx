@@ -4,7 +4,6 @@ import React from 'react';
 import { Box, Typography, Button, Avatar, Chip } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
-import { Add as AddIcon } from '@mui/icons-material';
 
 import { usersService } from '@/app/lib/api/users.service';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
@@ -16,7 +15,9 @@ import {
     MoreVert as MoreIcon,
     CheckCircle as ActivateIcon,
     Cancel as DeactivateIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    Refresh as RefreshIcon,
+    Add as AddIcon
 } from '@mui/icons-material';
 
 export default function UsersManagementPage() {

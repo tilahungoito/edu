@@ -15,8 +15,8 @@ import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { KPIGrid } from '@/app/components/analytics';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
-import { mockAssets } from '@/app/lib/mock-data';
 import type { KPIData } from '@/app/lib/types';
+
 
 // Using imported mockAssets from central mock-data
 
@@ -100,9 +100,9 @@ export default function InventoryPage() {
         return () => clearTimeout(timer);
     }, []);
 
-    let filteredAssets = scopedAssets;
+    let filteredAssets: any[] = scopedAssets;
     if (categoryFilter) {
-        filteredAssets = filteredAssets.filter(a => a.category === categoryFilter);
+        filteredAssets = filteredAssets.filter((a: any) => a.category === categoryFilter);
     }
 
     return (
@@ -126,7 +126,7 @@ export default function InventoryPage() {
                 title="Assets Inventory"
                 subtitle={`${filteredAssets.length} assets`}
                 columns={assetColumns}
-                rows={filteredAssets}
+                rows={filteredAssets.map(a => ({ ...a, id: a.id || String(Math.random()) }))}
                 loading={loading}
                 module="inventory"
                 onAdd={() => console.log('Add asset')}

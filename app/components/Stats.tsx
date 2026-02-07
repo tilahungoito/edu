@@ -20,7 +20,7 @@ const Stats = () => {
             <Container maxWidth="lg">
                 <Grid container spacing={4}>
                     {statItems.map((item) => (
-                        <Grid item xs={12} sm={6} md={3} key={item.label}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }} key={item.label}>
                             <Paper
                                 elevation={0}
                                 sx={{

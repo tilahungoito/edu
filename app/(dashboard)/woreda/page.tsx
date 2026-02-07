@@ -9,7 +9,7 @@ export default function WoredaAdminDashboard() {
             <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>Woreda Dashboard</Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card>
                         <CardContent>
                             <Typography color="text.secondary" gutterBottom>Total Kebeles</Typography>
@@ -18,7 +18,7 @@ export default function WoredaAdminDashboard() {
                     </Card>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={12}>
                     <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>Quick Actions</Typography>
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <Button variant="contained" startIcon={<AddIcon />}>
