@@ -21,7 +21,7 @@ import {
     Select,
     FormControl,
     InputLabel,
-    Grid2 as Grid,
+    Grid,
     Card,
     CardContent,
     Tooltip,

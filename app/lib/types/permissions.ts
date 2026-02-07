@@ -50,6 +50,7 @@ export type PermissionScope =
 export type ResourceType =
     | 'zone'
     | 'woreda'
+    | 'kebele'
     | 'school'
     | 'staff'
     | 'transfer'

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Container, Typography, Grid2 as Grid, Card, CardContent, CardActions, Button, Stack } from '@mui/material';
+import { Box, Container, Typography, Grid, Card, CardContent, CardActions, Button, Stack } from '@mui/material';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import AutoGraphIcon from '@mui/icons-material/AutoGraph';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';

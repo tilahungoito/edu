@@ -166,7 +166,7 @@ moduleRegistry.register({
 moduleRegistry.register({
     id: 'management',
     name: 'Management',
-    description: 'Entity management (Zones, Woredas, Schools)',
+    description: 'Entity management (Regions, Zones, Woredas, Kebeles, Schools)',
     icon: 'Business',
     basePath: '/management',
     requiredPermission: { module: 'management', action: 'view' },
@@ -174,6 +174,7 @@ moduleRegistry.register({
     order: 4,
     category: 'Hierarchy',
     menuItems: [
+        // Regions: Only System Admin can see and manage
         {
             id: 'management-regions',
             label: 'Regions',
@@ -184,31 +185,45 @@ moduleRegistry.register({
             allowedTenantTypes: ['bureau'],
             allowedRoles: ['SYSTEM_ADMIN'],
         },
+        // Zones: System Admin & Regional Admin
         {
-            id: 'management-master-list',
-            label: 'Master Entity List',
+            id: 'management-zones',
+            label: 'Zones',
+            labelAmharic: 'ዞኖች',
+            icon: 'LocationCity',
+            path: '/management/zones',
+            permission: { module: 'management', action: 'view', resourceType: 'zone' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN'],
+        },
+        // Woredas: System Admin, Regional Admin, Zone Admin
+        {
+            id: 'management-woredas',
+            label: 'Woredas',
+            labelAmharic: 'ወረዳዎች',
             icon: 'Business',
-            path: '/management/entities',
-            permission: { module: 'management', action: 'view' },
-            allowedTenantTypes: ['bureau'],
-            allowedRoles: ['SYSTEM_ADMIN'],
-            children: [
-                {
-                    id: 'm-zones',
-                    label: 'Zones',
-                    path: '/management/zones',
-                },
-                {
-                    id: 'm-woredas',
-                    label: 'Woredas',
-                    path: '/management/woredas',
-                },
-                {
-                    id: 'm-schools',
-                    label: 'Schools',
-                    path: '/management/schools',
-                },
-            ],
+            path: '/management/woredas',
+            permission: { module: 'management', action: 'view', resourceType: 'woreda' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN'],
+        },
+        // Kebeles: System Admin, Regional Admin, Zone Admin, Woreda Admin
+        {
+            id: 'management-kebeles',
+            label: 'Kebeles',
+            labelAmharic: 'ቀበሌዎች',
+            icon: 'LocationCity',
+            path: '/management/kebeles',
+            permission: { module: 'management', action: 'view', resourceType: 'kebele' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN'],
+        },
+        // Schools/Institutions: All hierarchy admins including Kebele Admin
+        {
+            id: 'management-schools',
+            label: 'Schools',
+            labelAmharic: 'ትምህርት ቤቶች',
+            icon: 'School',
+            path: '/management/schools',
+            permission: { module: 'management', action: 'view', resourceType: 'institution' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN'],
         },
     ],
 });

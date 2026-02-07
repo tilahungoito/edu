@@ -8,7 +8,7 @@ import {
     DialogActions,
     Button,
     TextField,
-    Grid2 as Grid,
+    Grid,
     FormControl,
     InputLabel,
     Select,
@@ -30,7 +30,7 @@ interface TenantDialogProps {
     open: boolean;
     onClose: () => void;
     onSubmit: (data: TenantFormData) => void;
-    type: 'region' | 'zone' | 'woreda' | 'school';
+    type: 'region' | 'zone' | 'woreda' | 'kebele' | 'school';
     parentType?: TenantType;
     parentId?: string;
     parentName?: string;

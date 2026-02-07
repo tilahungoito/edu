@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Grid2 as Grid, Button, Card, CardContent } from '@mui/material';
+import { Box, Typography, Grid, Button, Card, CardContent } from '@mui/material';
 import {
     School as CourseIcon,
     Assessment as GradesIcon,

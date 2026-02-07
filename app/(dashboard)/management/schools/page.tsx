@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip, Autocomplete, Button, Grid2 as Grid, alpha } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip, Autocomplete, Button, Grid, alpha } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { institutionsService, Institution } from '@/app/lib/api/institutions.service';

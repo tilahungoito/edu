@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid2 as Grid, alpha, FormControl, InputLabel, Select, MenuItem, CardContent, Chip, IconButton, Tooltip } from '@mui/material';
+import { Box, Typography, Button, Grid, alpha, FormControl, InputLabel, Select, MenuItem, CardContent, Chip, IconButton, Tooltip } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { Visibility as ViewIcon } from '@mui/icons-material';
 import { TenantDialog } from '@/app/components/management/TenantDialog';

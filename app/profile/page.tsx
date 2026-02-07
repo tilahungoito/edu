@@ -7,7 +7,7 @@ import {
     Card,
     CardContent,
     Avatar,
-    Grid2 as Grid,
+    Grid,
     TextField,
     Button,
     Divider,

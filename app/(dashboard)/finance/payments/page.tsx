@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import {
     Box,
     Typography,
-    Grid2 as Grid,
+    Grid,
     Card,
     CardContent,
     Button,

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Grid2 as Grid } from '@mui/material';
+import { Box, Typography, Grid } from '@mui/material';
 import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
 
 const performanceData = [

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Container, Grid2 as Grid, Typography, Paper, Stack } from '@mui/material';
+import { Box, Container, Grid, Typography, Paper, Stack } from '@mui/material';
 import SchoolIcon from '@mui/icons-material/School';
 import PeopleIcon from '@mui/icons-material/People';
 import ApartmentIcon from '@mui/icons-material/Apartment';

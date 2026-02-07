@@ -137,28 +137,27 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         if (!user) return {};
 
         modules.forEach(m => {
-            // SYSTEM_ADMIN bypasses module permission checks
-            if (!isSystemAdmin && m.requiredPermission && !hasPermission(m.requiredPermission)) {
-                return;
-            }
+            // Don't block at module level - let item-level filtering determine visibility
+            // This allows role-based access to work correctly
 
             const visibleItems = m.menuItems.filter(item => {
                 // SYSTEM_ADMIN sees all items
                 if (isSystemAdmin) return true;
 
-                // Permission check
-                if (item.permission && !hasPermission(item.permission)) return false;
-
-                // Tenant type check
+                // Tenant type check first (if specified)
                 if (item.allowedTenantTypes && !item.allowedTenantTypes.includes(user.tenantType)) {
                     return false;
                 }
 
-                // Role check
+                // Role check - if allowedRoles is specified and user has one of them, allow access
                 if (item.allowedRoles && item.allowedRoles.length > 0) {
                     const userHasRole = item.allowedRoles.some(role => hasRole(role));
-                    if (!userHasRole) return false;
+                    if (userHasRole) return true; // Role match grants access
+                    return false; // No role match, deny
                 }
+
+                // Fall back to permission check if no allowedRoles specified
+                if (item.permission && !hasPermission(item.permission)) return false;
 
                 return true;
             });
