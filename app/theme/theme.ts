@@ -3,149 +3,232 @@
 import { createTheme, alpha } from '@mui/material/styles';
 import type { } from '@mui/x-data-grid/themeAugmentation';
 
+/**
+ * Tigray Education Bureau Professional Theme
+ * Features:
+ * - Modern depth and shadows
+ * - Sophisticated typography (Inter & Outfit)
+ * - Glassmorphism ready color transitions
+ * - Vibrant accent colors for high engagement
+ */
 
-// Tigray Education Bureau Color Palette
-const primaryColor = '#1565C0'; // Deep Blue
-const secondaryColor = '#2E7D32'; // Forest Green
-const accentColor = '#F57C00'; // Orange accent
+declare module '@mui/material/Chip' {
+  interface ChipPropsVariantOverrides {
+    soft: true;
+  }
+}
+
+declare module '@mui/material/Button' {
+  interface ButtonPropsVariantOverrides {
+    soft: true;
+  }
+}
+
+const primaryMain = '#0F172A'; // Slate 900
+const primaryLight = '#334155'; // Slate 700
+const primaryDark = '#020617'; // Slate 950
+
+const secondaryMain = '#2563EB'; // Blue 600
+const secondaryLight = '#60A5FA'; // Blue 400
+const secondaryDark = '#1D4ED8'; // Blue 700
+
+const successMain = '#10B981'; // Emerald 500
+const warningMain = '#F59E0B'; // Amber 500
+const errorMain = '#EF4444'; // Red 500
 
 export const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: primaryColor,
-      light: '#42A5F5',
-      dark: '#0D47A1',
+      main: primaryMain,
+      light: primaryLight,
+      dark: primaryDark,
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: secondaryColor,
-      light: '#66BB6A',
-      dark: '#1B5E20',
+      main: secondaryMain,
+      light: secondaryLight,
+      dark: secondaryDark,
+      contrastText: '#FFFFFF',
+    },
+    success: {
+      main: successMain,
       contrastText: '#FFFFFF',
     },
     warning: {
-      main: accentColor,
-      light: '#FFB74D',
-      dark: '#E65100',
+      main: warningMain,
+      contrastText: '#FFFFFF',
     },
     error: {
-      main: '#D32F2F',
-      light: '#EF5350',
-      dark: '#C62828',
-    },
-    success: {
-      main: '#388E3C',
-      light: '#4CAF50',
-      dark: '#2E7D32',
+      main: errorMain,
+      contrastText: '#FFFFFF',
     },
     background: {
-      default: '#F5F7FA',
+      default: '#F8FAFC',
       paper: '#FFFFFF',
     },
     text: {
-      primary: '#1A1A2E',
-      secondary: '#4A4A68',
+      primary: '#0F172A',
+      secondary: '#64748B',
     },
-    divider: alpha('#1A1A2E', 0.08),
+    divider: alpha('#64748B', 0.12),
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", "Outfit", "Roboto", sans-serif',
     h1: {
+      fontSize: '3.5rem',
+      fontWeight: 800,
+      letterSpacing: '-0.02em',
+      lineHeight: 1.1,
+    },
+    h2: {
       fontSize: '2.5rem',
+      fontWeight: 700,
+      letterSpacing: '-0.01em',
+      lineHeight: 1.2,
+    },
+    h3: {
+      fontSize: '2rem',
       fontWeight: 700,
       lineHeight: 1.2,
     },
-    h2: {
-      fontSize: '2rem',
+    h4: {
+      fontSize: '1.5rem',
       fontWeight: 600,
       lineHeight: 1.3,
     },
-    h3: {
-      fontSize: '1.5rem',
-      fontWeight: 600,
-      lineHeight: 1.4,
-    },
-    h4: {
+    h5: {
       fontSize: '1.25rem',
       fontWeight: 600,
       lineHeight: 1.4,
     },
-    h5: {
-      fontSize: '1rem',
-      fontWeight: 600,
-      lineHeight: 1.5,
-    },
     h6: {
-      fontSize: '0.875rem',
+      fontSize: '1.125rem',
       fontWeight: 600,
-      lineHeight: 1.5,
+      lineHeight: 1.4,
     },
     body1: {
       fontSize: '1rem',
       lineHeight: 1.6,
+      color: '#1E293B',
     },
     body2: {
       fontSize: '0.875rem',
       lineHeight: 1.6,
+      color: '#64748B',
+    },
+    subtitle1: {
+      fontSize: '1.125rem',
+      fontWeight: 500,
+      lineHeight: 1.5,
+    },
+    subtitle2: {
+      fontSize: '0.875rem',
+      fontWeight: 500,
+      lineHeight: 1.5,
     },
     button: {
       textTransform: 'none',
       fontWeight: 600,
+      letterSpacing: '0.01em',
     },
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 16,
   },
   shadows: [
     'none',
-    '0px 2px 4px rgba(0,0,0,0.05)',
-    '0px 4px 8px rgba(0,0,0,0.08)',
-    '0px 8px 16px rgba(0,0,0,0.1)',
-    '0px 12px 24px rgba(0,0,0,0.12)',
-    '0px 16px 32px rgba(0,0,0,0.14)',
-    // ... rest are same as default
-    '0px 3px 5px -1px rgba(0,0,0,0.2),0px 6px 10px 0px rgba(0,0,0,0.14),0px 1px 18px 0px rgba(0,0,0,0.12)',
-    '0px 4px 5px -2px rgba(0,0,0,0.2),0px 7px 10px 1px rgba(0,0,0,0.14),0px 2px 16px 1px rgba(0,0,0,0.12)',
-    '0px 5px 5px -3px rgba(0,0,0,0.2),0px 8px 10px 1px rgba(0,0,0,0.14),0px 3px 14px 2px rgba(0,0,0,0.12)',
-    '0px 5px 6px -3px rgba(0,0,0,0.2),0px 9px 12px 1px rgba(0,0,0,0.14),0px 3px 16px 2px rgba(0,0,0,0.12)',
-    '0px 6px 6px -3px rgba(0,0,0,0.2),0px 10px 14px 1px rgba(0,0,0,0.14),0px 4px 18px 3px rgba(0,0,0,0.12)',
-    '0px 6px 7px -4px rgba(0,0,0,0.2),0px 11px 15px 1px rgba(0,0,0,0.14),0px 4px 20px 3px rgba(0,0,0,0.12)',
-    '0px 7px 8px -4px rgba(0,0,0,0.2),0px 12px 17px 2px rgba(0,0,0,0.14),0px 5px 22px 4px rgba(0,0,0,0.12)',
-    '0px 7px 8px -4px rgba(0,0,0,0.2),0px 13px 19px 2px rgba(0,0,0,0.14),0px 5px 24px 4px rgba(0,0,0,0.12)',
-    '0px 7px 9px -4px rgba(0,0,0,0.2),0px 14px 21px 2px rgba(0,0,0,0.14),0px 5px 26px 4px rgba(0,0,0,0.12)',
-    '0px 8px 9px -5px rgba(0,0,0,0.2),0px 15px 22px 2px rgba(0,0,0,0.14),0px 6px 28px 5px rgba(0,0,0,0.12)',
-    '0px 8px 10px -5px rgba(0,0,0,0.2),0px 16px 24px 2px rgba(0,0,0,0.14),0px 6px 30px 5px rgba(0,0,0,0.12)',
-    '0px 8px 11px -5px rgba(0,0,0,0.2),0px 17px 26px 2px rgba(0,0,0,0.14),0px 6px 32px 5px rgba(0,0,0,0.12)',
-    '0px 9px 11px -5px rgba(0,0,0,0.2),0px 18px 28px 2px rgba(0,0,0,0.14),0px 7px 34px 6px rgba(0,0,0,0.12)',
-    '0px 9px 12px -6px rgba(0,0,0,0.2),0px 19px 29px 2px rgba(0,0,0,0.14),0px 7px 36px 6px rgba(0,0,0,0.12)',
-    '0px 10px 13px -6px rgba(0,0,0,0.2),0px 20px 31px 3px rgba(0,0,0,0.14),0px 8px 38px 7px rgba(0,0,0,0.12)',
-    '0px 10px 13px -6px rgba(0,0,0,0.2),0px 21px 33px 3px rgba(0,0,0,0.14),0px 8px 40px 7px rgba(0,0,0,0.12)',
-    '0px 10px 14px -6px rgba(0,0,0,0.2),0px 22px 35px 3px rgba(0,0,0,0.14),0px 8px 42px 7px rgba(0,0,0,0.12)',
-    '0px 11px 14px -7px rgba(0,0,0,0.2),0px 23px 36px 3px rgba(0,0,0,0.14),0px 9px 44px 8px rgba(0,0,0,0.12)',
-    '0px 11px 15px -7px rgba(0,0,0,0.2),0px 24px 38px 3px rgba(0,0,0,0.14),0px 9px 46px 8px rgba(0,0,0,0.12)',
-  ],
+    '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+    '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+    '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+    '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+    '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    // Custom elevation for cards
+    '0 0 0 1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+    ...Array(17).fill('none'),
+  ] as any,
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          padding: '10px 20px',
-          fontSize: '0.875rem',
-        },
-        contained: {
-          boxShadow: '0px 4px 12px rgba(0,0,0,0.15)',
+          borderRadius: 10,
+          padding: '8px 20px',
+          transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            boxShadow: '0px 6px 16px rgba(0,0,0,0.2)',
+            transform: 'translateY(-1px)',
+          },
+          '&:active': {
+            transform: 'translateY(0)',
+          },
+        },
+        containedPrimary: {
+          background: `linear-gradient(135deg, ${primaryMain} 0%, ${primaryLight} 100%)`,
+          boxShadow: '0 4px 14px 0 rgba(15, 23, 42, 0.39)',
+          '&:hover': {
+            background: `linear-gradient(135deg, ${primaryLight} 0%, ${primaryMain} 100%)`,
+            boxShadow: '0 6px 20px rgba(15, 23, 42, 0.23)',
+          },
+        },
+        containedSecondary: {
+          background: `linear-gradient(135deg, ${secondaryMain} 0%, ${secondaryLight} 100%)`,
+          boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)',
+          '&:hover': {
+            background: `linear-gradient(135deg, ${secondaryLight} 0%, ${secondaryMain} 100%)`,
+            boxShadow: '0 6px 20px rgba(37, 99, 235, 0.23)',
           },
         },
       },
+      variants: [
+        {
+          props: { variant: 'soft' as any },
+          style: ({ theme, ownerState }: any) => {
+            const color = (ownerState.color === 'inherit' || !ownerState.color) ? 'primary' : ownerState.color;
+            return {
+              backgroundColor: alpha(theme.palette[color].main, 0.1),
+              color: theme.palette[color].dark,
+              '&:hover': {
+                backgroundColor: alpha(theme.palette[color].main, 0.2),
+              },
+            };
+          },
+        },
+      ],
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          fontWeight: 600,
+        },
+      },
+      variants: [
+        {
+          props: { variant: 'soft' as any },
+          style: ({ theme, ownerState }: any) => {
+            const color = (ownerState.color === 'default' || !ownerState.color) ? 'primary' : ownerState.color;
+            return {
+              backgroundColor: alpha(theme.palette[color].main, 0.12),
+              color: theme.palette[color].dark,
+              border: 'none',
+            };
+          },
+        },
+      ],
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          boxShadow: '0px 4px 20px rgba(0,0,0,0.08)',
+          borderRadius: 20,
+          border: '1px solid',
+          borderColor: alpha('#E2E8F0', 0.8),
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          '&:hover': {
+            borderColor: secondaryMain,
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+          },
         },
       },
     },
@@ -153,6 +236,31 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: 'none',
+          borderRadius: 20,
+        },
+        elevation1: {
+          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(12px)',
+          color: primaryMain,
+          boxShadow: 'none',
+          borderBottom: '1px solid',
+          borderColor: alpha('#E2E8F0', 0.5),
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          borderRight: '1px solid',
+          borderColor: alpha('#E2E8F0', 0.5),
+          boxShadow: 'none',
         },
       },
     },
@@ -160,28 +268,14 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 8,
-          },
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
-    },
-    MuiDataGrid: {
-      styleOverrides: {
-        root: {
-          border: 'none',
-          '& .MuiDataGrid-cell': {
-            borderBottom: '1px solid rgba(0,0,0,0.06)',
-          },
-          '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: '#F8FAFC',
-            borderBottom: '2px solid rgba(0,0,0,0.08)',
+            borderRadius: 12,
+            transition: 'all 0.2s',
+            '&:hover fieldset': {
+              borderColor: secondaryLight,
+            },
+            '&.Mui-focused fieldset': {
+              borderWidth: 2,
+            },
           },
         },
       },
@@ -189,33 +283,26 @@ export const theme = createTheme({
   },
 });
 
-// Dark theme variant
 export const darkTheme = createTheme({
   ...theme,
   palette: {
     mode: 'dark',
     primary: {
-      main: '#42A5F5',
-      light: '#90CAF9',
-      dark: '#1565C0',
-      contrastText: '#000000',
-    },
-    secondary: {
-      main: '#66BB6A',
-      light: '#A5D6A7',
-      dark: '#388E3C',
+      main: '#94A3B8',
+      light: '#CBD5E1',
+      dark: '#475569',
       contrastText: '#000000',
     },
     background: {
-      default: '#0F172A',
-      paper: '#1E293B',
+      default: '#020617',
+      paper: '#0F172A',
     },
     text: {
-      primary: '#F1F5F9',
+      primary: '#F8FAFC',
       secondary: '#94A3B8',
     },
-    divider: alpha('#F1F5F9', 0.08),
   },
 });
 
 export default theme;
+

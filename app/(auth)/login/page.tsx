@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import {
     Box,
     Card,
@@ -39,7 +40,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { useAuthStore } from '@/app/lib/store/auth-store';
 import theme from '@/app/theme/theme';
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { login, isLoading } = useAuthStore();
@@ -625,5 +626,17 @@ export default function LoginPage() {
                 </Slide>
             </Box>
         </ThemeProvider>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        }>
+            <LoginForm />
+        </Suspense>
     );
 }

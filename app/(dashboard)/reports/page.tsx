@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Button, Grid, Card, CardContent } from '@mui/material';
+import { Box, Typography, Button, Grid2 as Grid, Card, CardContent } from '@mui/material';
 import {
     Description as ReportIcon,
     Schedule as ScheduleIcon,

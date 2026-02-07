@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, useTheme, CircularProgress } from '@mui/material';
+import { Box, useTheme, CircularProgress, Container, Grid2 as Grid } from '@mui/material';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { Sidebar, Header, Breadcrumbs } from '@/app/components/layout';

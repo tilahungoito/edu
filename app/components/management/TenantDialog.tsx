@@ -8,7 +8,7 @@ import {
     DialogActions,
     Button,
     TextField,
-    Grid,
+    Grid2 as Grid,
     FormControl,
     InputLabel,
     Select,

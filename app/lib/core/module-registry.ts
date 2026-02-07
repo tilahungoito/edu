@@ -276,6 +276,15 @@ moduleRegistry.register({
             permission: { module: 'grading', action: 'view' },
             allowedRoles: ['INSTRUCTOR', 'STUDENT', 'REGISTRAR'],
         },
+        {
+            id: 'academic-attendance',
+            label: 'Attendance',
+            labelAmharic: 'መገኘት',
+            icon: 'CalendarMonth',
+            path: '/academic/attendance',
+            permission: { module: 'academic', action: 'view' },
+            allowedRoles: ['INSTRUCTOR', 'STUDENT', 'REGISTRAR'],
+        },
     ],
 });
 

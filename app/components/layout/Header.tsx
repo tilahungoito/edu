@@ -92,50 +92,53 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
             <Toolbar sx={{ justifyContent: 'space-between', px: 3 }}>
                 {/* Search Bar */}
                 <Box
+                    className="glass-effect"
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                        borderRadius: 2,
+                        borderRadius: 3,
                         px: 2,
-                        py: 0.5,
-                        width: 400,
-                        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                        py: 0.8,
+                        width: 450,
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         '&:focus-within': {
-                            borderColor: theme.palette.primary.main,
-                            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                            width: 500,
+                            borderColor: theme.palette.secondary.main,
+                            boxShadow: `0 0 0 4px ${alpha(theme.palette.secondary.main, 0.1)}`,
                         },
                     }}
                 >
-                    <SearchIcon sx={{ color: theme.palette.text.secondary, mr: 1 }} />
+                    <SearchIcon sx={{ color: theme.palette.text.secondary, mr: 1, fontSize: 20 }} />
                     <InputBase
-                        placeholder="Search zones, woredas, schools..."
+                        placeholder="Quick search across system..."
                         value={searchValue}
                         onChange={(e) => setSearchValue(e.target.value)}
                         sx={{
                             flex: 1,
                             fontSize: '0.875rem',
+                            fontWeight: 500,
                             color: theme.palette.text.primary,
                             '& input::placeholder': {
                                 color: theme.palette.text.secondary,
-                                opacity: 1,
+                                opacity: 0.7,
                             },
                         }}
                     />
-                    <Typography
-                        variant="caption"
+                    <Box
                         sx={{
                             ml: 1,
                             px: 1,
-                            py: 0.25,
-                            borderRadius: 1,
-                            backgroundColor: alpha(theme.palette.text.secondary, 0.1),
+                            py: 0.5,
+                            borderRadius: 1.5,
+                            backgroundColor: alpha(theme.palette.text.secondary, 0.05),
+                            border: `1px solid ${alpha(theme.palette.text.secondary, 0.1)}`,
                             color: theme.palette.text.secondary,
-                            fontSize: '0.7rem',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
                         }}
                     >
                         ⌘K
-                    </Typography>
+                    </Box>
                 </Box>
 
                 {/* Right Section */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Button, Avatar, Chip } from '@mui/material';
+import { Box, Typography, Button, Grid2 as Grid, alpha, Avatar, Chip } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 

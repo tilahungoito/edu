@@ -55,6 +55,7 @@ interface DataTableProps<T extends { id: string }> {
     onEdit?: (row: T) => void;
     onDelete?: (row: T) => void;
     onView?: (row: T) => void;
+    onRefresh?: () => void;
 
     // Toolbar options
     showSearch?: boolean;
@@ -216,6 +217,7 @@ export function DataTable<T extends { id: string }>({
     onEdit,
     onDelete,
     onView,
+    onRefresh,
     showSearch = true,
     showExport = true,
     showColumnsButton = true,
@@ -343,7 +345,7 @@ export function DataTable<T extends { id: string }>({
                         searchValue,
                         onSearchChange: setSearchValue,
                         onAdd,
-                        onRefresh: () => window.location.reload(),
+                        onRefresh,
                         module,
                         showSearch,
                         showExport,

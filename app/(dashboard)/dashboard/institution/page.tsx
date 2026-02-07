@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Grid, Button } from '@mui/material';
+import { Box, Typography, Grid2 as Grid, Button } from '@mui/material';
 import {
     Groups as StudentIcon,
     Badge as TeacherIcon,

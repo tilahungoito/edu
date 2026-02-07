@@ -318,28 +318,31 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             }}
         >
             {/* Header */}
-            <Box sx={{ p: 2, mb: 1, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' }}>
+            <Box sx={{ p: 2.5, mb: 1, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between' }}>
                 {!collapsed && (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
-                            width: 38, height: 38, borderRadius: '10px',
-                            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                            width: 42, height: 42, borderRadius: '12px',
+                            background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.light} 100%)`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                            boxShadow: `0 8px 16px ${alpha(theme.palette.secondary.main, 0.25)}`,
                         }}>
-                            <SchoolIcon sx={{ color: 'white', fontSize: 22 }} />
+                            <SchoolIcon sx={{ color: 'white', fontSize: 24 }} />
                         </Box>
                         <Box>
-                            <Typography variant="subtitle1" fontWeight={800} sx={{ letterSpacing: -0.5 }}>
+                            <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: -0.5, lineHeight: 1 }}>
                                 Tigray EDU
                             </Typography>
-                            <Typography variant="caption" sx={{ color: theme.palette.text.disabled, fontWeight: 600, textTransform: 'uppercase', fontSize: '10px' }}>
-                                Legacy System
+                            <Typography variant="caption" sx={{ color: theme.palette.text.secondary, fontWeight: 700, textTransform: 'uppercase', fontSize: '9px', letterSpacing: 0.5 }}>
+                                Portal
                             </Typography>
                         </Box>
                     </Box>
                 )}
-                <IconButton onClick={onToggle} sx={{ backgroundColor: alpha(theme.palette.action.hover, 0.05) }}>
+                <IconButton onClick={onToggle} sx={{
+                    backgroundColor: alpha(theme.palette.action.hover, 0.05),
+                    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.05) }
+                }}>
                     {collapsed ? <ChevronRight /> : <ChevronLeft />}
                 </IconButton>
             </Box>

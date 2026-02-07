@@ -1,12 +1,13 @@
 import apiClient from './api-client';
 import type { AuditLog, AuditLogFilter } from '../types/entities';
+export type { AuditLog, AuditLogFilter };
 
 export const auditService = {
     getAll: async (params?: AuditLogFilter): Promise<{ logs: AuditLog[], total: number }> => {
         const queryParams = new URLSearchParams();
         if (params) {
             Object.entries(params).forEach(([key, value]) => {
-                if (value !== undefined) {
+                if (value !== undefined && value !== null) {
                     if (key === 'startDate' || key === 'endDate') {
                         queryParams.append(key, (value as Date).toISOString());
                     } else {

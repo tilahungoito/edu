@@ -23,7 +23,12 @@ import { KPIGrid } from '@/app/components/analytics';
 import { AnalyticsChart } from '@/app/components/analytics';
 import { DataTable } from '@/app/components/tables';
 import { useAuthStore } from '@/app/lib/store';
-import { PermissionGate } from '@/app/lib/core';
+import {
+    BureauDashboard,
+    InstitutionDashboard,
+    InstructorDashboard,
+    StudentDashboard,
+} from '@/app/components/analytics/dashboards/RoleDashboards';
 import { dashboardService } from '@/app/lib/api/dashboard.service';
 import { zonesService } from '@/app/lib/api/zones.service';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
@@ -120,12 +125,42 @@ export default function Dashboard() {
     const filteredZones = useScopedData(zones, 'zone');
 
     const dashboardTitle = user?.tenantType === 'bureau'
-        ? (user.roles[0].name.includes('SYSTEM') ? 'System Administration Dashboard' : 'Regional Education Bureau Dashboard')
+        ? (user.roles?.some(r => r.name === 'SYSTEM_ADMIN') ? 'System Administration Dashboard' : 'Regional Education Bureau Dashboard')
         : user?.tenantType === 'zone'
             ? `${user.tenantName} Zone Dashboard`
             : user?.tenantType === 'woreda'
                 ? `${user.tenantName} Woreda Dashboard`
                 : `${user?.tenantName || 'School'} Dashboard`;
+
+    const renderRoleDashboard = () => {
+        const roles = user?.roles?.map(r => r.name) || [];
+
+        if (roles.includes('SYSTEM_ADMIN') || roles.includes('REGIONAL_ADMIN') || user?.tenantType === 'bureau') {
+            return (
+                <BureauDashboard
+                    stats={stats}
+                    loading={loading}
+                    user={user}
+                    zones={filteredZones}
+                    columns={zoneColumns}
+                />
+            );
+        }
+
+        if (roles.includes('INSTITUTION_ADMIN') || user?.tenantType === 'school') {
+            return <InstitutionDashboard stats={stats} loading={loading} user={user} />;
+        }
+
+        if (roles.includes('INSTRUCTOR')) {
+            return <InstructorDashboard stats={stats} loading={loading} user={user} />;
+        }
+
+        if (roles.includes('STUDENT')) {
+            return <StudentDashboard stats={stats} loading={loading} user={user} />;
+        }
+
+        return <Typography variant="h6">Welcome to Tigray EDU Portal</Typography>;
+    };
 
     return (
         <Box>
@@ -139,86 +174,8 @@ export default function Dashboard() {
                 </Typography>
             </Box>
 
-            {/* KPI Cards */}
-            <Box sx={{ mb: 4 }}>
-                <KPIGrid
-                    kpis={stats ? [
-                        {
-                            label: 'Institutions',
-                            value: stats.institutions || 0,
-                            icon: 'School',
-                            trend: 'stable'
-                        },
-                        {
-                            label: 'Total Students',
-                            value: stats.students || 0,
-                            icon: 'People',
-                            trend: 'stable'
-                        },
-                        // Map other stats as needed
-                    ] : []}
-                    loading={loading}
-                    columns={6}
-                />
-            </Box>
-
-            {/* Charts Section */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3, mb: 4 }}>
-                <AnalyticsChart
-                    title="Enrollment Trends"
-                    subtitle="Students and teachers over time"
-                    data={enrollmentTrendData}
-                    type="area"
-                    dataKeys={['students', 'teachers']}
-                    loading={loading}
-                    height={320}
-                />
-                <AnalyticsChart
-                    title="School Types"
-                    subtitle="Distribution by level"
-                    data={schoolTypeData}
-                    type="pie"
-                    loading={loading}
-                    height={320}
-                />
-            </Box>
-
-            {/* Zone Distribution Chart */}
-            {user?.tenantType === 'bureau' && (
-                <Box sx={{ mb: 4 }}>
-                    <AnalyticsChart
-                        title="Student Distribution by Zone"
-                        subtitle="Total students per zone"
-                        data={zoneDistributionData}
-                        type="bar"
-                        loading={loading}
-                        height={300}
-                    />
-                </Box>
-            )}
-
-            {/* Zones Table (Only for Bureau/Zone) */}
-            {(user?.tenantType === 'bureau' || user?.tenantType === 'zone') && (
-                <Box>
-                    <DataTable
-                        title={user?.tenantType === 'bureau' ? 'Zones Overview' : 'Zone Details'}
-                        subtitle={`${filteredZones.length} zones in scope`}
-                        columns={zoneColumns}
-                        rows={filteredZones}
-                        loading={loading}
-                        module="management"
-                        onAdd={() => console.log('Add zone')}
-                        onEdit={(zone) => console.log('Edit zone', zone)}
-                        onView={(zone) => console.log('View zone', zone)}
-                        onDelete={(zone) => console.log('Delete zone', zone)}
-                        statusField="status"
-                        statusColors={{
-                            active: 'success',
-                            inactive: 'error',
-                        }}
-                    />
-                </Box>
-            )}
+            {/* Dynamic Role-Based Dashboard */}
+            {renderRoleDashboard()}
         </Box>
     );
 }
