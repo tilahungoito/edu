@@ -38,7 +38,7 @@ import {
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
 import { PermissionGate } from '@/app/lib/core';
-import type { ModuleType } from '@/app/lib/types';
+import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 
 interface DataTableProps<T extends { id: string }> {
     title: string;
@@ -49,6 +49,8 @@ interface DataTableProps<T extends { id: string }> {
 
     // Permissions
     module: ModuleType;
+    resourceType?: ResourceType;
+    allowedRoles?: string[] | any[];
 
     // CRUD Actions
     onAdd?: () => void;
@@ -78,13 +80,9 @@ interface DataTableProps<T extends { id: string }> {
 
 // Custom toolbar component
 function CustomToolbar({
-    title,
-    subtitle,
     searchValue,
     onSearchChange,
-    onAdd,
     onRefresh,
-    module,
     showSearch,
     showExport,
     showColumnsButton,
@@ -92,13 +90,9 @@ function CustomToolbar({
     showDensitySelector,
     toolbarActions,
 }: {
-    title: string;
-    subtitle?: string;
     searchValue: string;
     onSearchChange: (value: string) => void;
-    onAdd?: () => void;
     onRefresh?: () => void;
-    module: ModuleType;
     showSearch?: boolean;
     showExport?: boolean;
     showColumnsButton?: boolean;
@@ -114,23 +108,11 @@ function CustomToolbar({
                 p: 2,
                 borderBottom: `1px solid ${theme.palette.divider}`,
                 display: 'flex',
-                flexDirection: { xs: 'column', md: 'row' },
+                alignItems: 'center',
+                justifyContent: 'flex-start',
                 gap: 2,
-                alignItems: { xs: 'stretch', md: 'center' },
-                justifyContent: 'space-between',
             }}
         >
-            {/* Left Section - Title */}
-            <Box>
-                <Typography variant="h6" fontWeight={600} color="text.primary">
-                    {title}
-                </Typography>
-                {subtitle && (
-                    <Typography variant="body2" color="text.secondary">
-                        {subtitle}
-                    </Typography>
-                )}
-            </Box>
 
             {/* Right Section - Actions */}
             <Box
@@ -183,26 +165,69 @@ function CustomToolbar({
                 <IconButton size="small" onClick={onRefresh}>
                     <RefreshIcon />
                 </IconButton>
-
-                {/* Add Button */}
-                {onAdd && (
-                    <PermissionGate permission={{ module, action: 'create' }}>
-                        <Button
-                            variant="contained"
-                            startIcon={<AddIcon />}
-                            onClick={onAdd}
-                            sx={{
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                fontWeight: 600,
-                            }}
-                        >
-                            Add New
-                        </Button>
-                    </PermissionGate>
-                )}
             </Box>
         </GridToolbarContainer>
+    );
+}
+
+interface TableHeaderProps {
+    title: string;
+    subtitle?: string;
+    onAdd?: () => void;
+    module: ModuleType;
+    resourceType?: ResourceType;
+    allowedRoles?: string[] | any[];
+}
+
+function TableHeader({
+    title,
+    subtitle,
+    onAdd,
+    module,
+    resourceType,
+    allowedRoles,
+}: TableHeaderProps) {
+    const theme = useTheme();
+    return (
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box>
+                <Typography variant="h5" fontWeight={700} color="text.primary" gutterBottom>
+                    {title}
+                </Typography>
+                {subtitle && (
+                    <Typography variant="body1" color="text.secondary">
+                        {subtitle}
+                    </Typography>
+                )}
+            </Box>
+
+            {onAdd && (
+                <PermissionGate
+                    permission={{ module, action: 'create', resourceType }}
+                    allowedRoles={allowedRoles}
+                >
+                    <Button
+                        variant="contained"
+                        size="large"
+                        startIcon={<AddIcon />}
+                        onClick={onAdd}
+                        sx={{
+                            borderRadius: '12px',
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            px: 3,
+                            py: 1,
+                            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.24)}`,
+                            '&:hover': {
+                                boxShadow: `0 12px 20px ${alpha(theme.palette.primary.main, 0.32)}`,
+                            }
+                        }}
+                    >
+                        Add New
+                    </Button>
+                </PermissionGate>
+            )}
+        </Box>
     );
 }
 
@@ -228,6 +253,8 @@ export function DataTable<T extends { id: string }>({
     toolbarActions,
     statusField,
     statusColors = {},
+    resourceType,
+    allowedRoles,
 }: DataTableProps<T>) {
     const theme = useTheme();
     const [searchValue, setSearchValue] = useState('');
@@ -318,6 +345,14 @@ export function DataTable<T extends { id: string }>({
                 overflow: 'hidden',
             }}
         >
+            <TableHeader
+                title={title}
+                subtitle={subtitle}
+                onAdd={onAdd}
+                module={module}
+                resourceType={resourceType}
+                allowedRoles={allowedRoles}
+            />
             <DataGrid
                 rows={filteredRows || []}
                 columns={columnsWithActions}
@@ -340,13 +375,9 @@ export function DataTable<T extends { id: string }>({
                 }}
                 slotProps={{
                     toolbar: {
-                        title,
-                        subtitle,
                         searchValue,
                         onSearchChange: setSearchValue,
-                        onAdd,
                         onRefresh,
-                        module,
                         showSearch,
                         showExport,
                         showColumnsButton,
@@ -425,5 +456,6 @@ export function DataTable<T extends { id: string }>({
         </Card>
     );
 }
+
 
 export default DataTable;

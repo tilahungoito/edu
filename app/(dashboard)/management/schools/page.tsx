@@ -7,6 +7,7 @@ import { DataTable } from '@/app/components/tables';
 import { institutionsService, Institution } from '@/app/lib/api/institutions.service';
 import { woredasService } from '@/app/lib/api/woredas.service';
 import { zonesService } from '@/app/lib/api/zones.service';
+import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
@@ -129,6 +130,8 @@ export default function SchoolsPage() {
                 rows={filteredSchools}
                 loading={loading}
                 module="management"
+                resourceType="institution"
+                allowedRoles={['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN']}
                 onAdd={() => setDialogOpen(true)}
                 onEdit={(school) => console.log('Edit school', school)}
                 onView={(school) => console.log('View school', school)}
@@ -180,6 +183,8 @@ export default function SchoolsPage() {
                 onClose={() => setDialogOpen(false)}
                 onSubmit={handleAddSchool}
                 type="school"
+                parentType={selectedWoreda ? 'woreda' : 'zone'}
+                parentId={selectedWoreda || selectedZone || undefined}
                 parentName={selectedWoreda
                     ? woredas.find(w => w.id === selectedWoreda)?.name
                     : selectedZone

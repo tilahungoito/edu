@@ -5,6 +5,7 @@ import { Box, Typography, Button, Grid, alpha } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { zonesService } from '@/app/lib/api/zones.service';
+import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
@@ -88,6 +89,8 @@ export default function ZonesPage() {
                 rows={filteredZones}
                 loading={loading}
                 module="management"
+                resourceType="zone"
+                allowedRoles={['SYSTEM_ADMIN', 'REGIONAL_ADMIN']}
                 onAdd={() => setDialogOpen(true)}
                 onEdit={(zone) => console.log('Edit zone', zone)}
                 onView={(zone) => console.log('View zone', zone)}

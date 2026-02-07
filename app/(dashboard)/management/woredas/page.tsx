@@ -6,6 +6,7 @@ import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { woredasService } from '@/app/lib/api/woredas.service';
 import { zonesService } from '@/app/lib/api/zones.service';
+import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
@@ -95,6 +96,8 @@ export default function WoredasPage() {
                 rows={filteredWoredas}
                 loading={loading}
                 module="management"
+                resourceType="woreda"
+                allowedRoles={['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN']}
                 onAdd={() => setDialogOpen(true)}
                 onEdit={(woreda) => console.log('Edit woreda', woreda)}
                 onView={(woreda) => console.log('View woreda', woreda)}
@@ -127,6 +130,8 @@ export default function WoredasPage() {
                 onClose={() => setDialogOpen(false)}
                 onSubmit={handleAddWoreda}
                 type="woreda"
+                parentType="zone"
+                parentId={selectedZone || undefined}
                 parentName={selectedZone ? zones.find(z => z.id === selectedZone)?.name : undefined}
             />
         </Box>

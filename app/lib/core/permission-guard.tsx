@@ -6,6 +6,7 @@ import type { PermissionCheck, ModuleType, ActionType, ResourceType } from '../t
 
 interface PermissionGateProps {
     permission: PermissionCheck;
+    allowedRoles?: string[] | any[];
     children: React.ReactNode;
     fallback?: React.ReactNode;
 }
@@ -20,13 +21,33 @@ interface PermissionGateProps {
  */
 export function PermissionGate({
     permission,
+    allowedRoles,
     children,
     fallback = null
 }: PermissionGateProps): React.ReactNode {
     const hasPermission = useAuthStore(state => state.hasPermission);
+    const hasRole = useAuthStore(state => state.hasRole);
+    const user = useAuthStore(state => state.user);
 
+    if (!user) return fallback;
+
+    // 1. SYSTEM_ADMIN has all permissions
+    if (user.roles.some(r => r.name === 'SYSTEM_ADMIN' || r.name === 'Bureau Admin')) {
+        return children;
+    }
+
+    // 2. Check permissions 
     if (hasPermission(permission)) {
         return children;
+    }
+
+    // 3. Check allowed roles
+    if (allowedRoles && allowedRoles.length > 0) {
+        const hasAllowedRole = allowedRoles.some(role => {
+            const roleName = typeof role === 'string' ? role : (role as any).name;
+            return hasRole(roleName);
+        });
+        if (hasAllowedRole) return children;
     }
 
     return fallback;
