@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Permission } from '../types/permissions';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/';
 
 // Create axios instance with base configuration
 const apiClient: AxiosInstance = axios.create({
