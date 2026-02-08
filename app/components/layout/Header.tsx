@@ -66,9 +66,9 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
         setNotificationAnchor(null);
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         handleMenuClose();
-        logout();
+        await logout();
         router.push('/login');
     };
 

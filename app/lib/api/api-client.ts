@@ -118,6 +118,12 @@ export const authApi = {
         const response = await apiClient.post('/auth/register', data);
         return response.data;
     },
+
+    // Logout user
+    logout: async (): Promise<{ message: string }> => {
+        const response = await apiClient.post<{ message: string }>('/auth/logout');
+        return response.data;
+    },
 };
 
 export default apiClient;

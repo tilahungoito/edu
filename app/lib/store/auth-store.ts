@@ -15,11 +15,13 @@ interface AuthState {
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isInitialized: boolean;
 
     // Actions
     setUser: (user: User | null) => void;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    logout: () => void;
+    logout: () => Promise<void>;
+    initialize: () => Promise<void>;
 
     // Permission checks
     hasPermission: (check: PermissionCheck) => boolean;
@@ -46,6 +48,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     user: null,
     isAuthenticated: false,
     isLoading: false,
+    isInitialized: false,
 
     setUser: (user) => set({
         user,
@@ -101,10 +104,62 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         }
     },
 
-    logout: () => {
-        sessionStorage.removeItem('access_token');
-        deleteCookie('access_token');
-        set({ user: null, isAuthenticated: false });
+    logout: async () => {
+        try {
+            await authApi.logout();
+        } catch (error) {
+            console.error('Backend logout failed:', error);
+        } finally {
+            sessionStorage.removeItem('access_token');
+            deleteCookie('access_token');
+            set({ user: null, isAuthenticated: false });
+        }
+    },
+
+    initialize: async () => {
+        const { isInitialized } = get();
+        if (isInitialized) return;
+
+        const token = sessionStorage.getItem('access_token');
+        if (!token) {
+            set({ isInitialized: true });
+            return;
+        }
+
+        try {
+            // Verify token is still valid by fetching current user
+            const response = await authApi.getMe();
+
+            // Map backend user to frontend User type
+            const user: User = {
+                id: response.id,
+                email: response.email,
+                firstName: (response as any).firstName || response.username,
+                lastName: (response as any).lastName || '',
+                tenantType: mapScopeTypeToTenantType(response.scopeType),
+                tenantId: response.scopeId || '',
+                tenantName: '',
+                roles: [{
+                    id: response.role.id,
+                    name: response.role.name,
+                    description: `${response.role.name} role`,
+                    tenantType: mapScopeTypeToTenantType(response.scopeType),
+                    isSystemRole: true,
+                    permissions: (response as any).permissions || [],
+                }],
+                permissions: (response as any).permissions || [],
+                isActive: response.isActive,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            set({ user, isAuthenticated: true, isInitialized: true });
+        } catch (error) {
+            // Token is invalid or expired, clear it
+            sessionStorage.removeItem('access_token');
+            deleteCookie('access_token');
+            set({ user: null, isAuthenticated: false, isInitialized: true });
+        }
     },
 
     hasPermission: (check: PermissionCheck) => {

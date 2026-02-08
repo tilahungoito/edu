@@ -46,12 +46,12 @@ function LoginForm() {
     const searchParams = useSearchParams();
     const { login, isLoading } = useAuthStore();
 
-    const [email, setEmail] = useState('');
+    const [emailOrUsername, setEmailOrUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState('');
-    const [emailError, setEmailError] = useState('');
+    const [inputError, setInputError] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const [loginSuccess, setLoginSuccess] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -87,17 +87,12 @@ function LoginForm() {
     }, [mounted]);
 
     // Validation helpers
-    const validateEmail = (email: string): boolean => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email) {
-            setEmailError('Email is required');
+    const validateInput = (input: string): boolean => {
+        if (!input || input.trim().length === 0) {
+            setInputError('Email or username is required');
             return false;
         }
-        if (!emailRegex.test(email)) {
-            setEmailError('Please enter a valid email address');
-            return false;
-        }
-        setEmailError('');
+        setInputError('');
         return true;
     };
 
@@ -138,15 +133,15 @@ function LoginForm() {
         setError('');
 
         // Validate inputs
-        const isEmailValid = validateEmail(email);
+        const isInputValid = validateInput(emailOrUsername);
         const isPasswordValid = validatePassword(password);
 
-        if (!isEmailValid || !isPasswordValid) {
+        if (!isInputValid || !isPasswordValid) {
             return;
         }
 
         // Call backend API via auth store
-        const result = await login(email, password);
+        const result = await login(emailOrUsername, password);
 
         if (result.success) {
             // Show success state
@@ -348,16 +343,16 @@ function LoginForm() {
                                 <TextField
                                     id="email-input"
                                     fullWidth
-                                    label="Email Address"
-                                    type="email"
-                                    value={email}
+                                    label="Email or Username"
+                                    type="text"
+                                    value={emailOrUsername}
                                     onChange={(e) => {
-                                        setEmail(e.target.value);
-                                        if (emailError) validateEmail(e.target.value);
+                                        setEmailOrUsername(e.target.value);
+                                        if (inputError) validateInput(e.target.value);
                                     }}
-                                    onBlur={() => validateEmail(email)}
-                                    error={!!emailError}
-                                    helperText={emailError}
+                                    onBlur={() => validateInput(emailOrUsername)}
+                                    error={!!inputError}
+                                    helperText={inputError}
                                     required
                                     disabled={isLoading}
                                     sx={{
