@@ -15,16 +15,18 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const { isAuthenticated, isLoading } = useAuthStore();
+    const { isAuthenticated, isLoading, isInitialized } = useAuthStore();
     const router = useRouter();
 
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
+        // Only redirect if initialization is complete and user is not authenticated
+        if (isInitialized && !isLoading && !isAuthenticated) {
             router.push('/login');
         }
-    }, [isAuthenticated, isLoading, router]);
+    }, [isAuthenticated, isLoading, isInitialized, router]);
 
-    if (isLoading) {
+    // Show loading while auth is initializing or loading
+    if (!isInitialized || isLoading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
                 <CircularProgress />

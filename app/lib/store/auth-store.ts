@@ -35,12 +35,17 @@ interface AuthState {
 function setCookie(name: string, value: string, days: number = 1) {
     const expires = new Date();
     expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+    const cookieStr = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    document.cookie = cookieStr;
+    console.log('[auth-store] Cookie set:', name, '| Expires:', expires.toUTCString());
+    console.log('[auth-store] Cookie string:', cookieStr);
+    console.log('[auth-store] All cookies:', document.cookie);
 }
 
 // Helper to delete cookie
 function deleteCookie(name: string) {
     document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+    console.log('[auth-store] Cookie deleted:', name);
 }
 
 // NO PERSISTENCE - users must login every time
@@ -61,10 +66,13 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         try {
             // Call real backend API
             const response: LoginResponse = await authApi.login({ email, password });
+            console.log('[auth-store] Login successful, received token and user data');
 
             // Store token in BOTH sessionStorage (client-side) AND cookie (server-side middleware)
+            console.log('[auth-store] Storing token in sessionStorage and cookie...');
             sessionStorage.setItem('access_token', response.access_token);
             setCookie('access_token', response.access_token, 1); // Expires in 1 day
+            console.log('[auth-store] Token stored successfully');
 
             // Map backend user to frontend User type
             const user: User = {
@@ -106,29 +114,42 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
     logout: async () => {
         try {
+            console.log('[auth-store] Logging out...');
             await authApi.logout();
         } catch (error) {
             console.error('Backend logout failed:', error);
         } finally {
+            console.log('[auth-store] Clearing tokens and cookies...');
             sessionStorage.removeItem('access_token');
             deleteCookie('access_token');
             set({ user: null, isAuthenticated: false });
+            console.log('[auth-store] Logout complete');
         }
     },
 
     initialize: async () => {
         const { isInitialized } = get();
-        if (isInitialized) return;
+        console.log('[auth-store] initialize() called, isInitialized:', isInitialized);
+
+        if (isInitialized) {
+            console.log('[auth-store] Already initialized, skipping');
+            return;
+        }
 
         const token = sessionStorage.getItem('access_token');
+        console.log('[auth-store] Token from sessionStorage:', token ? 'EXISTS (length: ' + token.length + ')' : 'NULL');
+
         if (!token) {
+            console.log('[auth-store] No token found, marking as initialized');
             set({ isInitialized: true });
             return;
         }
 
         try {
+            console.log('[auth-store] Fetching user profile from /auth/me...');
             // Verify token is still valid by fetching current user
             const response = await authApi.getMe();
+            console.log('[auth-store] Profile fetched successfully:', response);
 
             // Map backend user to frontend User type
             const user: User = {
@@ -153,9 +174,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
                 updatedAt: new Date(),
             };
 
+            console.log('[auth-store] User restored from token, setting state...');
+            console.log('[auth-store] Restored permissions:', user.permissions);
+            console.log('[auth-store] Restored role:', user.roles[0]?.name);
             set({ user, isAuthenticated: true, isInitialized: true });
+            console.log('[auth-store] State updated, user is now authenticated');
         } catch (error) {
             // Token is invalid or expired, clear it
+            console.error('[auth-store] Failed to restore session, error:', error);
             sessionStorage.removeItem('access_token');
             deleteCookie('access_token');
             set({ user: null, isAuthenticated: false, isInitialized: true });

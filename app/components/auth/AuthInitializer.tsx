@@ -9,7 +9,10 @@ export function AuthInitializer({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!isInitialized) {
-            initialize();
+            initialize().then(() => {
+            }).catch((error) => {
+                console.error('[AuthInitializer] Initialization failed:', error);
+            });
         }
     }, [initialize, isInitialized]);
 

@@ -6,10 +6,13 @@ import { useAuthStore } from '@/app/lib/store/auth-store';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
 export default function DashboardRedirect() {
-    const { user, isAuthenticated, isLoading } = useAuthStore();
+    const { user, isAuthenticated, isLoading, isInitialized } = useAuthStore();
     const router = useRouter();
 
     useEffect(() => {
+        // Only process redirects after initialization is complete
+        if (!isInitialized) return;
+
         if (!isLoading && isAuthenticated && user) {
             // Redirect based on role
             // Since we have multiple roles, we take the primary one or checks
@@ -39,7 +42,7 @@ export default function DashboardRedirect() {
         } else if (!isLoading && !isAuthenticated) {
             router.push('/login');
         }
-    }, [user, isAuthenticated, isLoading, router]);
+    }, [user, isAuthenticated, isLoading, isInitialized, router]);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '60vh' }}>
