@@ -8,7 +8,7 @@ import {
     DialogActions,
     Button,
     TextField,
-    Grid,
+    Grid2 as Grid,
     FormControl,
     InputLabel,
     Select,
@@ -69,6 +69,9 @@ export function TenantDialog({
         ownership: 'government',
     });
 
+    const isSystemAdmin = user?.roles.some(r => r.name === 'SYSTEM_ADMIN');
+
+    const [regions, setRegions] = useState<any[]>([]);
     const [zones, setZones] = useState<any[]>([]);
     const [woredas, setWoredas] = useState<any[]>([]);
     const [kebeles, setKebeles] = useState<any[]>([]);
@@ -85,25 +88,31 @@ export function TenantDialog({
                 const initialData = { ...formData };
 
                 if (user.tenantType === 'bureau') {
-                    initialData.regionId = user.tenantId;
+                    if (user.tenantId) {
+                        initialData.regionId = user.tenantId;
 
-                    // If we're creating a woreda/school and have a selected parent, use it
-                    if (parentId) {
-                        if (type === 'woreda' || (type === 'school' && parentType === 'zone')) {
-                            initialData.zoneId = parentId;
-                            const woredasData = await woredasService.getAll(parentId);
-                            setWoredas(woredasData);
-                        } else if (type === 'school' && parentType === 'woreda') {
-                            initialData.woredaId = parentId;
-                            // We need both zone and woreda for school if possible, 
-                            // but if only woredaId provided, we just fetch kebeles
-                            const kebelesData = await kebelesService.getAll();
-                            setKebeles(kebelesData.filter(k => k.woredaId === parentId));
+                        // If we're creating a woreda/school and have a selected parent, use it
+                        if (parentId) {
+                            if (type === 'woreda' || (type === 'school' && parentType === 'zone')) {
+                                initialData.zoneId = parentId;
+                                const woredasData = await woredasService.getAll(parentId);
+                                setWoredas(woredasData);
+                            } else if (type === 'school' && parentType === 'woreda') {
+                                initialData.woredaId = parentId;
+                                const kebelesData = await kebelesService.getAll();
+                                setKebeles(kebelesData.filter(k => k.woredaId === parentId));
+                            }
+                        }
+
+                        const zonesData = await zonesService.getAll(user.tenantId);
+                        setZones(zonesData);
+                    } else {
+                        // System Admin/No tenantId - fetch top-level data
+                        if (type === 'zone' || type === 'woreda' || type === 'school') {
+                            const regionsData = await regionsService.getAll();
+                            setRegions(regionsData);
                         }
                     }
-
-                    const zonesData = await zonesService.getAll(user.tenantId);
-                    setZones(zonesData);
                 } else if (user.tenantType === 'zone') {
                     initialData.zoneId = user.tenantId;
 
@@ -173,7 +182,35 @@ export function TenantDialog({
     };
 
     const handleFormSubmit = () => {
-        onSubmit(formData);
+        // Filter data based on backend DTO requirements to prevent 400 errors
+        const payload: any = {
+            name: formData.name,
+        };
+
+        // Helper to check if a string is a valid UUID
+        const isUUID = (id?: string) => id && id.length === 36 && id.includes('-');
+
+        // Only include parent links if they are valid UUIDs
+        // Note: For scoped admins (e.g., Regional Admin), the backend automatically fills 
+        // the corresponding parent ID (e.g., regionId) from the session.
+        // We only explicitly send it if it was manually selected (System Admin case).
+
+        // We only explicitly send it if it was manually selected (System Admin case).
+
+        if (type === 'zone') {
+            // Only System Admins send regionId; Regional Admins let backend auto-fill it
+            if (isSystemAdmin && isUUID(formData.regionId)) {
+                payload.regionId = formData.regionId;
+            }
+        } else if (type === 'woreda') {
+            if (isUUID(formData.zoneId)) payload.zoneId = formData.zoneId;
+        } else if (type === 'kebele') {
+            if (isUUID(formData.woredaId)) payload.woredaId = formData.woredaId;
+        } else if (type === 'school') {
+            if (isUUID(formData.kebeleId)) payload.kebeleId = formData.kebeleId;
+        }
+
+        onSubmit(payload);
         onClose();
         setFormData({
             name: '',
@@ -181,13 +218,15 @@ export function TenantDialog({
             code: '',
             description: '',
             status: 'active',
+            type: 'primary',
+            ownership: 'government',
         });
     };
 
     const title = type.charAt(0).toUpperCase() + type.slice(1);
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+        <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
             <DialogTitle sx={{ fontWeight: 700 }}>
                 Add New {title}
                 {parentName && (
@@ -198,7 +237,7 @@ export function TenantDialog({
             </DialogTitle>
             <DialogContent dividers>
                 <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                    <Grid size={12}>
+                    <Grid size={{ xs: 6 }}>
                         <TextField
                             name="name"
                             label={`${title} Name (English)`}
@@ -208,56 +247,79 @@ export function TenantDialog({
                             onChange={handleChange}
                         />
                     </Grid>
-                    <Grid size={12}>
-                        <TextField
-                            name="nameAmharic"
-                            label={`${title} Name (Amharic)`}
-                            fullWidth
-                            required
-                            value={formData.nameAmharic}
-                            onChange={handleChange}
-                        />
-                    </Grid>
-                    <Grid size={6}>
-                        <TextField
-                            name="code"
-                            label="Code"
-                            fullWidth
-                            required
-                            placeholder="e.g. MKL"
-                            value={formData.code}
-                            onChange={handleChange}
-                        />
-                    </Grid>
-                    <Grid size={6}>
-                        <FormControl fullWidth>
-                            <InputLabel>Status</InputLabel>
-                            <Select
-                                name="status"
-                                value={formData.status}
-                                label="Status"
-                                onChange={handleStatusChange}
-                            >
-                                <MenuItem value="active">Active</MenuItem>
-                                <MenuItem value="inactive">Inactive</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Grid>
-                    <Grid size={12}>
-                        <TextField
-                            name="description"
-                            label="Description"
-                            fullWidth
-                            multiline
-                            rows={3}
-                            value={formData.description}
-                            onChange={handleChange}
-                        />
-                    </Grid>
+                    {/* Extra fields hidden until backend support is added */}
+                    {false && (
+                        <Grid size={{ xs: 6 }}>
+                            <TextField
+                                name="nameAmharic"
+                                label={`${title} Name (Amharic)`}
+                                fullWidth
+                                required
+                                value={formData.nameAmharic}
+                                onChange={handleChange}
+                            />
+                        </Grid>
+                    )}
+                    {/* Extra fields hidden until backend support is added */}
+                    {false && (
+                        <>
+                            <Grid size={{ xs: 6 }}>
+                                <TextField
+                                    name="code"
+                                    label="Code"
+                                    fullWidth
+                                    required
+                                    placeholder="e.g. MKL"
+                                    value={formData.code}
+                                    onChange={handleChange}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Status</InputLabel>
+                                    <Select
+                                        name="status"
+                                        value={formData.status}
+                                        label="Status"
+                                        onChange={handleStatusChange}
+                                    >
+                                        <MenuItem value="active">Active</MenuItem>
+                                        <MenuItem value="inactive">Inactive</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    name="description"
+                                    label="Description"
+                                    fullWidth
+                                    multiline
+                                    rows={3}
+                                    value={formData.description}
+                                    onChange={handleChange}
+                                />
+                            </Grid>
+                        </>
+                    )}
 
-                    {/* Hierarchical Selectors */}
+                    {/* Region selector - only for System Admins creating zones */}
+                    {type === 'zone' && isSystemAdmin && (
+                        <Grid size={{ xs: 12 }}>
+                            <FormControl fullWidth required>
+                                <InputLabel>Parent Region</InputLabel>
+                                <Select
+                                    value={formData.regionId || ''}
+                                    label="Parent Region"
+                                    onChange={(e) => setFormData(prev => ({ ...prev, regionId: e.target.value }))}
+                                >
+                                    {regions.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                    )}
+
                     {type === 'woreda' && user?.tenantType === 'bureau' && (
-                        <Grid size={12}>
+                        <Grid size={{ xs: 12 }}>
                             <FormControl fullWidth required>
                                 <InputLabel>Parent Zone</InputLabel>
                                 <Select
@@ -274,7 +336,7 @@ export function TenantDialog({
                     {type === 'school' && (
                         <>
                             {user?.tenantType === 'bureau' && (
-                                <Grid size={6}>
+                                <Grid size={{ xs: 6 }}>
                                     <FormControl fullWidth required>
                                         <InputLabel>Zone</InputLabel>
                                         <Select
@@ -288,7 +350,7 @@ export function TenantDialog({
                                 </Grid>
                             )}
                             {(user?.tenantType === 'bureau' || user?.tenantType === 'zone') && (
-                                <Grid size={6}>
+                                <Grid size={{ xs: 6 }}>
                                     <FormControl fullWidth required>
                                         <InputLabel>Woreda</InputLabel>
                                         <Select
@@ -302,7 +364,7 @@ export function TenantDialog({
                                     </FormControl>
                                 </Grid>
                             )}
-                            <Grid size={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <FormControl fullWidth required>
                                     <InputLabel>Kebele</InputLabel>
                                     <Select
@@ -315,7 +377,7 @@ export function TenantDialog({
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid size={6}>
+                            <Grid size={{ xs: 6 }}>
                                 <FormControl fullWidth required>
                                     <InputLabel>School Type</InputLabel>
                                     <Select
@@ -330,7 +392,7 @@ export function TenantDialog({
                                     </Select>
                                 </FormControl>
                             </Grid>
-                            <Grid size={6}>
+                            <Grid size={{ xs: 6 }}>
                                 <FormControl fullWidth required>
                                     <InputLabel>Ownership</InputLabel>
                                     <Select

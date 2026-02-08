@@ -59,6 +59,17 @@ export default function RegionsPage() {
         }
     };
 
+    const handleDeleteRegion = async (region: any) => {
+        if (window.confirm(`Are you sure you want to delete ${region.name}?`)) {
+            try {
+                await regionsService.delete(region.id);
+                fetchData();
+            } catch (error) {
+                console.error('Error deleting region:', error);
+            }
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ mb: 4 }}>
@@ -80,7 +91,8 @@ export default function RegionsPage() {
                 onAdd={() => setDialogOpen(true)}
                 onEdit={(region) => console.log('Edit region', region)}
                 onView={(region) => console.log('View region', region)}
-                onDelete={(region) => console.log('Delete region', region)}
+                onDelete={handleDeleteRegion}
+                onRefresh={fetchData}
                 checkboxSelection
             />
 

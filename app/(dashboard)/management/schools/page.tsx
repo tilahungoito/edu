@@ -112,6 +112,17 @@ export default function SchoolsPage() {
         }
     };
 
+    const handleDeleteSchool = async (school: any) => {
+        if (window.confirm(`Are you sure you want to delete ${school.name}?`)) {
+            try {
+                await institutionsService.delete(school.id);
+                fetchData();
+            } catch (error) {
+                console.error('Error deleting school:', error);
+            }
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ mb: 4 }}>
@@ -135,7 +146,8 @@ export default function SchoolsPage() {
                 onAdd={() => setDialogOpen(true)}
                 onEdit={(school) => console.log('Edit school', school)}
                 onView={(school) => console.log('View school', school)}
-                onDelete={(school) => console.log('Delete school', school)}
+                onDelete={handleDeleteSchool}
+                onRefresh={fetchData}
                 statusField="status"
                 statusColors={{
                     active: 'success',

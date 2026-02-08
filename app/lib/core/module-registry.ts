@@ -544,10 +544,9 @@ moduleRegistry.register({
             id: 'sys-users',
             label: 'All Users',
             icon: 'ManageAccounts',
-            path: '/system/users',
+            path: '/management/users',
             permission: { module: 'system', action: 'view', resourceType: 'user' },
-            allowedTenantTypes: ['bureau'],
-            allowedRoles: ['SYSTEM_ADMIN'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN'],
         },
     ],
 });

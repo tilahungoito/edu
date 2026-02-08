@@ -9,7 +9,7 @@ import {
     Button,
     TextField,
     MenuItem,
-    Grid,
+    Grid2 as Grid,
     CircularProgress,
 
     Box,
@@ -284,7 +284,7 @@ export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
                                 helperText={errors.username}
                             />
                         </Grid>
-                        <Grid sx={{ xs: 12, sm: 6 }}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Password"
                                 name="password"

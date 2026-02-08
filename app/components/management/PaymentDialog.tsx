@@ -9,7 +9,7 @@ import {
     Button,
     TextField,
     MenuItem,
-    Grid,
+    Grid2 as Grid,
     CircularProgress,
     Box,
     Typography,
@@ -107,7 +107,7 @@ export const PaymentDialog = ({ open, onClose, onSuccess }: PaymentDialogProps) 
         <Dialog
             open={open}
             onClose={onClose}
-            maxWidth="sm"
+            maxWidth="md"
             fullWidth
             PaperProps={{
                 sx: {

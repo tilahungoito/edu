@@ -9,7 +9,7 @@ import {
     Button,
     TextField,
     MenuItem,
-    Grid,
+    Grid2 as Grid,
     CircularProgress,
     Box,
     Typography,
@@ -165,7 +165,7 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
     const isEdit = !!course;
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>
                 {isEdit ? 'Update Course' : 'Create New Course'}
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>

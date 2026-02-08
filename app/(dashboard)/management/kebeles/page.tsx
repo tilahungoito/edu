@@ -69,6 +69,17 @@ export default function KebelesPage() {
         }
     };
 
+    const handleDeleteKebele = async (kebele: any) => {
+        if (window.confirm(`Are you sure you want to delete ${kebele.name}?`)) {
+            try {
+                await kebelesService.delete(kebele.id);
+                fetchData();
+            } catch (error) {
+                console.error('Error deleting kebele:', error);
+            }
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ mb: 4 }}>
@@ -88,10 +99,10 @@ export default function KebelesPage() {
                 loading={loading}
                 module="management"
                 onAdd={canCreate ? () => setDialogOpen(true) : undefined}
-                addButtonLabel="Create Kebele"
                 onEdit={(kebele) => console.log('Edit kebele', kebele)}
                 onView={(kebele) => console.log('View kebele', kebele)}
-                onDelete={(kebele) => console.log('Delete kebele', kebele)}
+                onDelete={handleDeleteKebele}
+                onRefresh={fetchData}
                 checkboxSelection
             />
 

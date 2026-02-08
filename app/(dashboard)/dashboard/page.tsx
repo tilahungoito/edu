@@ -135,7 +135,20 @@ export default function Dashboard() {
     const renderRoleDashboard = () => {
         const roles = user?.roles?.map(r => r.name) || [];
 
-        if (roles.includes('SYSTEM_ADMIN') || roles.includes('REGIONAL_ADMIN') || user?.tenantType === 'bureau') {
+        const adminRoles = [
+            'SYSTEM_ADMIN',
+            'REGIONAL_ADMIN',
+            'ZONE_ADMIN',
+            'WOREDA_ADMIN',
+            'KEBELE_ADMIN'
+        ];
+
+        if (adminRoles.some(r => roles.includes(r)) || user?.tenantType === 'bureau') {
+            const tableTitle = user?.tenantType === 'bureau' ? "Regional Zones" :
+                user?.tenantType === 'zone' ? "Zone Woredas" :
+                    user?.tenantType === 'woreda' ? "Woreda Kebeles" :
+                        "Local Entities";
+
             return (
                 <BureauDashboard
                     stats={stats}
@@ -143,6 +156,7 @@ export default function Dashboard() {
                     user={user}
                     zones={filteredZones}
                     columns={zoneColumns}
+                    tableTitle={tableTitle}
                 />
             );
         }

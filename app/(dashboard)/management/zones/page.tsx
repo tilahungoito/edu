@@ -71,6 +71,17 @@ export default function ZonesPage() {
         }
     };
 
+    const handleDeleteZone = async (zone: any) => {
+        if (window.confirm(`Are you sure you want to delete ${zone.name}?`)) {
+            try {
+                await zonesService.delete(zone.id);
+                fetchZones();
+            } catch (error) {
+                console.error('Error deleting zone:', error);
+            }
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ mb: 4 }}>
@@ -94,7 +105,8 @@ export default function ZonesPage() {
                 onAdd={() => setDialogOpen(true)}
                 onEdit={(zone) => console.log('Edit zone', zone)}
                 onView={(zone) => console.log('View zone', zone)}
-                onDelete={(zone) => console.log('Delete zone', zone)}
+                onDelete={handleDeleteZone}
+                onRefresh={fetchZones}
                 statusField="status"
                 statusColors={{
                     active: 'success',

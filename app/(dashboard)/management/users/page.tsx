@@ -76,34 +76,25 @@ export default function UsersManagementPage() {
         {
             field: 'name',
             headerName: 'Name',
-            width: 200,
+            width: 300,
             renderCell: (params) => (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Avatar sx={{ width: 32, height: 32, fontSize: '0.8rem', bgcolor: 'primary.main' }}>
                         {params.value?.[0]}
                     </Avatar>
-                    <Box>
-                        <Typography variant="body2" fontWeight={600}>{params.value}</Typography>
-                        <Typography variant="caption" color="text.secondary">{params.row.email}</Typography>
+                    <Box sx={{ overflow: 'hidden' }}>
+                        <Typography variant="body2" fontWeight={600} noWrap>{params.value}</Typography>
+                        <Typography variant="caption" color="text.secondary" noWrap>{params.row.email}</Typography>
                     </Box>
                 </Box>
             ),
         },
-        { field: 'role', headerName: 'Role', width: 150 },
-        { field: 'tenant', headerName: 'Scope', width: 180 },
+        { field: 'role', headerName: 'Role', width: 180 },
+        { field: 'tenant', headerName: 'Scope', width: 220 },
         {
             field: 'status',
             headerName: 'Status',
-            width: 120,
-            renderCell: (params) => (
-                <Chip
-                    label={params.value?.toString().toUpperCase()}
-                    size="small"
-                    color={params.value === 'active' ? 'success' : 'error'}
-                    variant="outlined"
-                    sx={{ fontWeight: 700, borderRadius: '6px' }}
-                />
-            ),
+            width: 150,
         },
         {
             field: 'actions',
@@ -119,16 +110,30 @@ export default function UsersManagementPage() {
                             </IconButton>
                         </Tooltip>
                     ) : (
-                        <Tooltip title="Deactivate">
-                            <IconButton size="small" color="warning" onClick={() => handleAction('deactivate', params.row.id)}>
-                                <DeactivateIcon fontSize="small" />
-                            </IconButton>
+                        <Tooltip title={params.row.role === 'SYSTEM_ADMIN' ? "Cannot deactivate System Admin" : "Deactivate"}>
+                            <span>
+                                <IconButton
+                                    size="small"
+                                    color="warning"
+                                    onClick={() => handleAction('deactivate', params.row.id)}
+                                    disabled={params.row.role === 'SYSTEM_ADMIN'}
+                                >
+                                    <DeactivateIcon fontSize="small" />
+                                </IconButton>
+                            </span>
                         </Tooltip>
                     )}
-                    <Tooltip title="Delete">
-                        <IconButton size="small" color="error" onClick={() => handleAction('delete', params.row.id)}>
-                            <DeleteIcon fontSize="small" />
-                        </IconButton>
+                    <Tooltip title={params.row.role === 'SYSTEM_ADMIN' ? "Cannot delete System Admin" : "Delete"}>
+                        <span>
+                            <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleAction('delete', params.row.id)}
+                                disabled={params.row.role === 'SYSTEM_ADMIN'}
+                            >
+                                <DeleteIcon fontSize="small" />
+                            </IconButton>
+                        </span>
                     </Tooltip>
                 </Box>
             ),
@@ -146,40 +151,37 @@ export default function UsersManagementPage() {
 
     return (
         <Box>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                    <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: -1 }}>
-                        User Management
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary" fontWeight={500}>
-                        Manage system users and their administrative permissions
-                    </Typography>
-                </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setDialogOpen(true)}
-                    sx={{
-                        borderRadius: '12px',
-                        px: 3,
-                        py: 1.2,
-                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-                        textTransform: 'none',
-                        fontWeight: 700
-                    }}
-                >
-                    Add New User
-                </Button>
+            <Box sx={{ mb: 4 }}>
+                <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: -1 }}>
+                    User Management
+                </Typography>
+                <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                    Manage system users and their administrative permissions
+                </Typography>
             </Box>
 
             <DataTable
                 title="System Users"
+                subtitle="View and manage administrative personnel across different scopes"
                 rows={mappedUsers}
-                columns={columns.filter(c => c.field !== 'actions')} // DataTable adds its own if we use the props, but here we manually added one
+                columns={columns}
                 loading={loading}
                 module="management"
+                onAdd={() => setDialogOpen(true)}
+                onRefresh={fetchUsers}
+                statusField="status"
+                statusColors={{
+                    'active': 'success',
+                    'inactive': 'error'
+                }}
                 toolbarActions={
-                    <Button startIcon={<RefreshIcon />} onClick={fetchUsers} size="small">
+                    <Button
+                        variant="outlined"
+                        startIcon={<RefreshIcon />}
+                        onClick={fetchUsers}
+                        size="small"
+                        sx={{ borderRadius: 2 }}
+                    >
                         Refresh
                     </Button>
                 }

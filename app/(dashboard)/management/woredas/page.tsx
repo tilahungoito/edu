@@ -78,6 +78,17 @@ export default function WoredasPage() {
         }
     };
 
+    const handleDeleteWoreda = async (woreda: any) => {
+        if (window.confirm(`Are you sure you want to delete ${woreda.name}?`)) {
+            try {
+                await woredasService.delete(woreda.id);
+                fetchData();
+            } catch (error) {
+                console.error('Error deleting woreda:', error);
+            }
+        }
+    };
+
     return (
         <Box>
             <Box sx={{ mb: 4 }}>
@@ -101,7 +112,8 @@ export default function WoredasPage() {
                 onAdd={() => setDialogOpen(true)}
                 onEdit={(woreda) => console.log('Edit woreda', woreda)}
                 onView={(woreda) => console.log('View woreda', woreda)}
-                onDelete={(woreda) => console.log('Delete woreda', woreda)}
+                onDelete={handleDeleteWoreda}
+                onRefresh={fetchData}
                 statusField="status"
                 statusColors={{
                     active: 'success',

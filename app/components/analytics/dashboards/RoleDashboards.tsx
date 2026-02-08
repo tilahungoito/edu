@@ -6,7 +6,7 @@ import { School as SchoolIcon, Groups as PeopleIcon, Assignment as CourseIcon } 
 import { KPIGrid, AnalyticsChart } from '../';
 import { DataTable } from '../../tables';
 
-export function BureauDashboard({ stats, loading, zones, columns }: any) {
+export function BureauDashboard({ stats, loading, zones, columns, tableTitle }: any) {
     const theme = useTheme();
 
     const kpis = stats ? [
@@ -50,7 +50,7 @@ export function BureauDashboard({ stats, loading, zones, columns }: any) {
             </Box>
 
             <DataTable
-                title="Regional Zones"
+                title={tableTitle || "Regional Zones"}
                 subtitle="Overview of administrative divisions"
                 columns={columns}
                 rows={zones}

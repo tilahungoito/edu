@@ -24,6 +24,7 @@ import {
     Slide,
     Chip,
     LinearProgress,
+    Snackbar,
 } from '@mui/material';
 import {
     Visibility as VisibilityIcon,
@@ -54,6 +55,15 @@ function LoginForm() {
     const [passwordError, setPasswordError] = useState('');
     const [loginSuccess, setLoginSuccess] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [snackbar, setSnackbar] = useState<{
+        open: boolean;
+        message: string;
+        severity: 'success' | 'error' | 'info' | 'warning';
+    }>({
+        open: false,
+        message: '',
+        severity: 'info',
+    });
 
     // Check for expired session or redirect params
     useEffect(() => {
@@ -141,6 +151,7 @@ function LoginForm() {
         if (result.success) {
             // Show success state
             setLoginSuccess(true);
+            setSnackbar({ open: true, message: 'Welcome back! Login successful.', severity: 'success' });
 
             // Redirect after animation
             setTimeout(() => {
@@ -151,6 +162,7 @@ function LoginForm() {
             // Display error from backend with better messaging
             const errorMsg = result.error || 'Login failed. Please check your credentials.';
             setError(errorMsg);
+            setSnackbar({ open: true, message: errorMsg, severity: 'error' });
 
             // Auto-clear error after 5 seconds
             setTimeout(() => setError(''), 5000);
@@ -206,61 +218,32 @@ function LoginForm() {
                     <Card
                         sx={{
                             width: '100%',
-                            maxWidth: 500,
-                            borderRadius: 5,
-                            boxShadow: '0 30px 90px rgba(0,0,0,0.12)',
+                            maxWidth: 650,
+                            borderRadius: 4,
+                            boxShadow: '0 25px 80px rgba(0,0,0,0.1)',
                             overflow: 'hidden',
                             position: 'relative',
                             zIndex: 1,
                             backdropFilter: 'blur(20px)',
-                            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                            border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
                         }}
                     >
-                        {/* Success Overlay */}
-                        {loginSuccess && (
-                            <Fade in={loginSuccess}>
-                                <Box
-                                    sx={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        bgcolor: alpha(theme.palette.success.main, 0.95),
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        zIndex: 10,
-                                        flexDirection: 'column',
-                                        gap: 2,
-                                    }}
-                                >
-                                    <CheckCircleIcon sx={{ fontSize: 80, color: 'white' }} />
-                                    <Typography variant="h5" color="white" fontWeight={700}>
-                                        Login Successful!
-                                    </Typography>
-                                    <Typography variant="body2" color="white">
-                                        Redirecting to dashboard...
-                                    </Typography>
-                                </Box>
-                            </Fade>
-                        )}
 
                         {/* Header */}
                         <Box
                             sx={{
                                 background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-                                p: 5,
+                                p: 4,
                                 textAlign: 'center',
                                 position: 'relative',
                                 overflow: 'hidden',
                                 '&::before': {
                                     content: '""',
                                     position: 'absolute',
-                                    top: -50,
-                                    right: -50,
-                                    width: 200,
-                                    height: 200,
+                                    top: -40,
+                                    right: -40,
+                                    width: 160,
+                                    height: 160,
                                     borderRadius: '50%',
                                     background: alpha('#fff', 0.08),
                                     animation: 'pulse 3s ease-in-out infinite',
@@ -273,84 +256,69 @@ function LoginForm() {
                         >
                             <Box
                                 sx={{
-                                    width: 90,
-                                    height: 90,
-                                    borderRadius: 4.5,
+                                    width: 80,
+                                    height: 80,
+                                    borderRadius: 4,
                                     backgroundColor: alpha('#fff', 0.15),
                                     backdropFilter: 'blur(10px)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     mx: 'auto',
-                                    mb: 3,
+                                    mb: 2.5,
                                     position: 'relative',
                                     zIndex: 1,
-                                    boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-                                    border: `2px solid ${alpha('#fff', 0.2)}`,
+                                    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                                    border: `2px solid ${alpha('#fff', 0.15)}`,
                                 }}
                             >
-                                <SchoolIcon sx={{ fontSize: 50, color: 'white' }} />
+                                <SchoolIcon sx={{ fontSize: 44, color: 'white' }} />
                             </Box>
                             <Typography
                                 variant="h4"
                                 fontWeight={800}
                                 color="white"
                                 sx={{
-                                    mb: 1,
-                                    textShadow: '0 2px 20px rgba(0,0,0,0.15)',
+                                    mb: 0.5,
+                                    textShadow: '0 2px 15px rgba(0,0,0,0.1)',
                                     position: 'relative',
                                     zIndex: 1,
                                     letterSpacing: -0.5,
+                                    fontSize: '1.75rem',
                                 }}
                             >
                                 Tigray Education
                             </Typography>
                             <Typography
-                                variant="body1"
+                                variant="body2"
                                 sx={{
-                                    color: alpha('#fff', 0.95),
+                                    color: alpha('#fff', 0.85),
                                     fontWeight: 500,
                                     position: 'relative',
                                     zIndex: 1,
+                                    letterSpacing: 0.5,
                                 }}
                             >
                                 Regional Management Portal
                             </Typography>
-
-                            {/* Security Badge */}
-                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 1 }}>
-                                <Chip
-                                    icon={<SecurityIcon sx={{ fontSize: 16, color: 'white !important' }} />}
-                                    label="Secure Login"
-                                    size="small"
-                                    sx={{
-                                        bgcolor: alpha('#fff', 0.15),
-                                        color: 'white',
-                                        fontWeight: 600,
-                                        fontSize: '0.75rem',
-                                        backdropFilter: 'blur(10px)',
-                                        border: `1px solid ${alpha('#fff', 0.2)}`,
-                                    }}
-                                />
-                            </Box>
                         </Box>
 
                         {/* Form */}
-                        <CardContent sx={{ p: 5 }}>
+                        <CardContent sx={{ p: 4 }}>
                             <Typography
-                                variant="h5"
+                                variant="h6"
                                 fontWeight={700}
                                 color="primary.dark"
-                                sx={{ mb: 1, textAlign: 'center' }}
+                                sx={{ mb: 0.5, textAlign: 'center' }}
                             >
                                 Welcome Back
                             </Typography>
                             <Typography
                                 variant="body2"
                                 color="text.secondary"
-                                sx={{ mb: 4, textAlign: 'center' }}
+                                sx={{ mb: 3.5, textAlign: 'center' }}
                             >
-                                Sign in to access your personalized dashboard
+                                Sign in to access your dashboard
                             </Typography>
 
                             <form onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
@@ -455,33 +423,6 @@ function LoginForm() {
                                         ),
                                     }}
                                 />
-
-                                {/* Password Strength Indicator */}
-                                {password && (
-                                    <Fade in={!!password}>
-                                        <Box sx={{ mb: 3 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    Password Strength:
-                                                </Typography>
-                                                <Typography variant="caption" fontWeight={600} color={`${getStrengthColor(passwordStrength)}.main`}>
-                                                    {passwordStrength < 40 ? 'Weak' : passwordStrength < 70 ? 'Medium' : 'Strong'}
-                                                </Typography>
-                                            </Box>
-                                            <LinearProgress
-                                                variant="determinate"
-                                                value={passwordStrength}
-                                                color={getStrengthColor(passwordStrength)}
-                                                sx={{
-                                                    height: 4,
-                                                    borderRadius: 2,
-                                                    bgcolor: alpha(theme.palette.grey[300], 0.3),
-                                                }}
-                                            />
-                                        </Box>
-                                    </Fade>
-                                )}
-
                                 {/* Remember Me & Forgot Password */}
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                                     <FormControlLabel
@@ -593,38 +534,25 @@ function LoginForm() {
                                 </Typography>
                             </Stack>
                         </CardContent>
-
-                        {/* Footer */}
-                        <Box
-                            sx={{
-                                px: 5,
-                                py: 3,
-                                bgcolor: alpha(theme.palette.primary.main, 0.02),
-                                borderTop: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
-                            }}
-                        >
-                            <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                textAlign="center"
-                                display="block"
-                                sx={{ fontSize: '0.7rem' }}
-                            >
-                                © {new Date().getFullYear()} Tigray Education Bureau. All rights reserved.
-                            </Typography>
-                            <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                textAlign="center"
-                                display="block"
-                                sx={{ fontSize: '0.65rem', mt: 0.5, opacity: 0.6 }}
-                            >
-                                Secured with 256-bit encryption
-                            </Typography>
-                        </Box>
                     </Card>
                 </Slide>
             </Box>
+
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setSnackbar({ ...snackbar, open: false })}
+                    severity={snackbar.severity}
+                    variant="filled"
+                    sx={{ width: '100%', borderRadius: 3 }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </ThemeProvider>
     );
 }
