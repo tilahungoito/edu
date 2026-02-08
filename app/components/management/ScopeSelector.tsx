@@ -11,6 +11,7 @@ import {
 import { regionsService } from '@/app/lib/api/regions.service';
 import { zonesService } from '@/app/lib/api/zones.service';
 import { woredasService } from '@/app/lib/api/woredas.service';
+import { kebelesService } from '@/app/lib/api/kebeles.service';
 import { institutionsService } from '@/app/lib/api/institutions.service';
 import { Role } from '@/app/lib/types/roles';
 
@@ -73,10 +74,7 @@ export function ScopeSelector({
                         data = await institutionsService.getAll();
                         break;
                     case 'KEBELE':
-                        // If no kebele service, maybe we skip or use woredas?
-                        // For now let's leave it empty or try woredas if that's the fallback
-                        // But sticking to the map is safer.
-                        console.warn('Kebele service not implemented yet');
+                        data = await kebelesService.getAll();
                         break;
                 }
                 setScopes(data.map(item => ({ id: item.id, name: item.name })));
