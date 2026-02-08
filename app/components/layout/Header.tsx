@@ -224,7 +224,8 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                                 <Typography variant="caption" color="text.secondary">
                                     {user?.tenantType === 'bureau' ? 'Bureau Admin' :
                                         user?.tenantType === 'zone' ? 'Zone Admin' :
-                                            user?.tenantType === 'woreda' ? 'Woreda Admin' : 'School Admin'}
+                                            user?.tenantType === 'woreda' ? 'Woreda Admin' :
+                                                user?.tenantType === 'kebele' ? 'Kebele Admin' : 'School Admin'}
                                 </Typography>
                             </Box>
                         </Box>

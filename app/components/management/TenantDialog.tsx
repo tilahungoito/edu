@@ -8,7 +8,7 @@ import {
     DialogActions,
     Button,
     TextField,
-    Grid2 as Grid,
+    Grid,
     FormControl,
     InputLabel,
     Select,
@@ -117,6 +117,10 @@ export function TenantDialog({
                     initialData.woredaId = user.tenantId;
                     const kebelesData = await kebelesService.getAll();
                     setKebeles(kebelesData.filter(k => k.woredaId === user.tenantId));
+                } else if (user.tenantType === 'kebele') {
+                    initialData.kebeleId = user.tenantId;
+                    // For kebele admins, we might need the woredaId if the backend requires it for school creation
+                    // Assuming user object has it or we can fetch it. For now, just set kebeleId.
                 }
 
                 setFormData(prev => ({ ...prev, ...initialData }));

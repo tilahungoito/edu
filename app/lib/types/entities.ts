@@ -2,7 +2,7 @@
 // CORE ENTITY TYPES
 // ====================================
 
-export type TenantType = 'bureau' | 'zone' | 'woreda' | 'school';
+export type TenantType = 'bureau' | 'zone' | 'woreda' | 'kebele' | 'school';
 export type EntityStatus = 'active' | 'inactive' | 'suspended';
 
 // Base entity interface

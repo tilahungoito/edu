@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Container, Grid2 as Grid, Typography, Stack, IconButton, Divider } from '@mui/material';
+import { Box, Container, Grid, Typography, Stack, IconButton, Divider } from '@mui/material';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';

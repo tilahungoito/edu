@@ -191,6 +191,12 @@ export const DEFAULT_ROLES: Partial<Role>[] = [
         isSystemRole: true,
     },
     {
+        name: 'Kebele Admin',
+        description: 'Full access to kebele and schools',
+        tenantType: 'kebele',
+        isSystemRole: true,
+    },
+    {
         name: 'School Admin',
         description: 'Full access to school functions',
         tenantType: 'school',

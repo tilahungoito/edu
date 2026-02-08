@@ -39,7 +39,7 @@ const schoolColumns: GridColDef<Institution>[] = [
 ];
 
 // Roles that can create schools
-const CREATE_ROLES = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN'];
+const CREATE_ROLES = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN'];
 
 export default function SchoolsPage() {
     const [loading, setLoading] = useState(true);

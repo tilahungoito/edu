@@ -6,7 +6,7 @@ import { School as SchoolIcon, Groups as PeopleIcon, Assignment as CourseIcon } 
 import { KPIGrid, AnalyticsChart } from '../';
 import { DataTable } from '../../tables';
 
-export function BureauDashboard({ stats, loading, zones, columns, tableTitle }: any) {
+export function BureauDashboard({ stats, loading, zones, columns, tableTitle, onAdd, resourceType }: any) {
     const theme = useTheme();
 
     const kpis = stats ? [
@@ -56,6 +56,8 @@ export function BureauDashboard({ stats, loading, zones, columns, tableTitle }: 
                 rows={zones}
                 loading={loading}
                 module="management"
+                resourceType={resourceType}
+                onAdd={onAdd}
             />
         </Box>
     );

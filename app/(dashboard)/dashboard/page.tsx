@@ -31,9 +31,14 @@ import {
 } from '@/app/components/analytics/dashboards/RoleDashboards';
 import { dashboardService } from '@/app/lib/api/dashboard.service';
 import { zonesService } from '@/app/lib/api/zones.service';
+import { woredasService } from '@/app/lib/api/woredas.service';
+import { kebelesService } from '@/app/lib/api/kebeles.service';
+import { institutionsService } from '@/app/lib/api/institutions.service';
+import { regionsService } from '@/app/lib/api/regions.service';
+import { TenantDialog } from '@/app/components/management/TenantDialog';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
-import type { Zone, KPIData } from '@/app/lib/types';
+import type { Zone, KPIData, TenantType } from '@/app/lib/types';
 
 // Sample chart data
 const enrollmentTrendData = [
@@ -54,6 +59,7 @@ const zoneDistributionData = [
     { name: 'Adwa', value: 52000 },
 ];
 
+// School level type mapping
 const schoolTypeData = [
     { name: 'Primary', value: 620 },
     { name: 'Secondary', value: 245 },
@@ -88,6 +94,60 @@ const zoneColumns: GridColDef[] = [
     },
 ];
 
+// Woreda columns
+const woredaColumns: GridColDef[] = [
+    { field: 'name', headerName: 'Woreda Name', flex: 1, minWidth: 150 },
+    { field: 'nameAmharic', headerName: 'ስም (አማርኛ)', flex: 1, minWidth: 120 },
+    { field: 'code', headerName: 'Code', width: 80 },
+    {
+        field: 'totalSchools',
+        headerName: 'Schools',
+        width: 100,
+        type: 'number',
+        valueGetter: (params: any) => params?.row?._count?.institutions || 0
+    },
+    {
+        field: 'totalStudents',
+        headerName: 'Students',
+        width: 120,
+        type: 'number'
+    },
+    { field: 'status', headerName: 'Status', width: 100 },
+];
+
+// Kebele columns
+const kebeleColumns: GridColDef[] = [
+    { field: 'name', headerName: 'Kebele Name', flex: 1, minWidth: 150 },
+    {
+        field: 'totalSchools',
+        headerName: 'Institutions',
+        width: 120,
+        type: 'number',
+        valueGetter: (params: any) => params?.row?._count?.institutions || 0
+    },
+    { field: 'createdAt', headerName: 'Created At', width: 150, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
+];
+
+// Institution columns
+const institutionColumns: GridColDef[] = [
+    { field: 'name', headerName: 'Institution Name', flex: 1, minWidth: 200 },
+    {
+        field: 'totalStudents',
+        headerName: 'Students',
+        width: 120,
+        type: 'number',
+        valueGetter: (params: any) => params?.row?._count?.students || 0
+    },
+    {
+        field: 'totalTeachers',
+        headerName: 'Teachers',
+        width: 120,
+        type: 'number'
+    },
+    { field: 'type', headerName: 'Level', width: 120 },
+    { field: 'ownership', headerName: 'Type', width: 120 },
+];
+
 export default function Dashboard() {
     const theme = useTheme();
     const user = useAuthStore(state => state.user);
@@ -95,21 +155,58 @@ export default function Dashboard() {
     const [stats, setStats] = useState<any>(null);
     const [zones, setZones] = useState<Zone[]>([]);
 
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogType, setDialogType] = useState<TenantType>('school');
+
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [statsData, zonesData] = await Promise.all([
-                dashboardService.getStats(),
-                (user?.tenantType === 'bureau' || user?.tenantType === 'zone')
-                    ? zonesService.getAll(user?.tenantType === 'zone' ? user.tenantId : undefined)
-                    : Promise.resolve([])
-            ]);
+            const statsData = await dashboardService.getStats();
+            let listData: any[] = [];
+            if (user?.tenantType === 'bureau') {
+                listData = await zonesService.getAll();
+            } else if (user?.tenantType === 'zone') {
+                listData = await woredasService.getAll(user.tenantId);
+            } else if (user?.tenantType === 'woreda') {
+                listData = await kebelesService.getAll();
+            } else if (user?.tenantType === 'kebele') {
+                listData = await institutionsService.getAll({ kebeleId: user.tenantId });
+            }
+
             setStats(statsData);
-            setZones(zonesData as any);
+            setZones(listData);
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleOpenAddDialog = () => {
+        if (!user) return;
+
+        // Determine what to add based on user scope
+        let typeToAdd: TenantType = 'zone';
+        if (user.tenantType === 'bureau') typeToAdd = 'zone';
+        else if (user.tenantType === 'zone') typeToAdd = 'woreda';
+        else if (user.tenantType === 'woreda') typeToAdd = 'kebele';
+        else if (user.tenantType === 'kebele') typeToAdd = 'school';
+
+        setDialogType(typeToAdd);
+        setDialogOpen(true);
+    };
+
+    const handleAddEntity = async (data: any) => {
+        try {
+            if (dialogType === 'zone') await zonesService.create(data);
+            else if (dialogType === 'woreda') await woredasService.create(data);
+            else if (dialogType === 'kebele') await kebelesService.create(data);
+            else if (dialogType === 'school') await institutionsService.create(data);
+
+            setDialogOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error(`Error creating ${dialogType}:`, error);
         }
     };
 
@@ -122,7 +219,7 @@ export default function Dashboard() {
         fetchData();
     });
 
-    const filteredZones = useScopedData(zones, 'zone');
+    const filteredZones = useScopedData(zones, user?.tenantType as any);
 
     const dashboardTitle = user?.tenantType === 'bureau'
         ? (user.roles?.some(r => r.name === 'SYSTEM_ADMIN') ? 'System Administration Dashboard' : 'Regional Education Bureau Dashboard')
@@ -130,7 +227,9 @@ export default function Dashboard() {
             ? `${user.tenantName} Zone Dashboard`
             : user?.tenantType === 'woreda'
                 ? `${user.tenantName} Woreda Dashboard`
-                : `${user?.tenantName || 'School'} Dashboard`;
+                : user?.tenantType === 'kebele'
+                    ? `${user.tenantName} Kebele Dashboard`
+                    : `${user?.tenantName || 'School'} Dashboard`;
 
     const renderRoleDashboard = () => {
         const roles = user?.roles?.map(r => r.name) || [];
@@ -147,17 +246,44 @@ export default function Dashboard() {
             const tableTitle = user?.tenantType === 'bureau' ? "Regional Zones" :
                 user?.tenantType === 'zone' ? "Zone Woredas" :
                     user?.tenantType === 'woreda' ? "Woreda Kebeles" :
-                        "Local Entities";
+                        user?.tenantType === 'kebele' ? "Kebele Institutions" :
+                            "Local Entities";
+
+            const currentColumns = user?.tenantType === 'bureau' ? zoneColumns :
+                user?.tenantType === 'zone' ? woredaColumns :
+                    user?.tenantType === 'woreda' ? kebeleColumns :
+                        user?.tenantType === 'kebele' ? institutionColumns :
+                            zoneColumns;
+
+            const resourceTypeMap: Record<string, ResourceType> = {
+                'bureau': 'zone',
+                'zone': 'woreda',
+                'woreda': 'kebele',
+                'kebele': 'institution'
+            };
 
             return (
-                <BureauDashboard
-                    stats={stats}
-                    loading={loading}
-                    user={user}
-                    zones={filteredZones}
-                    columns={zoneColumns}
-                    tableTitle={tableTitle}
-                />
+                <>
+                    <BureauDashboard
+                        stats={stats}
+                        loading={loading}
+                        user={user}
+                        zones={filteredZones}
+                        columns={currentColumns}
+                        tableTitle={tableTitle}
+                        onAdd={handleOpenAddDialog}
+                        resourceType={resourceTypeMap[user?.tenantType || 'bureau']}
+                    />
+                    <TenantDialog
+                        open={dialogOpen}
+                        onClose={() => setDialogOpen(false)}
+                        onSubmit={handleAddEntity}
+                        type={dialogType as any}
+                        parentId={user?.tenantId}
+                        parentType={user?.tenantType as any}
+                        parentName={user?.tenantName}
+                    />
+                </>
             );
         }
 

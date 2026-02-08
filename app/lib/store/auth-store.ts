@@ -260,14 +260,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 }));
 
 // Helper to map backend scopeType to frontend TenantType
-function mapScopeTypeToTenantType(scopeType: string): 'bureau' | 'zone' | 'woreda' | 'school' {
-    const mapping: Record<string, 'bureau' | 'zone' | 'woreda' | 'school'> = {
+function mapScopeTypeToTenantType(scopeType: string): TenantType {
+    const mapping: Record<string, TenantType> = {
         'SYSTEM': 'bureau', // Map SYSTEM to bureau
         'REGION': 'bureau',
         'ZONE': 'zone',
         'WOREDA': 'woreda',
+        'KEBELE': 'kebele',
         'INSTITUTION': 'school',
-        'KEBELE': 'school', // Map kebele to school for now
     };
     return mapping[scopeType] || 'school';
 }

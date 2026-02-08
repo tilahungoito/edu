@@ -8,6 +8,7 @@ const roles = [
     { name: 'Bureau Admin', type: 'Regional', users: 5, status: 'System' },
     { name: 'Zone Admin', type: 'Zone', users: 45, status: 'System' },
     { name: 'Woreda Admin', type: 'Woreda', users: 340, status: 'System' },
+    { name: 'Kebele Admin', type: 'Kebele', users: 1500, status: 'System' },
     { name: 'School Admin', type: 'School', users: 1200, status: 'System' },
 ];
 
