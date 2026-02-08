@@ -161,9 +161,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
                 tenantId: response.scopeId || '',
                 tenantName: '',
                 roles: [{
-                    id: response.role.id,
-                    name: response.role.name,
-                    description: `${response.role.name} role`,
+                    id: `role-${(response as any).role}`,
+                    name: (response as any).role,
+                    description: `${(response as any).role} role`,
                     tenantType: mapScopeTypeToTenantType(response.scopeType),
                     isSystemRole: true,
                     permissions: (response as any).permissions || [],
