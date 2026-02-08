@@ -7,6 +7,8 @@ import { DataTable } from '@/app/components/tables';
 import { institutionsService, Institution } from '@/app/lib/api/institutions.service';
 import { woredasService } from '@/app/lib/api/woredas.service';
 import { zonesService } from '@/app/lib/api/zones.service';
+import { useAuthStore } from '@/app/lib/store';
+
 import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
@@ -14,33 +16,11 @@ import { TenantDialog } from '@/app/components/management/TenantDialog';
 
 const schoolColumns: GridColDef<Institution>[] = [
     { field: 'name', headerName: 'School Name', flex: 1, minWidth: 200 },
-    { field: 'code', headerName: 'Code', width: 120 },
-    { field: 'zoneName', headerName: 'Zone', width: 100 },
-    { field: 'woredaName', headerName: 'Woreda', width: 120 },
     {
-        field: 'type',
-        headerName: 'Type',
-        width: 110,
-        renderCell: (params) => {
-            const typeColors: Record<string, 'primary' | 'secondary' | 'warning'> = {
-                primary: 'primary',
-                secondary: 'secondary',
-                preparatory: 'warning',
-            };
-            return (
-                <Chip
-                    label={typeof params.value === 'string' ? ((params.value as string).charAt(0).toUpperCase() + (params.value as string).slice(1)) : ''}
-                    size="small"
-                    color={typeColors[params.value as string] || 'default'}
-                />
-            );
-        }
-    },
-    {
-        field: 'ownership',
-        headerName: 'Ownership',
-        width: 110,
-        valueFormatter: (value: any) => typeof value === 'string' ? (value as string).charAt(0).toUpperCase() + (value as string).slice(1) : '',
+        field: 'kebeleName',
+        headerName: 'Kebele',
+        width: 150,
+        valueGetter: (value, row: any) => row.kebele?.name || '-'
     },
     {
         field: 'totalStudents',
@@ -56,8 +36,10 @@ const schoolColumns: GridColDef<Institution>[] = [
         type: 'number',
         valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
-    { field: 'status', headerName: 'Status', width: 100 },
 ];
+
+// Roles that can create schools
+const CREATE_ROLES = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN'];
 
 export default function SchoolsPage() {
     const [loading, setLoading] = useState(true);
@@ -67,6 +49,9 @@ export default function SchoolsPage() {
     const [schools, setSchools] = useState<any[]>([]);
     const [zones, setZones] = useState<any[]>([]);
     const [woredas, setWoredas] = useState<any[]>([]);
+
+    const user = useAuthStore(state => state.user);
+    const canCreate = user?.roles?.some(r => CREATE_ROLES.includes(r.name)) ?? false;
 
     const fetchData = async () => {
         setLoading(true);
@@ -141,9 +126,7 @@ export default function SchoolsPage() {
                 rows={filteredSchools}
                 loading={loading}
                 module="management"
-                resourceType="institution"
-                allowedRoles={['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN']}
-                onAdd={() => setDialogOpen(true)}
+                onAdd={canCreate ? () => setDialogOpen(true) : undefined}
                 onEdit={(school) => console.log('Edit school', school)}
                 onView={(school) => console.log('View school', school)}
                 onDelete={handleDeleteSchool}

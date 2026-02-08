@@ -25,18 +25,12 @@ import { regionsService } from '@/app/lib/api/regions.service';
 
 interface TenantFormData {
     name: string;
-    nameAmharic: string;
-    code: string;
     description: string;
-    status: 'active' | 'inactive';
     // Hierarchy links
     regionId?: string;
     zoneId?: string;
     woredaId?: string;
     kebeleId?: string;
-    // School specific
-    type?: string;
-    ownership?: string;
 }
 
 interface TenantDialogProps {
@@ -61,12 +55,7 @@ export function TenantDialog({
     const user = useAuthStore(state => state.user);
     const [formData, setFormData] = useState<TenantFormData>({
         name: '',
-        nameAmharic: '',
-        code: '',
         description: '',
-        status: 'active',
-        type: 'primary',
-        ownership: 'government',
     });
 
     const isSystemAdmin = user?.roles.some(r => r.name === 'SYSTEM_ADMIN');
@@ -169,18 +158,6 @@ export function TenantDialog({
         }));
     };
 
-    const handleStatusChange = (e: SelectChangeEvent) => {
-        setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' });
-    };
-
-    const handleTypeChange = (e: SelectChangeEvent) => {
-        setFormData({ ...formData, type: e.target.value });
-    };
-
-    const handleOwnershipChange = (e: SelectChangeEvent) => {
-        setFormData({ ...formData, ownership: e.target.value });
-    };
-
     const handleFormSubmit = () => {
         // Filter data based on backend DTO requirements to prevent 400 errors
         const payload: any = {
@@ -191,12 +168,6 @@ export function TenantDialog({
         const isUUID = (id?: string) => id && id.length === 36 && id.includes('-');
 
         // Only include parent links if they are valid UUIDs
-        // Note: For scoped admins (e.g., Regional Admin), the backend automatically fills 
-        // the corresponding parent ID (e.g., regionId) from the session.
-        // We only explicitly send it if it was manually selected (System Admin case).
-
-        // We only explicitly send it if it was manually selected (System Admin case).
-
         if (type === 'zone') {
             // Only System Admins send regionId; Regional Admins let backend auto-fill it
             if (isSystemAdmin && isUUID(formData.regionId)) {
@@ -214,12 +185,7 @@ export function TenantDialog({
         onClose();
         setFormData({
             name: '',
-            nameAmharic: '',
-            code: '',
             description: '',
-            status: 'active',
-            type: 'primary',
-            ownership: 'government',
         });
     };
 
@@ -247,58 +213,10 @@ export function TenantDialog({
                             onChange={handleChange}
                         />
                     </Grid>
-                    {/* Extra fields hidden until backend support is added */}
-                    {false && (
-                        <Grid size={{ xs: 6 }}>
-                            <TextField
-                                name="nameAmharic"
-                                label={`${title} Name (Amharic)`}
-                                fullWidth
-                                required
-                                value={formData.nameAmharic}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                    )}
-                    {/* Extra fields hidden until backend support is added */}
-                    {false && (
+
+                    {(type === 'school') && (
                         <>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    name="code"
-                                    label="Code"
-                                    fullWidth
-                                    required
-                                    placeholder="e.g. MKL"
-                                    value={formData.code}
-                                    onChange={handleChange}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <FormControl fullWidth>
-                                    <InputLabel>Status</InputLabel>
-                                    <Select
-                                        name="status"
-                                        value={formData.status}
-                                        label="Status"
-                                        onChange={handleStatusChange}
-                                    >
-                                        <MenuItem value="active">Active</MenuItem>
-                                        <MenuItem value="inactive">Inactive</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                                <TextField
-                                    name="description"
-                                    label="Description"
-                                    fullWidth
-                                    multiline
-                                    rows={3}
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                />
-                            </Grid>
+                            {/* School specific inputs removed as per simplified schema */}
                         </>
                     )}
 
@@ -374,36 +292,6 @@ export function TenantDialog({
                                         disabled={!formData.woredaId && user?.tenantType !== 'woreda'}
                                     >
                                         {kebeles.map(k => <MenuItem key={k.id} value={k.id}>{k.name}</MenuItem>)}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <FormControl fullWidth required>
-                                    <InputLabel>School Type</InputLabel>
-                                    <Select
-                                        value={formData.type || ''}
-                                        label="School Type"
-                                        onChange={handleTypeChange}
-                                    >
-                                        <MenuItem value="primary">Primary</MenuItem>
-                                        <MenuItem value="secondary">Secondary</MenuItem>
-                                        <MenuItem value="preparatory">Preparatory</MenuItem>
-                                        <MenuItem value="tvet">TVET</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <FormControl fullWidth required>
-                                    <InputLabel>Ownership</InputLabel>
-                                    <Select
-                                        value={formData.ownership || ''}
-                                        label="Ownership"
-                                        onChange={handleOwnershipChange}
-                                    >
-                                        <MenuItem value="government">Government</MenuItem>
-                                        <MenuItem value="private">Private</MenuItem>
-                                        <MenuItem value="ngo">NGO</MenuItem>
-                                        <MenuItem value="community">Community</MenuItem>
                                     </Select>
                                 </FormControl>
                             </Grid>

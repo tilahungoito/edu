@@ -3,15 +3,11 @@ import apiClient from './api-client';
 export interface Institution {
     id: string;
     name: string;
-    nameAmharic: string;
-    code: string;
-    type: string;
-    ownership: string;
-    address?: string;
-    phone?: string;
-    email?: string;
-    status: string;
     kebeleId: string;
+    kebele?: {
+        id: string;
+        name: string;
+    };
     _count?: {
         students: number;
         courses: number;

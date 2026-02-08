@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Grid, Button } from '@mui/material';
+import { Box, Typography, Grid2 as Grid, Button } from '@mui/material';
 import {
     Groups as StudentIcon,
     Badge as TeacherIcon,
@@ -20,7 +20,7 @@ export default function SchoolAdminDashboard() {
     const kpis: KPIData[] = [
         {
             label: 'Total Students',
-            value: 850,
+            value: 8500,
             icon: 'People',
             trend: 'up',
             change: 12
