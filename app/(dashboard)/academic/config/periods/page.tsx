@@ -1,0 +1,260 @@
+'use client';
+
+import React, { useState } from 'react';
+import {
+    Box,
+    Typography,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    Grid,
+    useTheme,
+    alpha,
+    Breadcrumbs,
+    Link as MuiLink,
+    Chip,
+} from '@mui/material';
+import {
+    CalendarMonth as CalendarIcon,
+    Add as AddIcon,
+} from '@mui/icons-material';
+import { useSearchParams } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { scheduleConfigService } from '@/app/lib/api/schedules.service';
+import { institutionsService } from '@/app/lib/api/institutions.service';
+import { useAuthStore } from '@/app/lib/store';
+import Link from 'next/link';
+import DataTable from '@/app/components/tables/DataTable';
+import { GridColDef } from '@mui/x-data-grid';
+
+export default function AcademicPeriodsPage() {
+    const theme = useTheme();
+    const queryClient = useQueryClient();
+    const user = useAuthStore(state => state.user);
+    const searchParams = useSearchParams();
+    const overrideId = searchParams.get('institutionId');
+    const effectiveInstitutionId = overrideId || user?.tenantId;
+
+    const [open, setOpen] = useState(false);
+    const [selectedPeriod, setSelectedPeriod] = useState<any>(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        startDate: '',
+        endDate: '',
+        isActive: true,
+    });
+
+    const { data: periods, isLoading } = useQuery({
+        queryKey: ['academic-periods', effectiveInstitutionId],
+        queryFn: () => scheduleConfigService.getPeriods(effectiveInstitutionId || ''),
+        enabled: !!effectiveInstitutionId,
+    });
+
+    const { data: institution } = useQuery({
+        queryKey: ['institution', overrideId],
+        queryFn: () => institutionsService.getById(overrideId!),
+        enabled: !!overrideId,
+    });
+
+    const createMutation = useMutation({
+        mutationFn: (data: any) => {
+            if (!effectiveInstitutionId) {
+                throw new Error('No institution context found. Please ensure you are logged in as a school administrator or managing a specific school.');
+            }
+            return scheduleConfigService.createPeriod({ ...data, institutionId: effectiveInstitutionId });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
+            handleClose();
+        },
+    });
+
+    const handleOpen = (period?: any) => {
+        if (period) {
+            setSelectedPeriod(period);
+            setFormData({
+                name: period.name,
+                startDate: period.startDate.split('T')[0],
+                endDate: period.endDate.split('T')[0],
+                isActive: period.isActive,
+            });
+        } else {
+            setSelectedPeriod(null);
+            setFormData({
+                name: '',
+                startDate: '',
+                endDate: '',
+                isActive: true,
+            });
+        }
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+        setSelectedPeriod(null);
+    };
+
+    const handleSubmit = () => {
+        createMutation.mutate(formData);
+    };
+
+    const columns: GridColDef[] = [
+        { field: 'name', headerName: 'Period Name', flex: 1 },
+        {
+            field: 'startDate',
+            headerName: 'Start Date',
+            flex: 1,
+            valueFormatter: (params) => new Date(params).toLocaleDateString()
+        },
+        {
+            field: 'endDate',
+            headerName: 'End Date',
+            flex: 1,
+            valueFormatter: (params) => new Date(params).toLocaleDateString()
+        },
+        {
+            field: 'isActive',
+            headerName: 'Status',
+            width: 150,
+            renderCell: (params) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                        sx={{
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 2,
+                            bgcolor: params.value ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1),
+                            color: params.value ? theme.palette.success.main : theme.palette.error.main,
+                            fontSize: '0.65rem',
+                            fontWeight: 800,
+                            letterSpacing: 0.5,
+                        }}
+                    >
+                        {params.value ? 'ACTIVE' : 'INACTIVE'}
+                    </Box>
+                    {params.value && (
+                        <Chip
+                            label="Current"
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800 }}
+                        />
+                    )}
+                </Box>
+            ),
+        }
+    ];
+
+    return (
+        <Box sx={{ p: { xs: 2, md: 3 } }} className="animate-fade-in">
+            {overrideId && (
+                <Breadcrumbs sx={{ mb: 2 }}>
+                    <MuiLink component={Link} href="/management/schools" underline="hover" color="inherit">
+                        Schools
+                    </MuiLink>
+                    <Typography color="text.primary">Academic Periods</Typography>
+                </Breadcrumbs>
+            )}
+
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                        <CalendarIcon color="primary" sx={{ fontSize: 32 }} />
+                        <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1 }}>
+                            {institution ? `${institution.name} Periods` : 'Academic Periods'}
+                        </Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                        {institution
+                            ? `Managing academic years and teaching semesters for ${institution.name}.`
+                            : 'Manage academic years and teaching semesters.'}
+                    </Typography>
+                </Box>
+                <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => handleOpen()}
+                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                >
+                    New Period
+                </Button>
+            </Box>
+
+            <DataTable
+                title="Academic Periods"
+                rows={periods || []}
+                columns={columns}
+                loading={isLoading}
+                module="academic"
+            />
+
+            <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 800 }}>
+                    {selectedPeriod ? 'Edit Academic Period' : 'New Academic Period'}
+                </DialogTitle>
+                <DialogContent>
+                    {createMutation.isError && (
+                        <Box sx={{
+                            mt: 2,
+                            p: 2,
+                            borderRadius: 2,
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            color: theme.palette.error.main,
+                        }}>
+                            <Typography variant="body2" fontWeight={700}>
+                                {(createMutation.error as any)?.response?.data?.message || createMutation.error.message}
+                            </Typography>
+                        </Box>
+                    )}
+                    <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                label="Period Name"
+                                fullWidth
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                placeholder="e.g., 2025/26 Semester I"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                label="Start Date"
+                                type="date"
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                                value={formData.startDate}
+                                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                label="End Date"
+                                type="date"
+                                fullWidth
+                                InputLabelProps={{ shrink: true }}
+                                value={formData.endDate}
+                                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                            />
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={handleClose} sx={{ fontWeight: 700 }}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleSubmit}
+                        disabled={createMutation.isPending}
+                        sx={{ fontWeight: 700, borderRadius: 2 }}
+                    >
+                        {createMutation.isPending ? 'Saving...' : 'Save Period'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
+    );
+}
