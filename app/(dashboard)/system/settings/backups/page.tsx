@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Snackbar, Alert as MuiAlert, LinearProgress, Chip } from '@mui/material';
+import { Box, Typography, Button, Snackbar, Alert as MuiAlert, LinearProgress, Chip, MenuItem } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { backupsService, Backup } from '@/app/lib/api/backups.service';
@@ -176,24 +176,23 @@ export default function BackupsPage() {
                 onDelete={handleDelete}
                 onRefresh={fetchBackups}
                 showDensitySelector={true}
-                renderRowActions={(row, handleClose) => (
-                    <>
-                        <Button
-                            startIcon={<RestoreIcon />}
-                            onClick={() => { handleRestore(row); handleClose(); }}
-                            sx={{ justifyContent: 'flex-start', px: 2, py: 1, width: '100%', color: 'warning.main' }}
-                        >
-                            Restore
-                        </Button>
-                        <Button
-                            startIcon={<DownloadIcon />}
-                            onClick={() => { alert('Download simulation: ' + row.filename); handleClose(); }}
-                            sx={{ justifyContent: 'flex-start', px: 2, py: 1, width: '100%' }}
-                        >
-                            Download
-                        </Button>
-                    </>
-                )}
+                renderRowActions={(row, handleClose) => [
+                    <MenuItem
+                        key="restore"
+                        onClick={() => { handleRestore(row); handleClose(); }}
+                        sx={{ color: 'warning.main' }}
+                    >
+                        <RestoreIcon fontSize="small" sx={{ mr: 1 }} />
+                        Restore
+                    </MenuItem>,
+                    <MenuItem
+                        key="download"
+                        onClick={() => { alert('Download simulation: ' + row.filename); handleClose(); }}
+                    >
+                        <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
+                        Download
+                    </MenuItem>
+                ]}
             />
 
             <Snackbar
