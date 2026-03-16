@@ -39,6 +39,7 @@ export default function ZonesPage() {
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [zones, setZones] = useState<any[]>([]);
+    const [editData, setEditData] = useState<any>(null);
 
     const fetchZones = async () => {
         setLoading(true);
@@ -63,23 +64,40 @@ export default function ZonesPage() {
 
     const filteredZones = useScopedData(zones, 'zone');
 
-    const handleAddZone = async (data: any) => {
+    const handleAddZone = async (data: any, id?: string) => {
         try {
-            await zonesService.create(data);
+            if (id) {
+                await zonesService.update(id, data);
+            } else {
+                await zonesService.create(data);
+            }
             setDialogOpen(false);
+            setEditData(null);
             fetchZones();
         } catch (error) {
-            console.error('Error creating zone:', error);
+            console.error('Error saving zone:', error);
         }
     };
 
     const handleDeleteZone = async (zone: any) => {
+        if (!window.confirm(`Are you sure you want to delete ${zone.name}?`)) return;
         try {
             await zonesService.delete(zone.id);
             fetchZones();
         } catch (error) {
             console.error('Error deleting zone:', error);
         }
+    };
+
+    const handleEditZone = (zone: any) => {
+        setEditData(zone);
+        setDialogOpen(true);
+    };
+
+    const handleViewZone = (zone: any) => {
+        // Implementation for view: could navigate to a details page or show another dialog
+        console.log('Viewing zone:', zone);
+        // window.location.href = `/management/zones/${zone.id}`;
     };
 
     return (
@@ -102,9 +120,12 @@ export default function ZonesPage() {
                 module="management"
                 resourceType="zone"
                 allowedRoles={['SYSTEM_ADMIN', 'REGIONAL_ADMIN']}
-                onAdd={() => setDialogOpen(true)}
-                onEdit={() => { }}
-                onView={() => { }}
+                onAdd={() => {
+                    setEditData(null);
+                    setDialogOpen(true);
+                }}
+                onEdit={handleEditZone}
+                onView={handleViewZone}
                 onDelete={handleDeleteZone}
                 onRefresh={fetchZones}
                 statusField="status"
@@ -117,9 +138,13 @@ export default function ZonesPage() {
 
             <TenantDialog
                 open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
+                onClose={() => {
+                    setDialogOpen(false);
+                    setEditData(null);
+                }}
                 onSubmit={handleAddZone}
                 type="zone"
+                editData={editData}
             />
         </Box>
     );

@@ -36,11 +36,12 @@ interface TenantFormData {
 interface TenantDialogProps {
     open: boolean;
     onClose: () => void;
-    onSubmit: (data: TenantFormData) => void;
+    onSubmit: (data: any, id?: string) => void;
     type: 'region' | 'zone' | 'woreda' | 'kebele' | 'school';
     parentType?: TenantType;
     parentId?: string;
     parentName?: string;
+    editData?: any;
 }
 
 export function TenantDialog({
@@ -51,12 +52,34 @@ export function TenantDialog({
     parentType,
     parentId,
     parentName,
+    editData,
 }: TenantDialogProps) {
     const user = useAuthStore(state => state.user);
     const [formData, setFormData] = useState<TenantFormData>({
         name: '',
         description: '',
     });
+
+    // Reset or populate form when dialog opens or editData changes
+    React.useEffect(() => {
+        if (open) {
+            if (editData) {
+                setFormData({
+                    name: editData.name || '',
+                    description: editData.description || '',
+                    regionId: editData.regionId,
+                    zoneId: editData.zoneId,
+                    woredaId: editData.woredaId,
+                    kebeleId: editData.kebeleId,
+                });
+            } else {
+                setFormData({
+                    name: '',
+                    description: '',
+                });
+            }
+        }
+    }, [open, editData]);
 
     const isSystemAdmin = user?.roles.some(r => r.name === 'SYSTEM_ADMIN');
 
@@ -185,20 +208,16 @@ export function TenantDialog({
             if (isUUID(formData.kebeleId)) payload.kebeleId = formData.kebeleId;
         }
 
-        onSubmit(payload);
+        onSubmit(payload, editData?.id);
         onClose();
-        setFormData({
-            name: '',
-            description: '',
-        });
     };
 
-    const title = type.charAt(0).toUpperCase() + type.slice(1);
+    const title = editData ? `Edit ${type.charAt(0).toUpperCase() + type.slice(1)}` : `Add New ${type.charAt(0).toUpperCase() + type.slice(1)}`;
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
             <DialogTitle sx={{ fontWeight: 700 }}>
-                Add New {title}
+                {title}
                 {parentName && (
                     <Typography variant="body2" color="text.secondary">
                         Under {parentName}
@@ -305,8 +324,8 @@ export function TenantDialog({
             </DialogContent>
             <DialogActions sx={{ p: 2 }}>
                 <Button onClick={onClose} color="inherit">Cancel</Button>
-                <Button onClick={handleFormSubmit} variant="contained" color="primary">
-                    Create {title}
+                <Button onClick={handleFormSubmit} variant="contained" color="primary" disabled={loading}>
+                    {editData ? 'Save Changes' : `Create ${type.charAt(0).toUpperCase() + type.slice(1)}`}
                 </Button>
             </DialogActions>
         </Dialog>
