@@ -17,11 +17,27 @@ import {
     Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { ConfirmDialog } from '@/app/components/common/ConfirmDialog';
+import { useAuthStore } from '@/app/lib/store';
+
+// Roles that can create users
+const CREATE_ROLES = [
+    'SYSTEM_ADMIN',
+    'REGIONAL_ADMIN',
+    'ZONE_ADMIN',
+    'WOREDA_ADMIN',
+    'KEBELE_ADMIN',
+    'INSTITUTION_ADMIN'
+];
 
 export default function UsersManagementPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const user = useAuthStore(state => state.user);
+
+    // Check if user can create other users
+    const canCreate = user?.roles?.some(r => CREATE_ROLES.includes(r.name)) ?? false;
+
     const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false,
         message: '',
@@ -137,7 +153,8 @@ export default function UsersManagementPage() {
                 columns={columns}
                 loading={loading}
                 module="management"
-                onAdd={() => setDialogOpen(true)}
+                onAdd={canCreate ? () => setDialogOpen(true) : undefined}
+                allowedRoles={CREATE_ROLES}
                 onView={() => { }}
                 onDelete={async (user) => {
                     await usersService.remove(user.id);
