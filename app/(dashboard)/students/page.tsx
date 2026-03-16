@@ -8,7 +8,11 @@ import {
     Chip,
     alpha,
     useTheme,
-    Avatar
+    Avatar,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -22,17 +26,47 @@ import { DataTable } from '@/app/components/tables/DataTable';
 import { StudentDialog } from '@/app/components/management/StudentDialog';
 import studentsService, { Student } from '@/app/lib/api/students.service';
 import { useAuthStore } from '@/app/lib/store';
+import { useScopedData } from '@/app/lib/hooks/useScopedData';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
+import { institutionsService } from '@/app/lib/api/institutions.service';
 
 export default function StudentsPage() {
     const theme = useTheme();
     const user = useAuthStore(state => state.user);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [selectedInstitution, setSelectedInstitution] = useState<string>('');
+    const [institutions, setInstitutions] = useState<any[]>([]);
 
     const { data: students, isLoading, refetch } = useQuery({
-        queryKey: ['students'],
-        queryFn: () => studentsService.getAll(),
+        queryKey: ['students', selectedInstitution],
+        queryFn: () => studentsService.getAll({ institutionId: selectedInstitution || undefined }),
     });
+
+    // Fetch institutions for filtering
+    useQuery({
+        queryKey: ['institutions'],
+        queryFn: async () => {
+            const data = await institutionsService.getAll();
+            setInstitutions(data);
+            return data;
+        }
+    });
+
+    // Listen for real-time updates
+    useRealTime('STATS_UPDATED', () => {
+        refetch();
+    });
+
+    // Initialize filter based on user scope
+    useState(() => {
+        if (user?.tenantType === 'school') {
+            setSelectedInstitution(user.tenantId || '');
+        }
+    });
+
+    const scopedStudents = useScopedData(students || [], 'student');
+    const filteredStudents = scopedStudents;
 
     const columns = useMemo<GridColDef[]>(() => [
         {
@@ -40,6 +74,7 @@ export default function StudentsPage() {
             headerName: 'Student',
             flex: 1.2,
             minWidth: 150,
+            valueGetter: (value, row) => row.user?.username || '-',
             renderCell: (params: GridRenderCellParams) => (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Avatar
@@ -52,14 +87,14 @@ export default function StudentsPage() {
                             fontWeight: 700
                         }}
                     >
-                        {params.row.username?.charAt(0).toUpperCase()}
+                        {params.row.user?.username?.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box sx={{ overflow: 'hidden' }}>
                         <Typography variant="body2" fontWeight={600} noWrap>
-                            {params.row.username}
+                            {params.row.user?.username}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: -0.5 }}>
-                            {params.row.email}
+                            {params.row.user?.email}
                         </Typography>
                     </Box>
                 </Box>
@@ -89,7 +124,12 @@ export default function StudentsPage() {
                 />
             )
         },
-        { field: 'phone', headerName: 'Phone', width: 130 },
+        {
+            field: 'phone',
+            headerName: 'Phone',
+            width: 130,
+            valueGetter: (value, row) => row.user?.phone || '-'
+        },
         {
             field: 'institution',
             headerName: 'Institution',
@@ -101,6 +141,7 @@ export default function StudentsPage() {
             field: 'isActive',
             headerName: 'Status',
             width: 100,
+            valueGetter: (value, row) => row.user?.isActive,
             renderCell: (params) => (
                 <Chip
                     label={params.value ? 'Active' : 'Inactive'}
@@ -121,6 +162,15 @@ export default function StudentsPage() {
     const handleEdit = (student: Student) => {
         setSelectedStudent(student);
         setIsDialogOpen(true);
+    };
+
+    const handleDelete = async (student: Student) => {
+        try {
+            await studentsService.delete(student.id);
+            refetch();
+        } catch (error) {
+            console.error('Error deleting student:', error);
+        }
     };
 
 
@@ -164,24 +214,42 @@ export default function StudentsPage() {
 
             <DataTable
                 title="All Students"
-                subtitle={`Showing ${students?.length || 0} students based on your permissions`}
+                subtitle={`Showing ${filteredStudents.length} students`}
                 columns={columns}
-                rows={students || []}
+                rows={filteredStudents}
                 loading={isLoading}
                 module="students"
                 onAdd={handleAdd}
                 onEdit={handleEdit}
                 onView={() => { }}
+                onDelete={handleDelete}
                 onRefresh={refetch}
                 showSearch={true}
                 toolbarActions={
-                    <Button
-                        size="small"
-                        startIcon={<UploadIcon />}
-                        sx={{ borderRadius: 2, fontWeight: 700 }}
-                    >
-                        Import CSV
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        {user?.tenantType !== 'school' && (
+                            <FormControl size="small" sx={{ minWidth: 200 }}>
+                                <InputLabel>Filter by Institution</InputLabel>
+                                <Select
+                                    value={selectedInstitution}
+                                    label="Filter by Institution"
+                                    onChange={(e) => setSelectedInstitution(e.target.value)}
+                                >
+                                    <MenuItem value="">All Institutions</MenuItem>
+                                    {institutions.map(inst => (
+                                        <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
+                        <Button
+                            size="small"
+                            startIcon={<UploadIcon />}
+                            sx={{ borderRadius: 2, fontWeight: 700 }}
+                        >
+                            Import CSV
+                        </Button>
+                    </Box>
                 }
             />
 

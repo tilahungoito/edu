@@ -2,7 +2,7 @@
 
 import { useAuthStore } from '@/app/lib/store';
 
-export function useScopedData<T extends any>(data: T[], type: 'zone' | 'woreda' | 'kebele' | 'school' | 'staff' | 'inventory' | 'budget'): T[] {
+export function useScopedData<T extends any>(data: T[], type: 'zone' | 'woreda' | 'kebele' | 'school' | 'student' | 'staff' | 'inventory' | 'budget'): T[] {
     const user = useAuthStore(state => state.user);
 
     if (!user || user.tenantType === 'bureau') {
@@ -36,6 +36,13 @@ export function useScopedData<T extends any>(data: T[], type: 'zone' | 'woreda' 
                 if (tenantType === 'woreda') return item.woredaId === tenantId;
                 if (tenantType === 'kebele') return item.kebeleId === tenantId;
                 if (tenantType === 'school') return item.id === tenantId;
+                return false;
+
+            case 'student':
+                if (tenantType === 'zone') return item.institution?.kebele?.woreda?.zoneId === tenantId || item.zoneId === tenantId;
+                if (tenantType === 'woreda') return item.institution?.kebele?.woredaId === tenantId || item.woredaId === tenantId;
+                if (tenantType === 'kebele') return item.institution?.kebeleId === tenantId || item.kebeleId === tenantId;
+                if (tenantType === 'school') return item.institutionId === tenantId;
                 return false;
 
             case 'staff':

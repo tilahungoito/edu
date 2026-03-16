@@ -83,9 +83,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
         if (open) {
             if (student) {
                 setFormData({
-                    email: student.email,
-                    username: student.username,
-                    phone: student.phone,
+                    email: student.user?.email || '',
+                    username: student.user?.username || '',
+                    phone: student.user?.phone || '',
                     institutionId: student.institutionId,
                     program: student.program,
                     year: student.year,

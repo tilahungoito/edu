@@ -61,6 +61,10 @@ export const studentsService = {
         const response = await apiClient.patch<Student>(`/students/${id}`, data);
         return response.data;
     },
+    delete: async (id: string) => {
+        const response = await apiClient.delete(`/students/${id}`);
+        return response.data;
+    },
 };
 
 export default studentsService;
