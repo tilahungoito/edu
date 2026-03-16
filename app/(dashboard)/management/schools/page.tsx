@@ -75,8 +75,8 @@ export default function SchoolsPage() {
                         label={info.label}
                         size="small"
                         sx={{
-                            bgcolor: alpha(info.color, 0.1),
-                            color: info.color,
+                            bgcolor: alpha(info.color || '#6366f1', 0.1),
+                            color: info.color || '#6366f1',
                             fontWeight: 800,
                             fontSize: '11px',
                             height: 22,

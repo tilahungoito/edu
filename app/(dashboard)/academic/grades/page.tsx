@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     Box,
     Typography,
     Card,
     CardContent,
-    Grid,
     TextField,
     MenuItem,
     Button,
@@ -16,261 +15,616 @@ import {
     alpha,
     useTheme,
     Alert,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Grid,
+    FormControl,
+    InputLabel,
+    Select,
 } from '@mui/material';
 import {
     Assessment as GradesIcon,
     Save as SaveIcon,
-    Print as PrintIcon,
+    Add as AddIcon,
+    UploadFile as UploadIcon,
+    Info as InfoIcon,
+    CheckCircle as CheckIcon,
     Download as DownloadIcon,
     School as SchoolIcon,
 } from '@mui/icons-material';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import Papa from 'papaparse';
+
 import coursesService from '@/app/lib/api/courses.service';
 import enrollmentsService from '@/app/lib/api/enrollments.service';
-import gradesService, { Grade, Transcript } from '@/app/lib/api/grades.service';
+import assessmentsService, { Assessment, AssessmentScore } from '@/app/lib/api/assessments.service';
+import { gradesService } from '@/app/lib/api/grades.service';
 import { useAuthStore } from '@/app/lib/store';
 
+const ASSESSMENT_TYPES = ['QUIZ', 'ASSIGNMENT', 'HOMEWORK', 'PRACTICAL', 'CLASS_PARTICIPATION', 'MIDTERM_EXAM', 'FINAL_EXAM'];
+
+// --- Helper Functions ---
+const calculateGradeLetter = (totalScore: number) => {
+    if (totalScore >= 90) return 'A+';
+    if (totalScore >= 85) return 'A';
+    if (totalScore >= 80) return 'A-';
+    if (totalScore >= 75) return 'B+';
+    if (totalScore >= 70) return 'B';
+    if (totalScore >= 65) return 'B-';
+    if (totalScore >= 60) return 'C+';
+    if (totalScore >= 50) return 'C';
+    if (totalScore >= 40) return 'D';
+    return 'F';
+};
+
 export default function GradesPage() {
-    const theme = useTheme();
     const user = useAuthStore(state => state.user);
     const isStudent = user?.roles?.some(r => r.name === 'STUDENT');
 
     if (isStudent) {
         return <StudentTranscriptView />;
     }
-
-    return <InstructorGradingView />;
+    return <InstructorGradebookView />;
 }
 
-function InstructorGradingView() {
+// ----------------------------------------------------------------------
+// INSTRUCTOR GRADEBOOK VIEW (ADVANCED DATAGRID)
+// ----------------------------------------------------------------------
+function InstructorGradebookView() {
     const theme = useTheme();
+    const queryClient = useQueryClient();
     const user = useAuthStore(state => state.user);
+    
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-    const [scores, setScores] = useState<Record<string, number>>({});
-    const [remarks, setRemarks] = useState<Record<string, string>>({});
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [createAssessmentOpen, setCreateAssessmentOpen] = useState(false);
+    const [csvImportOpen, setCsvImportOpen] = useState(false);
+    const [importError, setImportError] = useState('');
+    const [importSuccess, setImportSuccess] = useState('');
+    
+    const [scoreEdits, setScoreEdits] = useState<Record<string, Record<string, number>>>({}); // [assessmentId][enrollmentId] = score
+    const [saving, setSaving] = useState(false);
 
-    // Queries
     const isInstructor = user?.roles?.some(r => r.name === 'INSTRUCTOR');
+    const institutionId = user?.tenantType === 'school' ? user?.tenantId : undefined;
 
+    // 1. Fetch Courses
     const { data: courses, isLoading: loadingCourses } = useQuery({
         queryKey: ['courses', user?.id],
         queryFn: () => coursesService.getAll({
             instructorId: isInstructor ? user?.id : undefined,
-            institutionId: user?.tenantType === 'school' ? user?.tenantId : undefined
+            institutionId
         }),
     });
 
+    // 2. Fetch Enrollments (Rows)
     const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
         queryKey: ['enrollments', selectedCourseId],
         queryFn: () => enrollmentsService.getByCourse(selectedCourseId),
         enabled: !!selectedCourseId,
     });
 
-    const { data: existingGrades, isLoading: loadingGrades } = useQuery({
-        queryKey: ['grades', selectedCourseId],
-        queryFn: () => gradesService.getByCourse(selectedCourseId),
+    // 3. Fetch Assessments (Columns)
+    const { data: assessments, isLoading: loadingAssessments } = useQuery({
+        queryKey: ['assessments', selectedCourseId],
+        queryFn: () => assessmentsService.getByCourse(selectedCourseId),
         enabled: !!selectedCourseId,
     });
 
-    // Mutations
-    const saveGradeMutation = useMutation({
-        mutationFn: (data: { enrollmentId: string, score: number, grade: string, remark?: string }) =>
-            gradesService.create(data),
+    // 4. Fetch Scores for all assessments
+    const { data: allScoresArray, isLoading: loadingScores } = useQuery({
+        queryKey: ['assessment-scores-all', selectedCourseId, assessments?.map(a => a.id)],
+        queryFn: async () => {
+            if (!assessments) return [];
+            const results = await Promise.all(
+                assessments.map(a => assessmentsService.getScoresByAssessment(a.id).then(scores => ({ assessmentId: a.id, scores })))
+            );
+            return results;
+        },
+        enabled: !!selectedCourseId && !!assessments,
     });
 
-    const calculateGrade = (score: number) => {
-        if (score >= 90) return 'A+';
-        if (score >= 85) return 'A';
-        if (score >= 80) return 'A-';
-        if (score >= 75) return 'B+';
-        if (score >= 70) return 'B';
-        if (score >= 65) return 'B-';
-        if (score >= 60) return 'C+';
-        if (score >= 50) return 'C';
-        if (score >= 40) return 'D';
-        return 'F';
-    };
-
-    const handleScoreChange = (enrollmentId: string, value: string) => {
-        const numValue = parseFloat(value);
-        if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-            setScores(prev => ({ ...prev, [enrollmentId]: numValue }));
-        } else if (value === '') {
-            setScores(prev => {
-                const newState = { ...prev };
-                delete newState[enrollmentId];
-                return newState;
+    // Build the matrix of original scores
+    const originalScores = useMemo(() => {
+        const matrix: Record<string, Record<string, number>> = {};
+        allScoresArray?.forEach(({ assessmentId, scores }) => {
+            matrix[assessmentId] = {};
+            scores.forEach(s => {
+                matrix[assessmentId][s.enrollmentId] = s.score;
             });
-        }
-    };
+        });
+        return matrix;
+    }, [allScoresArray]);
 
-    const handleSaveAll = async () => {
-        if (!enrollments) return;
+    const isLoadingGrid = loadingEnrollments || loadingAssessments || loadingScores;
 
-        const promises = enrollments.map(enrollment => {
-            const score = scores[enrollment.id];
-            if (score === undefined) return Promise.resolve();
+    // Build Rows for DataGrid
+    const rows = useMemo(() => {
+        if (!enrollments) return [];
+        return enrollments.map(e => {
+            const row: any = {
+                id: e.id,
+                studentName: e.student?.user?.username || 'Unknown',
+                studentId: e.studentId,
+            };
 
-            return saveGradeMutation.mutateAsync({
-                enrollmentId: enrollment.id,
-                score,
-                grade: calculateGrade(score),
-                remark: remarks[enrollment.id]
+            let totalWeighted = 0;
+
+            // Add assessment columns and calculate total
+            assessments?.forEach(a => {
+                const origScore = originalScores[a.id]?.[e.id];
+                const editedScore = scoreEdits[a.id]?.[e.id];
+                const finalScore = editedScore !== undefined ? editedScore : origScore;
+                
+                row[a.id] = finalScore ?? '';
+
+                if (finalScore !== undefined && typeof finalScore === 'number') {
+                    // weight is percentage (e.g. 10 for 10%)
+                    const weightFactor = a.weight / 100;
+                    // convert score to percentage of maxScore, then apply weight
+                    const percentage = (finalScore / a.maxScore) * 100;
+                    totalWeighted += (percentage * weightFactor);
+                }
+            });
+
+            row.totalScore = totalWeighted;
+            row.letterGrade = calculateGradeLetter(totalWeighted);
+
+            return row;
+        });
+    }, [enrollments, assessments, originalScores, scoreEdits]);
+
+    // Build Columns for DataGrid
+    const columns = useMemo<GridColDef[]>(() => {
+        const cols: GridColDef[] = [
+            {
+                field: 'studentName',
+                headerName: 'Student Name',
+                width: 200,
+                renderCell: (params: GridRenderCellParams) => (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, height: '100%' }}>
+                        <Avatar sx={{ width: 28, height: 28, fontSize: '12px', bgcolor: theme.palette.primary.main }}>
+                            {String(params.value).charAt(0)}
+                        </Avatar>
+                        <Typography variant="body2" fontWeight={600}>{params.value}</Typography>
+                    </Box>
+                )
+            },
+            {
+                field: 'studentId',
+                headerName: 'Student ID',
+                width: 150,
+                renderCell: (params: GridRenderCellParams) => (
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                        {String(params.value).substring(0, 13).toUpperCase()}
+                    </Typography>
+                )
+            }
+        ];
+
+        // Dynamic columns for assessments
+        assessments?.forEach(a => {
+            cols.push({
+                field: a.id,
+                headerName: `${a.title} (${a.weight}%)`,
+                width: 140,
+                editable: true,
+                type: 'number',
+                valueParser: (value) => {
+                    if (value === '' || value === null) return '';
+                    const parsed = parseFloat(value);
+                    if (isNaN(parsed)) return '';
+                    return Math.min(Math.max(parsed, 0), a.maxScore); // clamp between 0 and maxScore
+                },
+                renderHeader: () => (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                        <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: '13px' }}>{a.title}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px' }}>
+                            Out of {a.maxScore} • {a.weight}%
+                        </Typography>
+                    </Box>
+                ),
             });
         });
 
+        // Computed columns
+        cols.push({
+            field: 'totalScore',
+            headerName: 'Total (100%)',
+            width: 110,
+            type: 'number',
+            valueFormatter: (value: number) => value.toFixed(1) + '%',
+            renderCell: (params: GridRenderCellParams) => (
+                <Typography variant="body2" fontWeight={800} color={params.value >= 50 ? 'success.main' : 'error.main'}>
+                    {Number(params.value).toFixed(1)}%
+                </Typography>
+            )
+        });
+
+        cols.push({
+            field: 'letterGrade',
+            headerName: 'Grade',
+            width: 80,
+            align: 'center',
+            headerAlign: 'center',
+            renderCell: (params: GridRenderCellParams) => (
+                <Chip 
+                    label={params.value} 
+                    size="small"
+                    sx={{
+                        fontWeight: 800,
+                        bgcolor: ['A+','A','A-'].includes(params.value) ? alpha(theme.palette.success.main, 0.1) : 
+                                 ['B+','B','B-'].includes(params.value) ? alpha(theme.palette.info.main, 0.1) :
+                                 ['C+','C'].includes(params.value) ? alpha(theme.palette.warning.main, 0.1) :
+                                 alpha(theme.palette.error.main, 0.1),
+                        color: ['A+','A','A-'].includes(params.value) ? theme.palette.success.main : 
+                               ['B+','B','B-'].includes(params.value) ? theme.palette.info.main :
+                               ['C+','C'].includes(params.value) ? theme.palette.warning.main :
+                               theme.palette.error.main,
+                    }}
+                />
+            )
+        });
+
+        return cols;
+    }, [assessments, theme]);
+
+    // Handle inline edit
+    const processRowUpdate = (newRow: any, oldRow: any) => {
+        let hasChanges = false;
+        const newScoreEdits = { ...scoreEdits };
+
+        assessments?.forEach(a => {
+            if (newRow[a.id] !== oldRow[a.id]) {
+                if (!newScoreEdits[a.id]) newScoreEdits[a.id] = {};
+                newScoreEdits[a.id][newRow.id] = newRow[a.id];
+                hasChanges = true;
+            }
+        });
+
+        if (hasChanges) {
+            setScoreEdits(newScoreEdits);
+        }
+
+        return newRow;
+    };
+
+    // Save All Changes
+    const handleSave = async () => {
+        setSaving(true);
         try {
+            const promises: Promise<any>[] = [];
+            
+            for (const [assessmentId, enrollmentScores] of Object.entries(scoreEdits)) {
+                const bulkData = [] as any[];
+                for (const [enrollmentId, score] of Object.entries(enrollmentScores)) {
+                    if (score !== undefined && score !== null && String(score) !== '') {
+                        bulkData.push({ enrollmentId, score: Number(score) });
+                    }
+                }
+                
+                if (bulkData.length > 0) {
+                    promises.push(assessmentsService.bulkRecordScores(assessmentId, { scores: bulkData }));
+                }
+            }
+            
             await Promise.all(promises);
-            setSuccessMessage('Grades successfully submitted.');
-            setTimeout(() => setSuccessMessage(null), 5000);
-        } catch (error) {
-            console.error('Failed to save grades:', error);
+            setScoreEdits({});
+            queryClient.invalidateQueries({ queryKey: ['assessment-scores-all'] });
+            setImportSuccess('All grades saved successfully!');
+            setTimeout(() => setImportSuccess(''), 4000);
+        } catch (e) {
+            setImportError('Failed to save grades.');
+        } finally {
+            setSaving(false);
         }
     };
 
     return (
-        <Box className="animate-fade-in" sx={{ p: { xs: 2, md: 3 } }}>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box className="animate-fade-in" sx={{ p: { xs: 2, md: 3 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Header & Actions */}
+            <Box sx={{ mb: 3, display: 'flex', flexDirection: { xs: 'column', xl: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', xl: 'flex-end' }, gap: 2 }}>
                 <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-                        <GradesIcon color="primary" sx={{ fontSize: 32 }} />
+                        <Box sx={{ p: 1, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, display: 'flex' }}>
+                            <GradesIcon />
+                        </Box>
                         <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1 }}>
-                            Grade Management
+                            Professional Gradebook
                         </Typography>
                     </Box>
-                    <Typography variant="body2" color="text.secondary">
-                        Enter and manage student grades for your courses.
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                        Manage assessments, record scores, and compute total grades
                     </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
                     <TextField
                         select
                         size="small"
-                        label="Course"
+                        label="Select Course"
                         value={selectedCourseId}
-                        onChange={(e) => setSelectedCourseId(e.target.value)}
-                        sx={{ minWidth: 250 }}
+                        onChange={(e) => {
+                            setSelectedCourseId(e.target.value);
+                            setScoreEdits({});
+                        }}
+                        sx={{ minWidth: 240, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
                     >
                         {!courses || courses.length === 0 ? (
-                            <MenuItem value="" disabled><em>No courses available</em></MenuItem>
+                            <MenuItem value="" disabled><em>No courses assigned</em></MenuItem>
                         ) : (
-                            courses.map(c => (
-                                <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>
+                            courses.map((c: any) => (
+                                <MenuItem key={c.id} value={c.id}>
+                                    <Typography variant="body2" fontWeight={600}>{c.name}</Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>({c.code})</Typography>
+                                </MenuItem>
                             ))
                         )}
                     </TextField>
-                    <Button
-                        variant="contained"
-                        startIcon={<SaveIcon />}
-                        disabled={!selectedCourseId || loadingEnrollments || saveGradeMutation.isPending}
-                        onClick={handleSaveAll}
-                        sx={{ borderRadius: 2, fontWeight: 700 }}
-                    >
-                        Save All
-                    </Button>
+
+                    {selectedCourseId && (
+                        <>
+                            <Button 
+                                variant="outlined" 
+                                startIcon={<AddIcon />} 
+                                onClick={() => setCreateAssessmentOpen(true)}
+                                sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
+                            >
+                                New Assessment
+                            </Button>
+                            <Button 
+                                variant="outlined" 
+                                startIcon={<UploadIcon />} 
+                                onClick={() => setCsvImportOpen(true)}
+                                sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
+                            >
+                                Import CSV
+                            </Button>
+                            <Button 
+                                variant="contained" 
+                                startIcon={<SaveIcon />}
+                                disabled={Object.keys(scoreEdits).length === 0 || saving}
+                                onClick={handleSave}
+                                color="success"
+                                sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3, boxShadow: `0 8px 16px ${alpha(theme.palette.success.main, 0.25)}` }}
+                            >
+                                {saving ? 'Saving...' : 'Save Grades'}
+                            </Button>
+                        </>
+                    )}
                 </Box>
             </Box>
 
-            {successMessage && <Alert severity="success" sx={{ mb: 3 }}>{successMessage}</Alert>}
+            {importSuccess && <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>{importSuccess}</Alert>}
+            {importError && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{importError}</Alert>}
 
-            {!selectedCourseId ? (
-                <Box sx={{
-                    height: 400, display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center',
-                    border: `2px dashed ${alpha(theme.palette.divider, 0.1)}`,
-                    borderRadius: 4, bgcolor: alpha(theme.palette.divider, 0.02)
-                }}>
-                    <GradesIcon sx={{ fontSize: 64, color: theme.palette.text.disabled, mb: 2, opacity: 0.3 }} />
-                    <Typography color="text.secondary" fontWeight={700}>Select a course to manage grades</Typography>
-                </Box>
-            ) : loadingEnrollments ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
-            ) : (
-                <TableContainer component={Paper} sx={{ borderRadius: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.05)', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-                    <Table>
-                        <TableHead>
-                            <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
-                                <TableCell sx={{ fontWeight: 800 }}>Student</TableCell>
-                                <TableCell sx={{ fontWeight: 800 }}>Student ID</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 800 }}>Score (0-100)</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 800 }}>Grade</TableCell>
-                                <TableCell sx={{ fontWeight: 800 }}>Remarks</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 800 }}>Status</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {enrollments?.map((enrollment) => {
-                                const currentScore = scores[enrollment.id];
-                                const existingGrade = existingGrades?.find(g => g.enrollmentId === enrollment.id);
+            {/* DataGrid Area */}
+            <Card elevation={0} sx={{ flex: 1, minHeight: 600, border: `1px solid ${alpha(theme.palette.divider, 0.3)}`, borderRadius: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {!selectedCourseId ? (
+                    <Box sx={{ m: 'auto', textAlign: 'center', p: 4 }}>
+                        <SchoolIcon sx={{ fontSize: 64, color: alpha(theme.palette.text.secondary, 0.2), mb: 2 }} />
+                        <Typography variant="h6" color="text.secondary" fontWeight={700}>Select a course to begin grading</Typography>
+                    </Box>
+                ) : (
+                    <DataGrid
+                        rows={rows}
+                        columns={columns}
+                        loading={isLoadingGrid}
+                        processRowUpdate={processRowUpdate}
+                        onProcessRowUpdateError={(error) => console.error(error)}
+                        slots={{ toolbar: GridToolbar }}
+                        disableRowSelectionOnClick
+                        density="comfortable"
+                        sx={{
+                            border: 'none',
+                            '& .MuiDataGrid-columnHeaders': {
+                                bgcolor: alpha(theme.palette.primary.main, 0.02),
+                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                            },
+                            '& .MuiDataGrid-cell': {
+                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                            },
+                            '& .MuiDataGrid-cell--editable': {
+                                bgcolor: alpha(theme.palette.action.hover, 0.05),
+                                '&:hover': {
+                                    bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                },
+                            }
+                        }}
+                    />
+                )}
+            </Card>
 
-                                return (
-                                    <TableRow key={enrollment.id} sx={{ '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.01) } }}>
-                                        <TableCell>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                                <Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem', bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}>
-                                                    {enrollment.student?.user?.username?.charAt(0) || '?'}
-                                                </Avatar>
-                                                <Typography variant="body2" fontWeight={600}>
-                                                    {enrollment.student?.user?.username || 'Unknown Student'}
-                                                </Typography>
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-                                                {enrollment.studentId.substring(0, 13).toUpperCase()}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <TextField
-                                                size="small"
-                                                type="number"
-                                                value={currentScore !== undefined ? currentScore : (existingGrade?.score || '')}
-                                                onChange={(e) => handleScoreChange(enrollment.id, e.target.value)}
-                                                sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 700 } }}
-                                                InputProps={{ inputProps: { min: 0, max: 100 } }}
-                                            />
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Typography variant="body2" fontWeight={800} color="primary">
-                                                {currentScore !== undefined ? calculateGrade(currentScore) : (existingGrade?.grade || '-')}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <TextField
-                                                size="small"
-                                                fullWidth
-                                                placeholder="Add remark..."
-                                                value={remarks[enrollment.id] || (existingGrade?.remark || '')}
-                                                onChange={(e) => setRemarks(prev => ({ ...prev, [enrollment.id]: e.target.value }))}
-                                                sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
-                                            />
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            {existingGrade ? (
-                                                <Chip label="Submitted" size="small" color="success" variant="soft" />
-                                            ) : (
-                                                <Chip label="Pending" size="small" color="warning" variant="soft" />
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            )}
+            {/* Dialogs */}
+            <CreateAssessmentDialog 
+                open={createAssessmentOpen} 
+                onClose={() => setCreateAssessmentOpen(false)} 
+                courseId={selectedCourseId}
+                institutionId={institutionId || ''}
+            />
+
+            <CsvImportDialog 
+                open={csvImportOpen}
+                onClose={() => setCsvImportOpen(false)}
+                assessments={assessments || []}
+                enrollments={enrollments || []}
+                onImport={(edits) => {
+                    setScoreEdits(prev => {
+                        const next = { ...prev };
+                        for (const [aId, aEdits] of Object.entries(edits)) {
+                            if (!next[aId]) next[aId] = {};
+                            next[aId] = { ...next[aId], ...aEdits };
+                        }
+                        return next;
+                    });
+                    setImportSuccess('CSV parsed successfully. Review changes and click "Save Changes".');
+                    setCsvImportOpen(false);
+                }}
+            />
         </Box>
     );
 }
 
+// ----------------------------------------------------------------------
+// NEW ASSESSMENT DIALOG
+// ----------------------------------------------------------------------
+function CreateAssessmentDialog({ open, onClose, courseId, institutionId }: { open: boolean, onClose: () => void, courseId: string, institutionId: string }) {
+    const queryClient = useQueryClient();
+    const [title, setTitle] = useState('');
+    const [type, setType] = useState('QUIZ');
+    const [maxScore, setMaxScore] = useState(10);
+    const [weight, setWeight] = useState(10);
+    const [loading, setLoading] = useState(false);
+
+    const handleCreate = async () => {
+        if (!title || !courseId) return;
+        setLoading(true);
+        try {
+            await assessmentsService.create({
+                title, type: type as any, maxScore, weight, courseId, institutionId: institutionId || undefined
+            } as any);
+            queryClient.invalidateQueries({ queryKey: ['assessments', courseId] });
+            onClose();
+            setTitle('');
+        } catch (e) {
+            console.error('Failed to create assessment:', e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
+            <DialogTitle sx={{ fontWeight: 800 }}>Create New Assessment</DialogTitle>
+            <DialogContent>
+                <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                    <Grid size={{ xs: 12, sm: 8 }}>
+                        <TextField fullWidth label="Assessment Title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Midterm Exam" />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                        <FormControl fullWidth>
+                            <InputLabel>Type</InputLabel>
+                            <Select value={type} label="Type" onChange={e => setType(e.target.value as string)}>
+                                {ASSESSMENT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                        <TextField fullWidth type="number" label="Max Score" value={maxScore} onChange={e => setMaxScore(Number(e.target.value))} helperText="Raw max score (e.g. 100)" />
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                        <TextField fullWidth type="number" label="Weight (%)" value={weight} onChange={e => setWeight(Number(e.target.value))} helperText="Contribution to final grade" />
+                    </Grid>
+                </Grid>
+            </DialogContent>
+            <DialogActions sx={{ p: 2.5 }}>
+                <Button onClick={onClose} sx={{ borderRadius: 2 }}>Cancel</Button>
+                <Button variant="contained" onClick={handleCreate} disabled={loading || !title} sx={{ borderRadius: 2 }}>
+                    {loading ? 'Creating...' : 'Create Assessment'}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
+// ----------------------------------------------------------------------
+// CSV IMPORT DIALOG
+// ----------------------------------------------------------------------
+function CsvImportDialog({ open, onClose, assessments, enrollments, onImport }: { open: boolean, onClose: () => void, assessments: Assessment[], enrollments: any[], onImport: (edits: Record<string, Record<string, number>>) => void }) {
+    const theme = useTheme();
+    const [file, setFile] = useState<File | null>(null);
+    const [error, setError] = useState('');
+
+    const handleImport = () => {
+        if (!file) return;
+        setError('');
+        
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                const edits: Record<string, Record<string, number>> = {};
+                
+                // Map Assessment Titles -> Assessment IDs
+                const titleToId = {} as Record<string, string>;
+                assessments.forEach(a => titleToId[a.title.trim().toLowerCase()] = a.id);
+
+                let matchedStudents = 0;
+
+                results.data.forEach((row: any) => {
+                    // Match Student by ID
+                    const studentId = row['StudentId'] || row['student_id'] || row['StudentID'] || row['ID'];
+                    if (!studentId) return;
+
+                    // Find enrollment for student
+                    const enrollment = enrollments.find(e => String(e.studentId).toLowerCase().includes(String(studentId).toLowerCase()));
+                    if (!enrollment) return;
+                    matchedStudents++;
+
+                    // Check columns against assessment titles
+                    Object.keys(row).forEach(colName => {
+                        const normalizedCol = colName.trim().toLowerCase();
+                        if (titleToId[normalizedCol]) {
+                            const aId = titleToId[normalizedCol];
+                            const score = parseFloat(row[colName]);
+                            if (!isNaN(score)) {
+                                if (!edits[aId]) edits[aId] = {};
+                                edits[aId][enrollment.id] = score;
+                            }
+                        }
+                    });
+                });
+
+                if (matchedStudents === 0) {
+                    setError('No students matched. Make sure your CSV has a "StudentId" column matching the IDs in the system.');
+                    return;
+                }
+                onImport(edits);
+            },
+            error: (err) => {
+                setError('Failed to parse CSV: ' + err.message);
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
+            <DialogTitle sx={{ fontWeight: 800 }}>Import Grades via CSV</DialogTitle>
+            <DialogContent>
+                <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+                    Upload a CSV file in <strong>Wide Format</strong>.
+                    <br/><br/>
+                    1. Must contain a column named <strong>StudentId</strong>.<br/>
+                    2. Add columns corresponding exactly to the <strong>Assessment Titles</strong> you created.<br/>
+                    <br/>
+                    <em>Example:</em><br/>
+                    <code>StudentId, Quiz 1, Midterm Exam</code><br/>
+                    <code>STD-001, 8.5, 45</code>
+                </Alert>
+
+                <Box sx={{ border: `2px dashed ${alpha(theme.palette.primary.main, 0.3)}`, borderRadius: 3, p: 3, textAlign: 'center', bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                    <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ display: 'none' }} id="csv-upload" />
+                    <label htmlFor="csv-upload">
+                        <Button variant="outlined" component="span" startIcon={<UploadIcon />} sx={{ borderRadius: 2 }}>
+                            {file ? file.name : 'Select CSV File'}
+                        </Button>
+                    </label>
+                </Box>
+                {error && <Typography color="error" variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>{error}</Typography>}
+            </DialogContent>
+            <DialogActions sx={{ p: 2.5 }}>
+                <Button onClick={onClose} sx={{ borderRadius: 2 }}>Cancel</Button>
+                <Button variant="contained" onClick={handleImport} disabled={!file} sx={{ borderRadius: 2 }}>Import Data</Button>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
+// ----------------------------------------------------------------------
+// STUDENT TRANSCRIPT VIEW (UNCHANGED)
+// ----------------------------------------------------------------------
 function StudentTranscriptView() {
     const theme = useTheme();
     const user = useAuthStore(state => state.user);
@@ -298,14 +652,13 @@ function StudentTranscriptView() {
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
-                    <Button variant="soft" startIcon={<PrintIcon />}>Print</Button>
-                    <Button variant="contained" startIcon={<DownloadIcon />}>Download PDF</Button>
+                    <Button variant="outlined" sx={{ borderRadius: 2 }} startIcon={<DownloadIcon />}>Download PDF</Button>
                 </Box>
             </Box>
 
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 4 }}>
-                    <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                    <Card elevation={0} sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                         <CardContent>
                             <Box sx={{ textAlign: 'center', mb: 3 }}>
                                 <Avatar sx={{ width: 80, height: 80, mx: 'auto', mb: 2, bgcolor: theme.palette.primary.main, fontSize: '2rem' }}>
@@ -314,66 +667,40 @@ function StudentTranscriptView() {
                                 <Typography variant="h6" fontWeight={800}>{user?.firstName} {user?.lastName}</Typography>
                                 <Typography variant="body2" color="text.secondary">Student ID: {user?.id.substring(0, 13).toUpperCase()}</Typography>
                             </Box>
-
                             <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.04), p: 2, borderRadius: 3, textAlign: 'center' }}>
                                 <Typography variant="overline" color="text.secondary" fontWeight={800}>Cumulative GPA</Typography>
                                 <Typography variant="h3" color="primary" fontWeight={900}>{transcript?.gpa?.toFixed(2) || '0.00'}</Typography>
                             </Box>
-
-                            <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2" color="text.secondary">Institution:</Typography>
-                                    <Typography variant="body2" fontWeight={700}>{user?.tenantName}</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2" color="text.secondary">Courses Completed:</Typography>
-                                    <Typography variant="body2" fontWeight={700}>{transcript?.results?.length || 0}</Typography>
-                                </Box>
-                            </Box>
                         </CardContent>
                     </Card>
                 </Grid>
-
                 <Grid size={{ xs: 12, md: 8 }}>
-                    <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-                        <TableContainer>
-                            <Table>
-                                <TableHead>
-                                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
-                                        <TableCell sx={{ fontWeight: 800 }}>Course</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 800 }}>Credits</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 800 }}>Grade</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 800 }}>Status</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
+                    <Card elevation={0} sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                        <CardContent sx={{ p: 0 }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                        <th style={{ padding: 16 }}>Course</th>
+                                        <th style={{ padding: 16 }}>Credits</th>
+                                        <th style={{ padding: 16 }}>Grade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                     {transcript?.results?.map((result, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>
+                                        <tr key={index} style={{ borderBottom: index < (transcript.results?.length ?? 0) - 1 ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : 'none' }}>
+                                            <td style={{ padding: 16 }}>
                                                 <Typography variant="subtitle2" fontWeight={700}>{result.courseName}</Typography>
                                                 <Typography variant="caption" color="text.secondary">{result.courseCode}</Typography>
-                                            </TableCell>
-                                            <TableCell align="center">{result.credits}</TableCell>
-                                            <TableCell align="center">
-                                                <Typography variant="body2" fontWeight={800} color="secondary">
-                                                    {result.grade}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Chip label="Passed" size="small" variant="soft" color="success" />
-                                            </TableCell>
-                                        </TableRow>
+                                            </td>
+                                            <td style={{ padding: 16 }}>{result.credits}</td>
+                                            <td style={{ padding: 16 }}>
+                                                <Typography variant="body2" fontWeight={800} color="secondary">{result.grade}</Typography>
+                                            </td>
+                                        </tr>
                                     ))}
-                                    {(!transcript?.results || transcript.results.length === 0) && (
-                                        <TableRow>
-                                            <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                                                <Typography color="text.secondary">No results available yet.</Typography>
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                </tbody>
+                            </table>
+                        </CardContent>
                     </Card>
                 </Grid>
             </Grid>

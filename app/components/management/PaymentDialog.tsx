@@ -153,7 +153,7 @@ export const PaymentDialog = ({ open, onClose, onSuccess }: PaymentDialogProps) 
                                 ) : (
                                     students?.map(s => (
                                         <MenuItem key={s.id} value={s.id}>
-                                            {s.username} ({s.email})
+                                            {s.user?.username} ({s.user?.email})
                                         </MenuItem>
                                     ))
                                 )}
