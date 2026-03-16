@@ -36,6 +36,19 @@ export default function SchoolsPage() {
     const user = useAuthStore(state => state.user);
     const canCreate = user?.roles?.some(r => CREATE_ROLES.includes(r.name)) ?? false;
 
+    // Initialize filters based on user restricted scope
+    useEffect(() => {
+        if (user) {
+            if (user.tenantType === 'zone') {
+                setSelectedZone(user.tenantId || '');
+            } else if (user.tenantType === 'woreda') {
+                // If woreda admin, they might not have zoneId directly available
+                // but fetchData will handle it if we have selectedWoreda
+                setSelectedWoreda(user.tenantId || '');
+            }
+        }
+    }, [user]);
+
     const columns: GridColDef<Institution>[] = [
         { field: 'name', headerName: 'School Name', flex: 1, minWidth: 200 },
         {
@@ -111,12 +124,25 @@ export default function SchoolsPage() {
         fetchData();
     });
 
-    const scopedSchools = useScopedData(schools, 'school');
+    // Flatten data for useScopedData to work correctly
+    const flattenedSchools = schools.map(school => ({
+        ...school,
+        kebeleId: school.kebele?.id,
+        woredaId: school.kebele?.woredaId,
+        zoneId: school.kebele?.woreda?.zoneId
+    }));
+
+    const scopedSchools = useScopedData(flattenedSchools, 'school');
     const availableWoredas = woredas;
     const filteredSchools = scopedSchools;
 
     const handleAddSchool = async (data: any) => {
         try {
+            // Ensure kebeleId is present if it's a school creation
+            if (!data.kebeleId && user?.tenantType === 'kebele') {
+                data.kebeleId = user.tenantId;
+            }
+
             if (editingSchool) {
                 await institutionsService.update(editingSchool.id, data);
             } else {
@@ -143,6 +169,41 @@ export default function SchoolsPage() {
         setEditingSchool(school);
         setDialogOpen(true);
     };
+
+    // Determine parent context for TenantDialog
+    const getParentContext = () => {
+        if (selectedWoreda) {
+            return {
+                type: 'woreda' as const,
+                id: selectedWoreda,
+                name: woredas.find(w => w.id === selectedWoreda)?.name
+            };
+        }
+        if (user?.tenantType === 'woreda') {
+            return {
+                type: 'woreda' as const,
+                id: user.tenantId,
+                name: user.tenantName
+            };
+        }
+        if (selectedZone) {
+            return {
+                type: 'zone' as const,
+                id: selectedZone,
+                name: zones.find(z => z.id === selectedZone)?.name
+            };
+        }
+        if (user?.tenantType === 'zone') {
+            return {
+                type: 'zone' as const,
+                id: user.tenantId,
+                name: user.tenantName
+            };
+        }
+        return { type: undefined, id: undefined, name: undefined };
+    };
+
+    const parentContext = getParentContext();
 
     return (
         <Box className="animate-fade-in" sx={{ p: { xs: 2.5, md: 3, lg: 5 }, maxWidth: '100%', overflow: 'hidden' }}>
@@ -179,36 +240,40 @@ export default function SchoolsPage() {
                 checkboxSelection
                 toolbarActions={
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
-                            <InputLabel>Zone</InputLabel>
-                            <Select
-                                value={selectedZone}
-                                label="Zone"
-                                onChange={(e) => {
-                                    setSelectedZone(e.target.value);
-                                    setSelectedWoreda('');
-                                }}
-                            >
-                                <MenuItem value="">All Zones</MenuItem>
-                                {zones.map(zone => (
-                                    <MenuItem key={zone.id} value={zone.id}>{zone.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
-                            <InputLabel>Woreda</InputLabel>
-                            <Select
-                                value={selectedWoreda}
-                                label="Woreda"
-                                onChange={(e) => setSelectedWoreda(e.target.value)}
-                                disabled={!selectedZone}
-                            >
-                                <MenuItem value="">All Woredas</MenuItem>
-                                {availableWoredas.map(woreda => (
-                                    <MenuItem key={woreda.id} value={woreda.id}>{woreda.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        {user?.tenantType === 'bureau' && (
+                            <FormControl size="small" sx={{ minWidth: 150 }}>
+                                <InputLabel>Zone</InputLabel>
+                                <Select
+                                    value={selectedZone}
+                                    label="Zone"
+                                    onChange={(e) => {
+                                        setSelectedZone(e.target.value);
+                                        setSelectedWoreda('');
+                                    }}
+                                >
+                                    <MenuItem value="">All Zones</MenuItem>
+                                    {zones.map(zone => (
+                                        <MenuItem key={zone.id} value={zone.id}>{zone.name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
+                        {(user?.tenantType === 'bureau' || user?.tenantType === 'zone') && (
+                            <FormControl size="small" sx={{ minWidth: 150 }}>
+                                <InputLabel>Woreda</InputLabel>
+                                <Select
+                                    value={selectedWoreda}
+                                    label="Woreda"
+                                    onChange={(e) => setSelectedWoreda(e.target.value)}
+                                    disabled={!selectedZone && user?.tenantType === 'bureau'}
+                                >
+                                    <MenuItem value="">All Woredas</MenuItem>
+                                    {availableWoredas.map(woreda => (
+                                        <MenuItem key={woreda.id} value={woreda.id}>{woreda.name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        )}
                     </Box>
                 }
             />
@@ -222,13 +287,9 @@ export default function SchoolsPage() {
                 onSubmit={handleAddSchool}
                 type="school"
                 editData={editingSchool}
-                parentType={selectedWoreda || editingSchool?.kebele?.woredaId ? 'woreda' : 'zone'}
-                parentId={selectedWoreda || editingSchool?.kebele?.woredaId || selectedZone || editingSchool?.kebele?.woreda?.zoneId || undefined}
-                parentName={selectedWoreda
-                    ? woredas.find(w => w.id === selectedWoreda)?.name
-                    : (editingSchool?.kebele?.woreda?.name || (selectedZone
-                        ? zones.find(z => z.id === selectedZone)?.name
-                        : undefined))}
+                parentType={editingSchool?.kebele?.woredaId ? 'woreda' : parentContext.type}
+                parentId={editingSchool?.kebele?.woredaId || parentContext.id}
+                parentName={editingSchool?.kebele?.woreda?.name || parentContext.name}
             />
         </Box>
     );

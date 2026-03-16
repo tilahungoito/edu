@@ -10,6 +10,7 @@ import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
+import { useAuthStore } from '@/app/lib/store';
 
 const woredaColumns: GridColDef[] = [
     { field: 'name', headerName: 'Woreda Name', flex: 1, minWidth: 150 },
@@ -39,6 +40,15 @@ export default function WoredasPage() {
     const [zones, setZones] = useState<any[]>([]);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingWoreda, setEditingWoreda] = useState<any>(null);
+
+    const user = useAuthStore(state => state.user);
+
+    // Initialize filter based on user restricted scope
+    useEffect(() => {
+        if (user && user.tenantType === 'zone') {
+            setSelectedZone(user.tenantId || '');
+        }
+    }, [user]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -132,19 +142,21 @@ export default function WoredasPage() {
                 }}
                 checkboxSelection
                 toolbarActions={
-                    <FormControl size="small" sx={{ minWidth: 180 }}>
-                        <InputLabel>Filter by Zone</InputLabel>
-                        <Select
-                            value={selectedZone}
-                            label="Filter by Zone"
-                            onChange={(e) => setSelectedZone(e.target.value)}
-                        >
-                            <MenuItem value="">All Zones</MenuItem>
-                            {zones.map(zone => (
-                                <MenuItem key={zone.id} value={zone.id}>{zone.name}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                    user?.tenantType === 'bureau' ? (
+                        <FormControl size="small" sx={{ minWidth: 180 }}>
+                            <InputLabel>Filter by Zone</InputLabel>
+                            <Select
+                                value={selectedZone}
+                                label="Filter by Zone"
+                                onChange={(e) => setSelectedZone(e.target.value)}
+                            >
+                                <MenuItem value="">All Zones</MenuItem>
+                                {zones.map(zone => (
+                                    <MenuItem key={zone.id} value={zone.id}>{zone.name}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    ) : null
                 }
             />
 
@@ -158,8 +170,8 @@ export default function WoredasPage() {
                 type="woreda"
                 editData={editingWoreda}
                 parentType="zone"
-                parentId={selectedZone || editingWoreda?.zoneId || undefined}
-                parentName={selectedZone ? zones.find(z => z.id === selectedZone)?.name : (editingWoreda?.zoneId ? zones.find(z => z.id === editingWoreda.zoneId)?.name : undefined)}
+                parentId={selectedZone || editingWoreda?.zoneId || (user?.tenantType === 'zone' ? user.tenantId : undefined)}
+                parentName={selectedZone ? zones.find(z => z.id === selectedZone)?.name : (editingWoreda?.zoneId ? zones.find(z => z.id === editingWoreda.zoneId)?.name : (user?.tenantType === 'zone' ? user.tenantName : undefined))}
             />
         </Box>
     );

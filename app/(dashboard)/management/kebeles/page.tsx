@@ -8,6 +8,7 @@ import { kebelesService, Kebele } from '@/app/lib/api/kebeles.service';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 import { useAuthStore } from '@/app/lib/store';
+import { useScopedData } from '@/app/lib/hooks/useScopedData';
 
 const kebeleColumns: GridColDef<Kebele>[] = [
     { field: 'name', headerName: 'Kebele Name', flex: 1, minWidth: 200 },
@@ -60,6 +61,8 @@ export default function KebelesPage() {
         fetchData();
     });
 
+    const scopedKebeles = useScopedData(kebeles, 'kebele');
+
     const handleAddKebele = async (data: any) => {
         try {
             if (editingKebele) {
@@ -102,15 +105,16 @@ export default function KebelesPage() {
 
             <DataTable
                 title="Kebeles"
-                subtitle={`${kebeles.length} kebeles in system`}
+                subtitle={`${scopedKebeles.length} kebeles in system`}
                 columns={kebeleColumns}
-                rows={kebeles}
+                rows={scopedKebeles}
                 loading={loading}
                 module="management"
                 onAdd={canCreate ? () => {
                     setEditingKebele(null);
                     setDialogOpen(true);
                 } : undefined}
+                allowedRoles={CREATE_ROLES}
                 onEdit={handleEditKebele}
                 onView={(kebele) => { console.log('View kebele:', kebele); }}
                 onDelete={handleDeleteKebele}
@@ -128,8 +132,8 @@ export default function KebelesPage() {
                 type="kebele"
                 editData={editingKebele}
                 parentType="woreda"
-                parentId={editingKebele?.woredaId || undefined}
-                parentName={editingKebele?.woredaName}
+                parentId={editingKebele?.woredaId || (user?.tenantType === 'woreda' ? user.tenantId : undefined)}
+                parentName={editingKebele?.woredaName || (user?.tenantType === 'woreda' ? user.tenantName : undefined)}
             />
         </Box>
     );
