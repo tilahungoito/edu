@@ -11,49 +11,85 @@ import {
 } from '@mui/icons-material';
 import { KPIGrid, AnalyticsChart } from '@/app/components/analytics';
 import { useAuthStore } from '@/app/lib/store';
-import { KPIData } from '@/app/lib/types';
 import { UserDialog } from '@/app/components/management/UserDialog';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardService, DashboardStats } from '@/app/lib/api/dashboard.service';
+import { regionsService } from '@/app/lib/api/regions.service';
+import { systemHealthService } from '@/app/lib/api/system-health.service';
+import { CircularProgress, Alert } from '@mui/material';
 
 export default function SystemAdminDashboard() {
     const { user } = useAuthStore();
     const [openUserDialog, setOpenUserDialog] = React.useState(false);
 
-    const kpis: KPIData[] = [
+    // Fetch System Stats
+    const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+        queryKey: ['dashboard', 'system-stats'],
+        queryFn: () => dashboardService.getStats() as Promise<DashboardStats>,
+    });
+
+    // Fetch Regions for distribution data
+    const { data: regions, isLoading: regionsLoading } = useQuery({
+        queryKey: ['regions', 'all'],
+        queryFn: () => regionsService.getAll(),
+    });
+
+    // Fetch System Health for uptime
+    const { data: health } = useQuery({
+        queryKey: ['system', 'health'],
+        queryFn: () => systemHealthService.getHealth(),
+        refetchInterval: 30000, // Refresh every 30s
+    });
+
+    if (statsLoading || regionsLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (statsError) {
+        return (
+            <Alert severity="error" sx={{ mb: 2 }}>
+                Error loading dashboard statistics. Please try again later.
+            </Alert>
+        );
+    }
+
+    const kpis = [
         {
             label: 'Active Regions',
-            value: 6,
+            value: regions?.length || 0,
             icon: 'Public',
             trend: 'stable'
         },
         {
             label: 'Total Active Users',
-            value: 1240,
+            value: stats?.usersByRole.reduce((acc, curr) => acc + curr._count, 0) || 0,
             icon: 'PeopleAlt',
             trend: 'up',
-            change: 45
+            change: 0 // We don't have historical data in the basic endpoint
         },
         {
             label: 'System Uptime',
-            value: '99.9%',
+            value: health ? `${Math.floor(health.uptime / 3600)}h ${Math.floor((health.uptime % 3600) / 60)}m` : '99.9%',
             icon: 'Storage',
             trend: 'stable'
         },
         {
-            label: 'Pending Requests',
-            value: 12,
-            icon: 'NotificationsActive',
-            trend: 'down',
-            change: -2
+            label: 'Institutions',
+            value: stats?.institutions || 0,
+            icon: 'Business',
+            trend: 'stable',
         }
     ];
 
-    const distributionData = [
-        { name: 'Mekelle', institutions: 120, users: 450 },
-        { name: 'Adigrat', institutions: 85, users: 320 },
-        { name: 'Axum', institutions: 75, users: 280 },
-        { name: 'Shire', institutions: 60, users: 210 },
-        { name: 'Wukro', institutions: 45, users: 150 },
-    ];
+    const distributionData = regions?.map(r => ({
+        name: r.name,
+        institutions: r.totalSchools || 0,
+        users: r.totalStudents || 0 // Using totalStudents as a proxy for 'users' in the chart
+    })) || [];
 
     return (
         <Box>
@@ -67,14 +103,14 @@ export default function SystemAdminDashboard() {
             </Box>
 
             <Box sx={{ mb: 4 }}>
-                <KPIGrid kpis={kpis} columns={4} />
+                <KPIGrid kpis={kpis as any} columns={4} />
             </Box>
 
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12, lg: 8 }}>
                     <AnalyticsChart
-                        title="Institutional Distribution"
-                        subtitle="Institutions and users by region"
+                        title="Regional Institutional Distribution"
+                        subtitle="Institutions and students by region"
                         data={distributionData}
                         type="bar"
                         dataKeys={['institutions', 'users']}
@@ -90,8 +126,9 @@ export default function SystemAdminDashboard() {
                             size="large"
                             startIcon={<AddIcon />}
                             sx={{ py: 1.5 }}
+                            onClick={() => window.location.href = '/dashboard/management/regions'}
                         >
-                            Create New Region
+                            Manage Regions
                         </Button>
                         <Button
                             variant="outlined"
@@ -130,7 +167,6 @@ export default function SystemAdminDashboard() {
                 onClose={() => setOpenUserDialog(false)}
                 onSuccess={() => {
                     console.log('User created');
-                    // Refresh data if needed
                 }}
             />
         </Box>

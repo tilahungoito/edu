@@ -24,6 +24,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from 'react-hot-toast';
 import ReactQueryProvider from "./components/providers/ReactQueryProvider";
+import ThemeWrapper from "./components/providers/ThemeWrapper";
 
 export default function RootLayout({
   children,
@@ -36,15 +37,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AppRouterCacheProvider>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <ReactQueryProvider>
+          <ReactQueryProvider>
+            <ThemeWrapper>
               <AuthInitializer>
                 {children}
                 <Toaster position="top-right" />
               </AuthInitializer>
-            </ReactQueryProvider>
-          </ThemeProvider>
+            </ThemeWrapper>
+          </ReactQueryProvider>
         </AppRouterCacheProvider>
       </body>
     </html>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     AppBar,
     Toolbar,
@@ -17,6 +17,7 @@ import {
     Tooltip,
     useTheme,
     alpha,
+    CircularProgress,
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -29,9 +30,11 @@ import {
     LightMode as LightModeIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
+import { useThemeStore } from '@/app/lib/store/theme-store';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import announcementsService from '@/app/lib/api/announcements.service';
+import { searchService, SearchResult } from '@/app/lib/api/search.service';
 
 interface HeaderProps {
     sidebarCollapsed: boolean;
@@ -42,18 +45,36 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
     const router = useRouter();
     const user = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
+    const { mode, toggleTheme } = useThemeStore();
 
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
     const [searchValue, setSearchValue] = useState('');
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [searchAnchor, setSearchAnchor] = useState<null | HTMLElement>(null);
     const [mounted, setMounted] = useState(false);
 
     const { data: unreadData } = useQuery({
         queryKey: ['announcements', 'unread-count'],
         queryFn: () => announcementsService.getUnreadCount(),
-        enabled: !!user,
-        refetchInterval: 60000, // Every minute
+        refetchInterval: 30000, // Poll every 30s
     });
+
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            if (searchValue.length >= 2) {
+                setSearchLoading(true);
+                const results = await searchService.search(searchValue);
+                setSearchResults(results);
+                setSearchLoading(false);
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchValue]);
 
     React.useEffect(() => {
         setMounted(true);
@@ -110,6 +131,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                         py: 0.8,
                         width: { xs: '100%', sm: 300, md: 450 },
                         maxWidth: '100%',
+                        position: 'relative',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         '&:focus-within': {
                             width: { xs: '100%', sm: 350, md: 500 },
@@ -122,7 +144,11 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                     <InputBase
                         placeholder="Quick search across system..."
                         value={searchValue}
-                        onChange={(e) => setSearchValue(e.target.value)}
+                        onChange={(e) => {
+                            setSearchValue(e.target.value);
+                            setSearchAnchor(e.currentTarget);
+                        }}
+                        onFocus={(e) => setSearchAnchor(e.currentTarget)}
                         sx={{
                             flex: 1,
                             fontSize: '0.875rem',
@@ -149,6 +175,57 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                     >
                         ⌘K
                     </Box>
+
+                    {/* Search Results Dropdown */}
+                    <Menu
+                        anchorEl={searchAnchor}
+                        open={Boolean(searchValue.length >= 2 && searchAnchor)}
+                        onClose={() => setSearchAnchor(null)}
+                        autoFocus={false}
+                        disablePortal
+                        PaperProps={{
+                            sx: {
+                                width: 450,
+                                mt: 1,
+                                borderRadius: 3,
+                                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                                border: `1px solid ${theme.palette.divider}`,
+                                maxHeight: 400,
+                            }
+                        }}
+                    >
+                        {searchLoading ? (
+                            <Box sx={{ p: 2, textAlign: 'center' }}>
+                                <CircularProgress size={24} />
+                            </Box>
+                        ) : searchResults.length > 0 ? (
+                            searchResults.map((result) => (
+                                <MenuItem 
+                                    key={`${result.type}-${result.id}`}
+                                    onClick={() => {
+                                        router.push(result.path);
+                                        setSearchValue('');
+                                        setSearchAnchor(null);
+                                    }}
+                                    sx={{ py: 1.5, px: 2 }}
+                                >
+                                    <ListItemIcon>
+                                        <Badge badgeContent={result.type} color="primary" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16 } }}>
+                                            <SearchIcon fontSize="small" />
+                                        </Badge>
+                                    </ListItemIcon>
+                                    <Box>
+                                        <Typography variant="subtitle2" fontWeight={600}>{result.title}</Typography>
+                                        <Typography variant="caption" color="text.secondary">{result.description}</Typography>
+                                    </Box>
+                                </MenuItem>
+                            ))
+                        ) : (
+                            <Box sx={{ p: 2, textAlign: 'center' }}>
+                                <Typography variant="body2" color="text.secondary">No results found for "{searchValue}"</Typography>
+                            </Box>
+                        )}
+                    </Menu>
                 </Box>
 
                 {/* Right Section */}
@@ -168,8 +245,9 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                     </Tooltip>
 
                     {/* Theme Toggle */}
-                    <Tooltip title="Toggle theme">
+                    <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
                         <IconButton
+                            onClick={toggleTheme}
                             sx={{
                                 backgroundColor: alpha(theme.palette.primary.main, 0.08),
                                 '&:hover': {
@@ -177,7 +255,11 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                                 },
                             }}
                         >
-                            <LightModeIcon sx={{ color: theme.palette.text.secondary }} />
+                            {mode === 'light' ? (
+                                <DarkModeIcon sx={{ color: theme.palette.text.secondary }} />
+                            ) : (
+                                <LightModeIcon sx={{ color: theme.palette.text.secondary }} />
+                            )}
                         </IconButton>
                     </Tooltip>
 

@@ -2,6 +2,8 @@ import apiClient from './api-client';
 
 export interface DashboardStats {
     institutions: number;
+    students: number;
+    teachers: number;
     usersByRole: {
         roleId: string;
         _count: number;
