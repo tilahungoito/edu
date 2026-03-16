@@ -28,6 +28,7 @@ export default function SchoolsPage() {
     const [selectedZone, setSelectedZone] = useState<string>('');
     const [selectedWoreda, setSelectedWoreda] = useState<string>('');
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingSchool, setEditingSchool] = useState<any>(null);
     const [schools, setSchools] = useState<any[]>([]);
     const [zones, setZones] = useState<any[]>([]);
     const [woredas, setWoredas] = useState<any[]>([]);
@@ -116,11 +117,16 @@ export default function SchoolsPage() {
 
     const handleAddSchool = async (data: any) => {
         try {
-            await institutionsService.create(data);
+            if (editingSchool) {
+                await institutionsService.update(editingSchool.id, data);
+            } else {
+                await institutionsService.create(data);
+            }
             setDialogOpen(false);
+            setEditingSchool(null);
             fetchData();
         } catch (error) {
-            console.error('Error creating school:', error);
+            console.error('Error saving school:', error);
         }
     };
 
@@ -131,6 +137,11 @@ export default function SchoolsPage() {
         } catch (error) {
             console.error('Error deleting school:', error);
         }
+    };
+
+    const handleEditSchool = (school: any) => {
+        setEditingSchool(school);
+        setDialogOpen(true);
     };
 
     return (
@@ -151,9 +162,12 @@ export default function SchoolsPage() {
                 rows={filteredSchools}
                 loading={loading}
                 module="management"
-                onAdd={canCreate ? () => setDialogOpen(true) : undefined}
-                onEdit={() => { }}
-                onView={() => { }}
+                onAdd={canCreate ? () => {
+                    setEditingSchool(null);
+                    setDialogOpen(true);
+                } : undefined}
+                onEdit={handleEditSchool}
+                onView={(school) => { console.log('View school:', school); }}
                 onDelete={handleDeleteSchool}
                 onRefresh={fetchData}
                 statusField="status"
@@ -200,16 +214,20 @@ export default function SchoolsPage() {
 
             <TenantDialog
                 open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
+                onClose={() => {
+                    setDialogOpen(false);
+                    setEditingSchool(null);
+                }}
                 onSubmit={handleAddSchool}
                 type="school"
-                parentType={selectedWoreda ? 'woreda' : 'zone'}
-                parentId={selectedWoreda || selectedZone || undefined}
+                editData={editingSchool}
+                parentType={selectedWoreda || editingSchool?.kebele?.woredaId ? 'woreda' : 'zone'}
+                parentId={selectedWoreda || editingSchool?.kebele?.woredaId || selectedZone || editingSchool?.kebele?.woreda?.zoneId || undefined}
                 parentName={selectedWoreda
                     ? woredas.find(w => w.id === selectedWoreda)?.name
-                    : selectedZone
+                    : (editingSchool?.kebele?.woreda?.name || (selectedZone
                         ? zones.find(z => z.id === selectedZone)?.name
-                        : undefined}
+                        : undefined))}
             />
         </Box>
     );
