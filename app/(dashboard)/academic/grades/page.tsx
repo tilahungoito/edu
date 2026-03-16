@@ -34,7 +34,7 @@ import {
     Download as DownloadIcon,
     School as SchoolIcon,
 } from '@mui/icons-material';
-import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar, getGridNumericOperators, GridFilterOperator } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Papa from 'papaparse';
 
@@ -45,6 +45,58 @@ import { gradesService } from '@/app/lib/api/grades.service';
 import { useAuthStore } from '@/app/lib/store';
 
 const ASSESSMENT_TYPES = ['QUIZ', 'ASSIGNMENT', 'HOMEWORK', 'PRACTICAL', 'CLASS_PARTICIPATION', 'MIDTERM_EXAM', 'FINAL_EXAM'];
+
+// --- Custom Numeric Filter (Between) ---
+function BetweenFilterInput(props: any) {
+    const { item, applyValue, focusElementRef } = props;
+    const min = item.value?.[0] ?? '';
+    const max = item.value?.[1] ?? '';
+
+    return (
+        <Box sx={{ display: 'flex', gap: 1, p: 1, minWidth: 200 }}>
+            <TextField 
+                size="small" 
+                placeholder="Min" 
+                type="number" 
+                value={min} 
+                onChange={(e) => applyValue({ ...item, value: [e.target.value, max] })} 
+                inputRef={focusElementRef} 
+            />
+            <TextField 
+                size="small" 
+                placeholder="Max" 
+                type="number" 
+                value={max} 
+                onChange={(e) => applyValue({ ...item, value: [min, e.target.value] })} 
+            />
+        </Box>
+    );
+}
+
+const customNumericOperators: GridFilterOperator<any, number, any>[] = [
+    ...(getGridNumericOperators() as any),
+    {
+        label: 'Between',
+        value: 'between',
+        getApplyFilterFn: (filterItem) => {
+            if (!Array.isArray(filterItem.value) || filterItem.value.length !== 2) {
+                return null;
+            }
+            const minStr = filterItem.value[0];
+            const maxStr = filterItem.value[1];
+            if (minStr == null || minStr === '' || maxStr == null || maxStr === '') {
+                return null;
+            }
+            const min = Number(minStr);
+            const max = Number(maxStr);
+            return (value: any) => {
+                if (value == null) return false;
+                return Number(value) >= min && Number(value) <= max;
+            };
+        },
+        InputComponent: BetweenFilterInput,
+    }
+];
 
 // --- Helper Functions ---
 const calculateGradeLetter = (totalScore: number) => {
@@ -59,6 +111,48 @@ const calculateGradeLetter = (totalScore: number) => {
     if (totalScore >= 40) return 'D';
     return 'F';
 };
+
+// Local component to prevent focus loss during inline editing
+function ScoreInputCell({ initialValue, maxScore, onChangeCommit }: { initialValue: string | number, maxScore: number, onChangeCommit: (val: number | null) => void }) {
+    const [val, setVal] = useState(initialValue);
+
+    useEffect(() => {
+        setVal(initialValue);
+    }, [initialValue]);
+
+    return (
+        <Box sx={{ p: 0.5, width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+            <TextField
+                variant="outlined"
+                size="small"
+                placeholder="-"
+                value={val === '' || val === null ? '' : val}
+                onChange={(e) => setVal(e.target.value)}
+                onBlur={() => {
+                    let str = String(val);
+                    if (str === '') {
+                        onChangeCommit(null);
+                        return;
+                    }
+                    let parsed = parseFloat(str);
+                    if (!isNaN(parsed)) {
+                        parsed = Math.min(Math.max(parsed, 0), maxScore);
+                        setVal(parsed);
+                        onChangeCommit(parsed);
+                    } else {
+                        setVal('');
+                        onChangeCommit(null);
+                    }
+                }}
+                sx={{
+                    width: '100%',
+                    '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', borderRadius: 1.5 },
+                    '& .MuiInputBase-input': { textAlign: 'center', p: '6px 8px', fontWeight: 700 }
+                }}
+            />
+        </Box>
+    );
+}
 
 export default function GradesPage() {
     const user = useAuthStore(state => state.user);
@@ -83,6 +177,7 @@ function InstructorGradebookView() {
     const [csvImportOpen, setCsvImportOpen] = useState(false);
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
+    const [quickFilter, setQuickFilter] = useState<'ALL' | 'A' | 'B' | 'C' | 'F'>('ALL');
     
     const [scoreEdits, setScoreEdits] = useState<Record<string, Record<string, number>>>({}); // [assessmentId][enrollmentId] = score
     const [saving, setSaving] = useState(false);
@@ -98,6 +193,11 @@ function InstructorGradebookView() {
             institutionId
         }),
     });
+
+    // Reset filter when course changes
+    useEffect(() => {
+        setQuickFilter('ALL');
+    }, [selectedCourseId]);
 
     // 2. Fetch Enrollments (Rows)
     const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
@@ -176,6 +276,45 @@ function InstructorGradebookView() {
         });
     }, [enrollments, assessments, originalScores, scoreEdits]);
 
+    // Compute Metrics & Filters
+    const metrics = useMemo(() => {
+        if (!rows.length) return null;
+        let sum = 0;
+        let max = 0;
+        let min = 100;
+        let countA = 0, countB = 0, countC = 0, countF = 0;
+        
+        rows.forEach(r => {
+            const t = r.totalScore || 0;
+            sum += t;
+            if (t > max) max = t;
+            if (t < min) min = t;
+            if (t >= 85) countA++;
+            else if (t >= 70) countB++;
+            else if (t >= 50) countC++;
+            else countF++;
+        });
+
+        return {
+            average: parseFloat((sum / rows.length).toFixed(1)),
+            max: parseFloat(max.toFixed(1)),
+            min: rows.length > 0 ? parseFloat(min.toFixed(1)) : 0.0,
+            countA, countB, countC, countF
+        };
+    }, [rows]);
+
+    const filteredRows = useMemo(() => {
+        if (quickFilter === 'ALL') return rows;
+        return rows.filter(r => {
+            const t = r.totalScore || 0;
+            if (quickFilter === 'A') return t >= 85;
+            if (quickFilter === 'B') return t >= 70 && t < 85;
+            if (quickFilter === 'C') return t >= 50 && t < 70;
+            if (quickFilter === 'F') return t < 50;
+            return true;
+        });
+    }, [rows, quickFilter]);
+
     // Build Columns for DataGrid
     const columns = useMemo<GridColDef[]>(() => {
         const cols: GridColDef[] = [
@@ -210,14 +349,21 @@ function InstructorGradebookView() {
                 field: a.id,
                 headerName: `${a.title} (${a.weight}%)`,
                 width: 140,
-                editable: true,
+                sortable: false,
                 type: 'number',
-                valueParser: (value) => {
-                    if (value === '' || value === null) return '';
-                    const parsed = parseFloat(value);
-                    if (isNaN(parsed)) return '';
-                    return Math.min(Math.max(parsed, 0), a.maxScore); // clamp between 0 and maxScore
-                },
+                filterOperators: customNumericOperators as any,
+                renderCell: (params: GridRenderCellParams) => (
+                    <ScoreInputCell 
+                        initialValue={params.value as any} 
+                        maxScore={a.maxScore} 
+                        onChangeCommit={(newVal) => {
+                            setScoreEdits(prev => ({ 
+                                ...prev, 
+                                [a.id]: { ...(prev[a.id] || {}), [params.id as string]: newVal === null ? null! : newVal } 
+                            }));
+                        }} 
+                    />
+                ),
                 renderHeader: () => (
                     <Box sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                         <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: '13px' }}>{a.title}</Typography>
@@ -235,6 +381,7 @@ function InstructorGradebookView() {
             headerName: 'Total (100%)',
             width: 110,
             type: 'number',
+            filterOperators: customNumericOperators as any,
             valueFormatter: (value: number) => value.toFixed(1) + '%',
             renderCell: (params: GridRenderCellParams) => (
                 <Typography variant="body2" fontWeight={800} color={params.value >= 50 ? 'success.main' : 'error.main'}>
@@ -271,25 +418,8 @@ function InstructorGradebookView() {
         return cols;
     }, [assessments, theme]);
 
-    // Handle inline edit
-    const processRowUpdate = (newRow: any, oldRow: any) => {
-        let hasChanges = false;
-        const newScoreEdits = { ...scoreEdits };
-
-        assessments?.forEach(a => {
-            if (newRow[a.id] !== oldRow[a.id]) {
-                if (!newScoreEdits[a.id]) newScoreEdits[a.id] = {};
-                newScoreEdits[a.id][newRow.id] = newRow[a.id];
-                hasChanges = true;
-            }
-        });
-
-        if (hasChanges) {
-            setScoreEdits(newScoreEdits);
-        }
-
-        return newRow;
-    };
+    // No processRowUpdate needed since we use controlled TextFields in renderCell
+    const processRowUpdate = (newRow: any) => newRow;
 
     // Save All Changes
     const handleSave = async () => {
@@ -400,6 +530,63 @@ function InstructorGradebookView() {
             {importSuccess && <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>{importSuccess}</Alert>}
             {importError && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{importError}</Alert>}
 
+            {/* Metrics & Quick Filters */}
+            {selectedCourseId && metrics && rows.length > 0 && (
+                <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <Card elevation={0} sx={{ p: 2, minWidth: 140, borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.2)}` }}>
+                        <Typography variant="overline" color="text.secondary">Class Average</Typography>
+                        <Typography variant="h4" fontWeight={800} color={metrics.average >= 50 ? 'success.main' : 'error.main'}>{metrics.average}%</Typography>
+                    </Card>
+                    <Card elevation={0} sx={{ p: 2, minWidth: 140, borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.2)}` }}>
+                        <Typography variant="overline" color="text.secondary">Highest Score</Typography>
+                        <Typography variant="h4" fontWeight={800} color="primary.main">{metrics.max}%</Typography>
+                    </Card>
+                    <Card elevation={0} sx={{ p: 2, minWidth: 140, borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.2)}` }}>
+                        <Typography variant="overline" color="text.secondary">Lowest Score</Typography>
+                        <Typography variant="h4" fontWeight={800} color="error.main">{metrics.min}%</Typography>
+                    </Card>
+                    
+                    <Box sx={{ flex: 1 }} />
+                    
+                    <Card elevation={0} sx={{ p: 2, borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.2)}` }}>
+                        <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1, lineHeight: 1 }}>Grade Distribution Filter</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Chip 
+                                label={`All (${rows.length})`} 
+                                onClick={() => setQuickFilter('ALL')} 
+                                color={quickFilter === 'ALL' ? 'primary' : 'default'} 
+                                variant={quickFilter === 'ALL' ? 'filled' : 'outlined'} 
+                                sx={{ fontWeight: 700 }}
+                            />
+                            <Chip 
+                                label={`A (>= 85%) • ${metrics.countA}`} 
+                                onClick={() => setQuickFilter('A')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'A' ? 'success.main' : 'transparent', color: quickFilter === 'A' ? 'white' : 'success.main', borderColor: alpha(theme.palette.success.main, 0.5) }} 
+                                variant={quickFilter === 'A' ? 'filled' : 'outlined'} 
+                            />
+                            <Chip 
+                                label={`B (70 - 84%) • ${metrics.countB}`} 
+                                onClick={() => setQuickFilter('B')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'B' ? 'info.main' : 'transparent', color: quickFilter === 'B' ? 'white' : 'info.main', borderColor: alpha(theme.palette.info.main, 0.5) }} 
+                                variant={quickFilter === 'B' ? 'filled' : 'outlined'} 
+                            />
+                            <Chip 
+                                label={`C (50 - 69%) • ${metrics.countC}`} 
+                                onClick={() => setQuickFilter('C')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'C' ? 'warning.main' : 'transparent', color: quickFilter === 'C' ? 'white' : 'warning.main', borderColor: alpha(theme.palette.warning.main, 0.5) }} 
+                                variant={quickFilter === 'C' ? 'filled' : 'outlined'} 
+                            />
+                            <Chip 
+                                label={`Fail (< 50%) • ${metrics.countF}`} 
+                                onClick={() => setQuickFilter('F')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'F' ? 'error.main' : 'transparent', color: quickFilter === 'F' ? 'white' : 'error.main', borderColor: alpha(theme.palette.error.main, 0.5) }} 
+                                variant={quickFilter === 'F' ? 'filled' : 'outlined'} 
+                            />
+                        </Box>
+                    </Card>
+                </Box>
+            )}
+
             {/* DataGrid Area */}
             <Card elevation={0} sx={{ flex: 1, minHeight: 600, border: `1px solid ${alpha(theme.palette.divider, 0.3)}`, borderRadius: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 {!selectedCourseId ? (
@@ -409,7 +596,7 @@ function InstructorGradebookView() {
                     </Box>
                 ) : (
                     <DataGrid
-                        rows={rows}
+                        rows={filteredRows}
                         columns={columns}
                         loading={isLoadingGrid}
                         processRowUpdate={processRowUpdate}
