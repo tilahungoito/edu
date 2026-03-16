@@ -218,6 +218,16 @@ moduleRegistry.register({
             permission: { module: 'management', action: 'view', resourceType: 'institution' },
             allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN'],
         },
+        // School Types Report
+        {
+            id: 'management-school-types',
+            label: 'School Types Report',
+            labelAmharic: 'የትምህርት ቤት ዓይነቶች',
+            icon: 'Assessment',
+            path: '/management/schools/types',
+            permission: { module: 'management', action: 'view', resourceType: 'institution' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN'],
+        },
     ],
 });
 
@@ -351,6 +361,61 @@ moduleRegistry.register({
             path: '/academic/sections',
             permission: { module: 'academic', action: 'view' },
             allowedRoles: ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
+        },
+        {
+            id: 'academic-curriculum-templates',
+            label: 'Curriculum Templates',
+            labelAmharic: 'የስርዓተ ትምህርት ቀመሮች',
+            icon: 'Assignment',
+            path: '/academic/curriculum-templates',
+            allowedRoles: ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
+        },
+    ],
+});
+
+// Institution Setup Module (Admin Quick-Start Wizard)
+moduleRegistry.register({
+    id: 'institution-setup' as any,
+    name: 'School Setup',
+    description: 'Quick setup wizard: sections → courses → instructor assignment',
+    icon: 'School',
+    basePath: '/academic/setup',
+    requiredPermission: { module: 'academic', action: 'view' },
+    isEnabled: true,
+    order: 6.5,
+    category: 'Institution Setup',
+    menuItems: [
+        {
+            id: 'setup-hub',
+            label: 'Setup Hub',
+            labelAmharic: 'የትምህርት ቤት ዝግጅት',
+            icon: 'School',
+            path: '/academic/setup',
+            allowedRoles: ['INSTITUTION_ADMIN'],
+        },
+        {
+            id: 'setup-sections',
+            label: 'Sections',
+            labelAmharic: 'ክፍሎች',
+            icon: 'Groups',
+            path: '/academic/sections',
+            allowedRoles: ['INSTITUTION_ADMIN', 'REGISTRAR'],
+        },
+        {
+            id: 'setup-courses',
+            label: 'Courses',
+            labelAmharic: 'ኮርሶች',
+            icon: 'Assignment',
+            path: '/academic/courses',
+            allowedRoles: ['INSTITUTION_ADMIN', 'REGISTRAR', 'INSTRUCTOR'],
+        },
+        {
+            id: 'setup-templates',
+            label: 'Curriculum Templates',
+            labelAmharic: 'ቀመሮች',
+            icon: 'ContentCopy',
+            path: '/academic/curriculum-templates',
+            allowedRoles: ['INSTITUTION_ADMIN'],
         },
     ],
 });

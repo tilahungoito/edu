@@ -55,6 +55,8 @@ import {
     AppRegistration as ModuleIcon,
     ManageAccounts as UserMgmtIcon,
     Chat as ChatIcon,
+    ContentCopy as ContentCopyIcon,
+    Groups as GroupsIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
 import { moduleRegistry } from '@/app/lib/core';
@@ -103,6 +105,8 @@ const iconConfig: Record<string, { icon: React.ReactNode, color: string }> = {
     AppRegistration: { icon: <ModuleIcon />, color: '#f59e0b' },
     ManageAccounts: { icon: <UserMgmtIcon />, color: '#6366f1' },
     Chat: { icon: <ChatIcon />, color: '#ec4899' },
+    ContentCopy: { icon: <ContentCopyIcon />, color: '#8b5cf6' },
+    Groups: { icon: <GroupsIcon />, color: '#10b981' },
 };
 
 interface SidebarProps {
@@ -120,12 +124,34 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
     const user = useAuthStore(state => state.user);
 
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+    const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
     const [mounted, setMounted] = useState(false);
 
-    // Handle hydration
+    // Handle hydration + auto-open the active category
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    // Auto-open the category that contains the current route
+    useEffect(() => {
+        if (!mounted) return;
+        const modules = moduleRegistry.getAll();
+        const activeCategories: Record<string, boolean> = {};
+        modules.forEach(m => {
+            const hasActive = m.menuItems.some(item =>
+                item.path && (pathname === item.path || pathname.startsWith(item.path + '/'))
+            );
+            if (hasActive && m.category) {
+                activeCategories[m.category] = true;
+            }
+        });
+        // Open active categories; keep others closed by default
+        setOpenCategories(prev => ({ ...prev, ...activeCategories }));
+    }, [mounted, pathname]);
+
+    const handleToggleCategory = (category: string) => {
+        setOpenCategories(prev => ({ ...prev, [category]: !prev[category] }));
+    };
 
     // Helper checking role directly from user object to avoidgetState issues in render
     const hasRole = (role: string) => {
@@ -364,30 +390,72 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
 
             <Divider sx={{ mx: 2, mb: 2, opacity: 0.5 }} />
 
-            {/* Navigation Sections */}
+            {/* Navigation Sections — collapsible categories */}
             <Box sx={{ flex: 1, overflow: 'auto', px: 1 }}>
-                {Object.entries(groupedMenuItems).map(([category, items]) => (
-                    <Box key={category} sx={{ mb: 2 }}>
-                        {!collapsed && (
-                            <Typography
-                                variant="overline"
-                                sx={{
-                                    px: 3,
-                                    mb: 1,
-                                    display: 'block',
-                                    fontWeight: 700,
-                                    color: theme.palette.text.disabled,
-                                    letterSpacing: 1.2,
-                                }}
-                            >
-                                {category}
-                            </Typography>
-                        )}
-                        <List disablePadding>
-                            {items.map(item => renderMenuItem(item))}
-                        </List>
-                    </Box>
-                ))}
+                {Object.entries(groupedMenuItems).map(([category, items]) => {
+                    const isCategoryOpen = collapsed ? true : (openCategories[category] ?? false);
+                    // Check if any item in this category is active
+                    const categoryHasActive = items.some(item =>
+                        item.path && (pathname === item.path || pathname.startsWith(item.path + '/'))
+                    );
+
+                    return (
+                        <Box key={category} sx={{ mb: 0.5 }}>
+                            {/* Category Header — clickable, only in expanded mode */}
+                            {!collapsed && (
+                                <ListItemButton
+                                    onClick={() => handleToggleCategory(category)}
+                                    sx={{
+                                        borderRadius: '10px',
+                                        mx: 1,
+                                        my: 0.25,
+                                        py: 0.6,
+                                        px: 1.5,
+                                        minHeight: 32,
+                                        transition: 'all 0.15s',
+                                        bgcolor: categoryHasActive
+                                            ? alpha(theme.palette.primary.main, 0.06)
+                                            : 'transparent',
+                                        '&:hover': {
+                                            bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                        },
+                                    }}
+                                >
+                                    <Typography
+                                        variant="overline"
+                                        sx={{
+                                            flex: 1,
+                                            fontWeight: 800,
+                                            fontSize: '10px',
+                                            letterSpacing: 1.5,
+                                            color: categoryHasActive
+                                                ? theme.palette.primary.main
+                                                : theme.palette.text.disabled,
+                                            lineHeight: 1,
+                                        }}
+                                    >
+                                        {category}
+                                    </Typography>
+                                    <Box sx={{
+                                        color: theme.palette.text.disabled,
+                                        display: 'flex',
+                                        transition: 'transform 0.2s ease',
+                                        transform: isCategoryOpen ? 'rotate(0deg)' : 'rotate(-90deg)',
+                                    }}>
+                                        <ExpandMore sx={{ fontSize: 16 }} />
+                                    </Box>
+                                </ListItemButton>
+                            )}
+
+                            {/* Items — collapse/expand smoothly */}
+                            <Collapse in={isCategoryOpen} timeout={160} unmountOnExit>
+                                <List disablePadding sx={{ mb: 0.5 }}>
+                                    {items.map(item => renderMenuItem(item))}
+                                </List>
+                            </Collapse>
+                        </Box>
+                    );
+                })}
             </Box>
 
             {/* User Profile */}

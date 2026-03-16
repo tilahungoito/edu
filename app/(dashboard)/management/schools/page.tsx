@@ -10,7 +10,8 @@ import { zonesService } from '@/app/lib/api/zones.service';
 import { useAuthStore } from '@/app/lib/store';
 import { useRouter } from 'next/navigation';
 import { useTheme, Tooltip, IconButton } from '@mui/material';
-import { CalendarMonth as CalendarIcon } from '@mui/icons-material';
+import { CalendarMonth as CalendarIcon, BarChart as ReportIcon } from '@mui/icons-material';
+import Link from 'next/link';
 
 import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
@@ -21,12 +22,24 @@ import { TenantDialog } from '@/app/components/management/TenantDialog';
 // Roles that can create schools
 const CREATE_ROLES = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN'];
 
+// School type metadata
+const SCHOOL_TYPES = [
+    { value: '', label: 'All Types' },
+    { value: 'KG', label: 'KG', color: '#8b5cf6' },
+    { value: 'PRIMARY', label: 'Primary', color: '#6366f1' },
+    { value: 'SECONDARY', label: 'Secondary', color: '#f59e0b' },
+    { value: 'PREPARATORY', label: 'Preparatory', color: '#ec4899' },
+    { value: 'COMBINED', label: 'Combined', color: '#10b981' },
+];
+const getTypeInfo = (type: string) => SCHOOL_TYPES.find(t => t.value === type) || { value: type, label: type || 'Primary', color: '#6366f1' };
+
 export default function SchoolsPage() {
     const theme = useTheme();
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [selectedZone, setSelectedZone] = useState<string>('');
     const [selectedWoreda, setSelectedWoreda] = useState<string>('');
+    const [selectedType, setSelectedType] = useState<string>('');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingSchool, setEditingSchool] = useState<any>(null);
     const [schools, setSchools] = useState<any[]>([]);
@@ -51,6 +64,27 @@ export default function SchoolsPage() {
 
     const columns: GridColDef<Institution>[] = [
         { field: 'name', headerName: 'School Name', flex: 1, minWidth: 200 },
+        {
+            field: 'type',
+            headerName: 'Type',
+            width: 130,
+            renderCell: (params) => {
+                const info = getTypeInfo((params.value as string) || 'PRIMARY');
+                return (
+                    <Chip
+                        label={info.label}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(info.color, 0.1),
+                            color: info.color,
+                            fontWeight: 800,
+                            fontSize: '11px',
+                            height: 22,
+                        }}
+                    />
+                );
+            }
+        },
         {
             field: 'kebeleName',
             headerName: 'Kebele',
@@ -134,7 +168,7 @@ export default function SchoolsPage() {
 
     const scopedSchools = useScopedData(flattenedSchools, 'school');
     const availableWoredas = woredas;
-    const filteredSchools = scopedSchools;
+    const filteredSchools = scopedSchools.filter((s: any) => !selectedType || (s.type || 'PRIMARY') === selectedType);
 
     const handleAddSchool = async (data: any) => {
         try {
@@ -239,7 +273,29 @@ export default function SchoolsPage() {
                 }}
                 checkboxSelection
                 toolbarActions={
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Button
+                            component={Link}
+                            href="/management/schools/types"
+                            size="small"
+                            variant="outlined"
+                            startIcon={<ReportIcon />}
+                            sx={{ borderRadius: 2, fontWeight: 700 }}
+                        >
+                            Types Report
+                        </Button>
+                        <FormControl size="small" sx={{ minWidth: 130 }}>
+                            <InputLabel>School Type</InputLabel>
+                            <Select
+                                value={selectedType}
+                                label="School Type"
+                                onChange={(e) => setSelectedType(e.target.value)}
+                            >
+                                {SCHOOL_TYPES.map(t => (
+                                    <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
                         {user?.tenantType === 'bureau' && (
                             <FormControl size="small" sx={{ minWidth: 150 }}>
                                 <InputLabel>Zone</InputLabel>
