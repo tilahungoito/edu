@@ -166,6 +166,7 @@ export default function SchoolsPage() {
                     setEditingSchool(null);
                     setDialogOpen(true);
                 } : undefined}
+                allowedRoles={CREATE_ROLES}
                 onEdit={handleEditSchool}
                 onView={(school) => { console.log('View school:', school); }}
                 onDelete={handleDeleteSchool}
