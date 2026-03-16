@@ -37,6 +37,8 @@ export default function WoredasPage() {
     const [selectedZone, setSelectedZone] = useState<string>('');
     const [woredas, setWoredas] = useState<any[]>([]);
     const [zones, setZones] = useState<any[]>([]);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingWoreda, setEditingWoreda] = useState<any>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -64,16 +66,20 @@ export default function WoredasPage() {
     });
 
     const scopedWoredas = useScopedData(woredas, 'woreda');
-    const [dialogOpen, setDialogOpen] = useState(false);
     const filteredWoredas = scopedWoredas;
 
     const handleAddWoreda = async (data: any) => {
         try {
-            await woredasService.create(data);
+            if (editingWoreda) {
+                await woredasService.update(editingWoreda.id, data);
+            } else {
+                await woredasService.create(data);
+            }
             setDialogOpen(false);
+            setEditingWoreda(null);
             fetchData();
         } catch (error) {
-            console.error('Error creating woreda:', error);
+            console.error('Error saving woreda:', error);
         }
     };
 
@@ -84,6 +90,11 @@ export default function WoredasPage() {
         } catch (error) {
             console.error('Error deleting woreda:', error);
         }
+    };
+
+    const handleEditWoreda = (woreda: any) => {
+        setEditingWoreda(woreda);
+        setDialogOpen(true);
     };
 
     return (
@@ -106,9 +117,12 @@ export default function WoredasPage() {
                 module="management"
                 resourceType="woreda"
                 allowedRoles={['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN']}
-                onAdd={() => setDialogOpen(true)}
-                onEdit={() => { }}
-                onView={() => { }}
+                onAdd={() => {
+                    setEditingWoreda(null);
+                    setDialogOpen(true);
+                }}
+                onEdit={handleEditWoreda}
+                onView={(woreda) => { console.log('View woreda:', woreda); }}
                 onDelete={handleDeleteWoreda}
                 onRefresh={fetchData}
                 statusField="status"
@@ -136,12 +150,16 @@ export default function WoredasPage() {
 
             <TenantDialog
                 open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
+                onClose={() => {
+                    setDialogOpen(false);
+                    setEditingWoreda(null);
+                }}
                 onSubmit={handleAddWoreda}
                 type="woreda"
+                editData={editingWoreda}
                 parentType="zone"
-                parentId={selectedZone || undefined}
-                parentName={selectedZone ? zones.find(z => z.id === selectedZone)?.name : undefined}
+                parentId={selectedZone || editingWoreda?.zoneId || undefined}
+                parentName={selectedZone ? zones.find(z => z.id === selectedZone)?.name : (editingWoreda?.zoneId ? zones.find(z => z.id === editingWoreda.zoneId)?.name : undefined)}
             />
         </Box>
     );

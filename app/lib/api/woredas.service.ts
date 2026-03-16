@@ -8,6 +8,9 @@ export interface Woreda {
     description?: string;
     status: string;
     zoneId: string;
+    totalSchools?: number;
+    totalStudents?: number;
+    totalTeachers?: number;
     _count?: {
         kebeles: number;
         institutions: number;
