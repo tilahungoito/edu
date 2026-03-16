@@ -32,6 +32,7 @@ export default function KebelesPage() {
     const [loading, setLoading] = useState(true);
     const [kebeles, setKebeles] = useState<Kebele[]>([]);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingKebele, setEditingKebele] = useState<Kebele | null>(null);
 
     const user = useAuthStore(state => state.user);
 
@@ -61,11 +62,16 @@ export default function KebelesPage() {
 
     const handleAddKebele = async (data: any) => {
         try {
-            await kebelesService.create(data);
+            if (editingKebele) {
+                await kebelesService.update(editingKebele.id, data);
+            } else {
+                await kebelesService.create(data);
+            }
             setDialogOpen(false);
+            setEditingKebele(null);
             fetchData();
         } catch (error) {
-            console.error('Error creating kebele:', error);
+            console.error('Error saving kebele:', error);
         }
     };
 
@@ -76,6 +82,11 @@ export default function KebelesPage() {
         } catch (error) {
             console.error('Error deleting kebele:', error);
         }
+    };
+
+    const handleEditKebele = (kebele: Kebele) => {
+        setEditingKebele(kebele);
+        setDialogOpen(true);
     };
 
     return (
@@ -96,9 +107,12 @@ export default function KebelesPage() {
                 rows={kebeles}
                 loading={loading}
                 module="management"
-                onAdd={canCreate ? () => setDialogOpen(true) : undefined}
-                onEdit={() => { }}
-                onView={() => { }}
+                onAdd={canCreate ? () => {
+                    setEditingKebele(null);
+                    setDialogOpen(true);
+                } : undefined}
+                onEdit={handleEditKebele}
+                onView={(kebele) => { console.log('View kebele:', kebele); }}
                 onDelete={handleDeleteKebele}
                 onRefresh={fetchData}
                 checkboxSelection
@@ -106,9 +120,16 @@ export default function KebelesPage() {
 
             <TenantDialog
                 open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
+                onClose={() => {
+                    setDialogOpen(false);
+                    setEditingKebele(null);
+                }}
                 onSubmit={handleAddKebele}
                 type="kebele"
+                editData={editingKebele}
+                parentType="woreda"
+                parentId={editingKebele?.woredaId || undefined}
+                parentName={editingKebele?.woredaName}
             />
         </Box>
     );
