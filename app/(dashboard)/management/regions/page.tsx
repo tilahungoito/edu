@@ -27,6 +27,7 @@ export default function RegionsPage() {
     const [loading, setLoading] = useState(true);
     const [regions, setRegions] = useState<Region[]>([]);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [editingRegion, setEditingRegion] = useState<Region | null>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -51,11 +52,16 @@ export default function RegionsPage() {
 
     const handleAddRegion = async (data: any) => {
         try {
-            await regionsService.create(data);
+            if (editingRegion) {
+                await regionsService.update(editingRegion.id, data);
+            } else {
+                await regionsService.create(data);
+            }
             setDialogOpen(false);
+            setEditingRegion(null);
             fetchData();
         } catch (error) {
-            console.error('Error creating region:', error);
+            console.error('Error saving region:', error);
         }
     };
 
@@ -66,6 +72,11 @@ export default function RegionsPage() {
         } catch (error) {
             console.error('Error deleting region:', error);
         }
+    };
+
+    const handleEditRegion = (region: Region) => {
+        setEditingRegion(region);
+        setDialogOpen(true);
     };
 
     return (
@@ -86,9 +97,12 @@ export default function RegionsPage() {
                 rows={regions}
                 loading={loading}
                 module="management"
-                onAdd={() => setDialogOpen(true)}
-                onEdit={() => { }}
-                onView={() => { }}
+                onAdd={() => {
+                    setEditingRegion(null);
+                    setDialogOpen(true);
+                }}
+                onEdit={handleEditRegion}
+                onView={(region) => { console.log('View region:', region); }}
                 onDelete={handleDeleteRegion}
                 onRefresh={fetchData}
                 checkboxSelection
@@ -96,9 +110,13 @@ export default function RegionsPage() {
 
             <TenantDialog
                 open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
+                onClose={() => {
+                    setDialogOpen(false);
+                    setEditingRegion(null);
+                }}
                 onSubmit={handleAddRegion}
                 type="region"
+                editData={editingRegion}
             />
         </Box>
     );

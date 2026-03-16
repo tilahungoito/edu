@@ -7,6 +7,9 @@ export interface Region {
     _count?: {
         zones: number;
     };
+    totalSchools?: number;
+    totalStudents?: number;
+    totalTeachers?: number;
 }
 
 export const regionsService = {
