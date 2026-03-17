@@ -146,12 +146,6 @@ moduleRegistry.register({
             permission: { module: 'communication', action: 'view', resourceType: 'announcement' },
             allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR'],
         },
-        {
-            id: 'comm-help',
-            label: 'Help Requests',
-            icon: 'ContactSupport',
-            path: '/communication/support',
-        },
     ],
 });
 

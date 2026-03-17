@@ -200,7 +200,7 @@ export default function HelpRequestsPage() {
         <Box className="animate-fade-in" sx={{ p: { xs: 2.5, md: 3, lg: 5 }, maxWidth: '100%', overflow: 'hidden' }}>
             <Box sx={{ mb: 5 }}>
                 <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1 }}>
-                    Help Requests
+                    Support Tickets
                 </Typography>
                 <Typography variant="body1" color="text.secondary" fontWeight={500}>
                     Review and manage support tickets from staff members
@@ -208,7 +208,7 @@ export default function HelpRequestsPage() {
             </Box>
 
             <DataTable
-                title="Help Requests"
+                title="Support Tickets"
                 module="communication"
                 rows={filteredRequests}
                 columns={columns}
