@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha, Dialog, DialogTitle, DialogContent, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Switch, FormControlLabel } from '@mui/material';
+import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha, Drawer, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Switch, FormControlLabel, IconButton, Divider } from '@mui/material';
+import { Close as CloseIcon, FilterList as FilterIcon } from '@mui/icons-material';
 import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsService, StudentDrilldown } from '@/app/lib/api/analytics.service';
@@ -14,7 +15,7 @@ export default function PerformanceAnalyticsPage() {
     const [scope, setScope] = useState<{ type: string; id: string | null }>({ type: 'SYSTEM', id: null });
     
     // Drilldown State
-    const [drilldownOpen, setDrilldownOpen] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const [selectedBucket, setSelectedBucket] = useState<{ index: number; name: string } | null>(null);
     const [showGenderGap, setShowGenderGap] = useState(false);
 
@@ -57,12 +58,12 @@ export default function PerformanceAnalyticsPage() {
     const { data: drilledStudents, isLoading: drilling } = useQuery({
         queryKey: ['analytics', 'drilldown', scope, selectedBucket?.index],
         queryFn: () => analyticsService.getStudentsByBucket(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined, selectedBucket?.index),
-        enabled: drilldownOpen && selectedBucket !== null
+        enabled: drawerOpen && selectedBucket !== null
     });
 
     const handleChartClick = (data: any, index: number) => {
         setSelectedBucket({ index, name: data.name });
-        setDrilldownOpen(true);
+        setDrawerOpen(true);
     };
 
     const handleRegionChange = (id: string) => {
@@ -154,7 +155,7 @@ export default function PerformanceAnalyticsPage() {
             {/* Distribution Charts */}
             <Grid container spacing={4}>
                 <Grid size={{ xs: 12 }}>
-                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
                         <FormControlLabel
                             control={<Switch checked={showGenderGap} onChange={(e) => setShowGenderGap(e.target.checked)} />}
                             label={<Typography variant="body2" fontWeight={600}>Compare by Gender</Typography>}
@@ -165,7 +166,7 @@ export default function PerformanceAnalyticsPage() {
                     ) : (
                         <AnalyticsChart
                             title={showGenderGap ? "Gender Performance Gap" : "Grade Distribution"}
-                            subtitle={showGenderGap ? "Achievement levels split by Male vs Female" : "Click any bar to see the students in that range"}
+                            subtitle={showGenderGap ? "Achievement levels split by Male vs Female" : "Actionable Map: Click any entry to drill down into student records"}
                             data={showGenderGap ? 
                                 genderGap?.ranges.map((r, i) => ({ 
                                     name: r, 
@@ -189,8 +190,8 @@ export default function PerformanceAnalyticsPage() {
                         <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
                     ) : (
                         <AnalyticsChart
-                            title="Academic Trends"
-                            subtitle="Average scores vs Enrollment growth"
+                            title="Academic Growth Engine"
+                            subtitle="Historical correlation between average scores and student volume"
                             data={trends || []}
                             type="area"
                             dataKeys={['score', 'enrollment']}
@@ -204,8 +205,8 @@ export default function PerformanceAnalyticsPage() {
                         <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
                     ) : (
                         <AnalyticsChart
-                            title="Subject Performance"
-                            subtitle="Regional averages by subject"
+                            title="Subject Bottleneck Analysis"
+                            subtitle="Average performance across key departments"
                             data={subjectPerformance || []}
                             type="bar"
                             dataKeys={['value']}
@@ -215,65 +216,102 @@ export default function PerformanceAnalyticsPage() {
                 </Grid>
             </Grid>
 
-            {/* Drilldown Dialog */}
-            <Dialog open={drilldownOpen} onClose={() => setDrilldownOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="h6" fontWeight={700}>
-                            Students in {selectedBucket?.name} Range
+            {/* Drilldown Drawer */}
+            <Drawer 
+                anchor="right" 
+                open={drawerOpen} 
+                onClose={() => setDrawerOpen(false)}
+                PaperProps={{
+                    sx: { width: { xs: '100%', sm: 500, md: 650 }, p: 3, borderLeft: '1px solid', borderColor: 'divider' }
+                }}
+            >
+                <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                        <Typography variant="h5" fontWeight={800} color="primary.main">
+                            Student Drilldown
                         </Typography>
-                        <Button onClick={() => setDrilldownOpen(false)} color="inherit">Close</Button>
+                        <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                            Detailed records for {selectedBucket?.name} achievement range
+                        </Typography>
                     </Box>
-                </DialogTitle>
-                <DialogContent>
-                    {drilling ? (
-                        <Stack spacing={2} sx={{ py: 2 }}>
-                            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} variant="rectangular" height={40} />)}
-                        </Stack>
-                    ) : (
-                        <Table>
+                    <IconButton onClick={() => setDrawerOpen(false)} size="small" sx={{ bgcolor: 'action.hover' }}>
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
+
+                <Divider sx={{ mb: 4 }} />
+
+                {drilling ? (
+                    <Stack spacing={3}>
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <Skeleton key={i} variant="rectangular" height={60} sx={{ borderRadius: 2 }} />
+                        ))}
+                    </Stack>
+                ) : (
+                    <Box>
+                        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="subtitle2" fontWeight={700}>
+                                {drilledStudents?.length || 0} Students Found
+                            </Typography>
+                            <Button startIcon={<FilterIcon />} size="small" variant="outlined">Filter List</Button>
+                        </Box>
+
+                        <Table sx={{ minWidth: 400 }}>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>Name</TableCell>
-                                    <TableCell>School</TableCell>
-                                    <TableCell align="center">Score</TableCell>
-                                    <TableCell>Program</TableCell>
+                                    <TableCell sx={{ fontWeight: 700 }}>Student Information</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 700 }}>Grade/Score</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {drilledStudents?.map((s) => (
-                                    <TableRow key={s.id} hover>
+                                    <TableRow key={s.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                                         <TableCell>
-                                            <Typography variant="body2" fontWeight={600}>{s.name}</Typography>
-                                            <Typography variant="caption" color="text.secondary">{s.email}</Typography>
+                                            <Box>
+                                                <Typography variant="body2" fontWeight={700}>{s.name}</Typography>
+                                                <Typography variant="caption" color="text.secondary" display="block">{s.school} • {s.program}</Typography>
+                                                <Typography variant="caption" sx={{ color: 'primary.main', opacity: 0.8 }}>{s.email}</Typography>
+                                            </Box>
                                         </TableCell>
-                                        <TableCell>{s.school}</TableCell>
                                         <TableCell align="center">
                                             <Chip 
-                                                label={s.score} 
+                                                label={`${s.score}`} 
                                                 size="small" 
                                                 sx={{ 
-                                                    fontWeight: 700,
-                                                    bgcolor: (theme) => alpha(gradeDistribution?.find(d => d.range === selectedBucket?.name)?.color || theme.palette.primary.main, 0.1),
-                                                    color: (theme) => gradeDistribution?.find(d => d.range === selectedBucket?.name)?.color || theme.palette.primary.main
+                                                    fontWeight: 900,
+                                                    fontSize: '0.75rem',
+                                                    width: 45,
+                                                    bgcolor: (theme) => alpha(gradeDistribution?.find(d => d.range === selectedBucket?.name)?.color || theme.palette.primary.main, 0.15),
+                                                    color: (theme) => gradeDistribution?.find(d => d.range === selectedBucket?.name)?.color || theme.palette.primary.main,
+                                                    border: '1px solid',
+                                                    borderColor: 'currentColor'
                                                 }} 
                                             />
                                         </TableCell>
-                                        <TableCell>{s.program}</TableCell>
+                                        <TableCell align="right">
+                                            <Button size="small" variant="text" sx={{ fontWeight: 700, textTransform: 'none' }}>Profile</Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                                 {drilledStudents?.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
-                                            <Typography color="text.secondary">No students found in this range.</Typography>
+                                        <TableCell colSpan={3} align="center" sx={{ py: 8 }}>
+                                            <Typography color="text.secondary" variant="body2">No student data available for this criteria.</Typography>
                                         </TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
                         </Table>
-                    )}
-                </DialogContent>
-            </Dialog>
+                    </Box>
+                )}
+                
+                <Box sx={{ mt: 'auto', pt: 4 }}>
+                    <Button fullWidth variant="contained" size="large" sx={{ py: 1.5, borderRadius: 2, fontWeight: 700, textTransform: 'none', boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}` }}>
+                        Export Targeted List
+                    </Button>
+                </Box>
+            </Drawer>
         </Box>
     );
 }
