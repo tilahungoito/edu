@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Permission } from '../types/permissions';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1/';
 
 // Create axios instance with base configuration
 const apiClient: AxiosInstance = axios.create({
@@ -26,9 +26,18 @@ apiClient.interceptors.request.use(
     }
 );
 
-// Response interceptor for error handling
+// Response interceptor for error handling and data unwrapping
 apiClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Automatically unwrap standardized responses: { success: true, data: ... }
+        if (response.data && typeof response.data === 'object' && 'success' in response.data && 'data' in response.data) {
+            return {
+                ...response,
+                data: response.data.data
+            };
+        }
+        return response;
+    },
     (error: AxiosError) => {
         if (error.response) {
             // Server responded with error status
