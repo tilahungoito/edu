@@ -451,6 +451,15 @@ moduleRegistry.register({
             permission: { module: 'hr', action: 'view', resourceType: 'transfer' },
             allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'INSTRUCTOR', 'STUDENT'],
         },
+        {
+            id: 'hr-approvals',
+            label: 'Transfer Approvals',
+            labelAmharic: 'ዝውውር ማጽደቅ',
+            icon: 'VerifiedUser',
+            path: '/hr/approvals',
+            permission: { module: 'hr', action: 'edit', resourceType: 'transfer' },
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN'],
+        },
     ],
 });
 
@@ -575,9 +584,8 @@ moduleRegistry.register({
             id: 'mon-audit',
             label: 'Audit Logs',
             icon: 'Description',
-            path: '/system/monitoring/audit',
-            permission: { module: 'monitoring', action: 'view', resourceType: 'staff' }, // Reusing staff for now or adjust
-            allowedTenantTypes: ['bureau'],
+            path: '/management/audit',
+            permission: { module: 'monitoring', action: 'view', resourceType: 'staff' },
             allowedRoles: ['SYSTEM_ADMIN'],
         },
         {
