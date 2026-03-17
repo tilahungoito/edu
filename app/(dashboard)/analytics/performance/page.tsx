@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton } from '@mui/material';
+import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha } from '@mui/material';
 import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsService } from '@/app/lib/api/analytics.service';
@@ -38,6 +38,10 @@ export default function PerformanceAnalyticsPage() {
         queryKey: ['analytics', 'subject', scope], 
         queryFn: () => analyticsService.getSubjectPerformance(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
     });
+    const { data: gradeDistribution, isLoading: distributionLoading } = useQuery({ 
+        queryKey: ['analytics', 'distribution', scope], 
+        queryFn: () => analyticsService.getGradeDistribution(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
+    });
 
     const handleRegionChange = (id: string) => {
         setRegionId(id);
@@ -69,15 +73,15 @@ export default function PerformanceAnalyticsPage() {
         <Box>
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
-                    <Typography variant="h4" fontWeight={700} gutterBottom>
+                    <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: -1 }}>
                         Performance Analytics
                     </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                        In-depth analysis of educational performance and trends
+                    <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                        In-depth analysis of educational performance and achievement distributions
                     </Typography>
                 </Box>
 
-                <Paper sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', minWidth: 300 }}>
+                <Paper elevation={0} sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', minWidth: 300, borderRadius: 3, border: '1px solid', borderColor: 'divider', background: (theme) => alpha(theme.palette.background.paper, 0.8), backdropFilter: 'blur(8px)' }}>
                     <FormControl size="small" sx={{ minWidth: 120 }}>
                         <InputLabel>Region</InputLabel>
                         <Select value={regionId} label="Region" onChange={(e) => handleRegionChange(e.target.value)}>
@@ -124,6 +128,22 @@ export default function PerformanceAnalyticsPage() {
             </Box>
 
             <Grid container spacing={4}>
+                <Grid size={{ xs: 12 }}>
+                    {distributionLoading ? (
+                        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 3 }} />
+                    ) : (
+                        <AnalyticsChart
+                            title="Grade Distribution"
+                            subtitle="Student performance spread across achievement levels"
+                            data={gradeDistribution?.map(d => ({ name: d.range, count: d.count })) || []}
+                            type="bar"
+                            dataKeys={['count']}
+                            colors={gradeDistribution?.map(d => d.color) || []}
+                            height={400}
+                        />
+                    )}
+                </Grid>
+
                 <Grid size={{ xs: 12, lg: 7 }}>
                     {trendsLoading ? (
                         <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
@@ -138,6 +158,7 @@ export default function PerformanceAnalyticsPage() {
                         />
                     )}
                 </Grid>
+
                 <Grid size={{ xs: 12, lg: 5 }}>
                     {subjectLoading ? (
                         <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />

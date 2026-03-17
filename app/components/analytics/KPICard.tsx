@@ -22,6 +22,7 @@ import {
     Groups as GroupsIcon,
     Inventory2 as InventoryIcon,
     AccountBalance as BudgetIcon,
+    Warning as WarningIcon,
 } from '@mui/icons-material';
 import type { KPIData } from '@/app/lib/types';
 
@@ -35,6 +36,7 @@ const iconMap: Record<string, React.ReactNode> = {
     Groups: <GroupsIcon />,
     Inventory: <InventoryIcon />,
     Budget: <BudgetIcon />,
+    Warning: <WarningIcon />,
 };
 
 interface KPICardProps {
@@ -220,7 +222,7 @@ export function KPIGrid({ kpis, loading = false, columns = 4 }: KPIGridProps) {
                     key={kpi.label}
                     data={kpi}
                     loading={loading}
-                    color={colors[index % colors.length]}
+                    color={(kpi as any).color || colors[index % colors.length]}
                 />
             ))}
         </Box>

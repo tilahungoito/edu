@@ -21,6 +21,13 @@ export interface SubjectPerformance {
     [key: string]: string | number | undefined;
 }
 
+export interface GradeDistribution {
+    range: string;
+    count: number;
+    color: string;
+    [key: string]: string | number | undefined;
+}
+
 export const analyticsService = {
     getKPIs: async (scopeType?: string, scopeId?: string): Promise<KPI[]> => {
         const response = await apiClient.get<KPI[]>('/analytics/kpis', {
@@ -36,6 +43,12 @@ export const analyticsService = {
     },
     getSubjectPerformance: async (scopeType?: string, scopeId?: string): Promise<SubjectPerformance[]> => {
         const response = await apiClient.get<SubjectPerformance[]>('/analytics/subject-performance', {
+            params: { scopeType, scopeId }
+        });
+        return response.data;
+    },
+    getGradeDistribution: async (scopeType?: string, scopeId?: string): Promise<GradeDistribution[]> => {
+        const response = await apiClient.get<GradeDistribution[]>('/analytics/grade-distribution', {
             params: { scopeType, scopeId }
         });
         return response.data;
