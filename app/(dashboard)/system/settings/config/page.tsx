@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Box, Typography, Snackbar, Alert as MuiAlert, Tabs, Tab, Chip, Tooltip, IconButton } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
