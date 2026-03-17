@@ -6,18 +6,86 @@ export interface ModuleStatus {
     name: string;
     description: string;
     enabled: boolean;
-    category: 'Core' | 'Academic' | 'Administrative' | 'Finance';
+    category: 'Core' | 'Academic' | 'Administrative' | 'Finance' | 'Communication';
+    dependencies?: string[];
+    health?: 'healthy' | 'degraded' | 'offline';
+    version?: string;
 }
 
 const DEFAULT_MODULES: ModuleStatus[] = [
-    { key: 'MODULE_HR', name: 'Human Resources', description: 'Manage staff, contracts, and payroll', enabled: true, category: 'Administrative' },
-    { key: 'MODULE_INVENTORY', name: 'Inventory', description: 'Track assets and supplies', enabled: true, category: 'Administrative' },
-    { key: 'MODULE_FINANCE', name: 'Finance', description: 'Budgeting and expenses', enabled: true, category: 'Finance' },
-    { key: 'MODULE_PAYMENTS', name: 'Payments', description: 'Student fee collection', enabled: true, category: 'Finance' },
-    { key: 'MODULE_ACADEMIC', name: 'Academics', description: 'Curriculum and grading', enabled: true, category: 'Academic' },
-    { key: 'MODULE_ATTENDANCE', name: 'Attendance', description: 'Student and staff attendance', enabled: true, category: 'Academic' },
-    { key: 'MODULE_MESSAGING', name: 'Messaging', description: 'Internal communication system', enabled: true, category: 'Core' },
-    { key: 'MODULE_REPORTS', name: 'Reports', description: 'System-wide analytics and reporting', enabled: true, category: 'Core' },
+    { 
+        key: 'MODULE_MESSAGING', 
+        name: 'Messaging', 
+        description: 'Internal communication, notifications, and mailing system', 
+        enabled: true, 
+        category: 'Communication',
+        health: 'healthy',
+        version: '2.1.0'
+    },
+    { 
+        key: 'MODULE_REPORTS', 
+        name: 'Reports & Analytics', 
+        description: 'System-wide data analysis, automated reporting, and PDF generation', 
+        enabled: true, 
+        category: 'Core',
+        health: 'healthy',
+        version: '1.5.0'
+    },
+    { 
+        key: 'MODULE_ACADEMIC', 
+        name: 'Academics', 
+        description: 'Curriculum management, course scheduling, and student grading', 
+        enabled: true, 
+        category: 'Academic',
+        health: 'healthy',
+        version: '3.0.1'
+    },
+    { 
+        key: 'MODULE_ATTENDANCE', 
+        name: 'Attendance', 
+        description: 'Automated student and staff attendance tracking', 
+        enabled: true, 
+        category: 'Academic',
+        dependencies: ['MODULE_ACADEMIC'],
+        health: 'healthy',
+        version: '1.2.0'
+    },
+    { 
+        key: 'MODULE_HR', 
+        name: 'Human Resources', 
+        description: 'Staff profiles, contract management, and performance reviews', 
+        enabled: true, 
+        category: 'Administrative',
+        health: 'healthy',
+        version: '2.4.0'
+    },
+    { 
+        key: 'MODULE_INVENTORY', 
+        name: 'Inventory', 
+        description: 'Asset tracking, procurement, and supply management', 
+        enabled: true, 
+        category: 'Administrative',
+        health: 'healthy',
+        version: '1.8.0'
+    },
+    { 
+        key: 'MODULE_FINANCE', 
+        name: 'Finance & Budget', 
+        description: 'Institutional budgeting, expense tracking, and financial audits', 
+        enabled: true, 
+        category: 'Finance',
+        health: 'healthy',
+        version: '2.0.0'
+    },
+    { 
+        key: 'MODULE_PAYMENTS', 
+        name: 'Student Payments', 
+        description: 'Tuition fees, scholarship management, and invoicing', 
+        enabled: true, 
+        category: 'Finance',
+        health: 'healthy',
+        version: '1.4.2'
+    },
 ];
 
 export const modulesService = {
