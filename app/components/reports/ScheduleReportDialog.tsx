@@ -7,7 +7,7 @@ import {
     Button,
     TextField,
     MenuItem,
-    Grid2 as Grid,
+    Grid,
     Box,
     Chip,
     Autocomplete,
