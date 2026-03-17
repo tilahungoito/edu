@@ -7,6 +7,7 @@ export interface CreateTransferRequestDto {
     type: string;
     reason: string;
     effectiveDate?: string;
+    attachments?: string[];
 }
 
 export interface UpdateTransferStatusDto {

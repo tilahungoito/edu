@@ -36,6 +36,8 @@ import {
     CheckCircle as ApproveIcon,
     Cancel as RejectIcon,
     MoreVert as MoreIcon,
+    CloudUpload as CloudUploadIcon,
+    AttachFile as AttachFileIcon,
 } from '@mui/icons-material';
 import { DataTable } from '@/app/components/tables';
 import { PermissionGate } from '@/app/lib/core';
@@ -130,6 +132,21 @@ const transferColumns: GridColDef<HRTransfer>[] = [
         width: 110,
         valueFormatter: (value) => value ? new Date(value as string).toLocaleDateString() : '-',
     },
+    {
+        field: 'attachments',
+        headerName: 'Docs',
+        width: 70,
+        renderCell: (params) => {
+            const count = (params.value as string[])?.length || 0;
+            if (count === 0) return '-';
+            return (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <AttachFileIcon sx={{ fontSize: 16 }} />
+                    <Typography variant="caption">{count}</Typography>
+                </Box>
+            );
+        }
+    },
 ];
 
 const approvalSteps = ['Source School', 'Woreda', 'Zone', 'Bureau'];
@@ -201,6 +218,7 @@ export default function TransfersPage() {
     const [history, setHistory] = useState<any[]>([]);
     const [schools, setSchools] = useState<Institution[]>([]);
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
     const canApprove = ['bureau', 'zone', 'woreda', 'school'].includes(user?.tenantType || '') &&
@@ -212,6 +230,7 @@ export default function TransfersPage() {
         type: 'permanent',
         reason: '',
         effectiveDate: '',
+        attachments: [],
     });
 
     const fetchData = async () => {
@@ -286,6 +305,42 @@ export default function TransfersPage() {
         }
     };
 
+    const handleCancel = async (request: HRTransfer) => {
+        if (!window.confirm('Are you sure you want to cancel this request?')) return;
+        try {
+            await transfersService.cancelRequest(request.id);
+            toast.success('Request cancelled');
+            fetchData();
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to cancel request');
+        }
+    };
+
+    const handleBulkAction = async (action: 'approve' | 'reject') => {
+        if (selectedIds.length === 0) return;
+        
+        const status = action === 'approve' ? 'APPROVED' : 'REJECTED'; // Simple bulk logic for now
+        const confirmMsg = `Are you sure you want to ${action} ${selectedIds.length} requests?`;
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            setLoading(true);
+            const result = await transfersService.bulkUpdateStatus({
+                requestIds: selectedIds,
+                status: status as any,
+                comment: `Bulk ${action} via dashboard`
+            });
+            
+            toast.success(`Bulk ${action} complete: ${result.success} succeeded, ${result.failed} failed.`);
+            setSelectedIds([]);
+            fetchData();
+        } catch (error: any) {
+            toast.error(error.message || `Failed to perform bulk ${action}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!formData.targetInstitutionId || !formData.reason) {
             toast.error('Please fill in all required fields');
@@ -304,6 +359,7 @@ export default function TransfersPage() {
                 type: 'permanent',
                 reason: '',
                 effectiveDate: '',
+                attachments: [],
             });
 
             // Refresh counts/list
@@ -349,6 +405,30 @@ export default function TransfersPage() {
                     </Box>
                 );
             }
+        },
+        {
+            field: 'actions',
+            headerName: 'Actions',
+            width: 100,
+            sortable: false,
+            renderCell: (params) => {
+                const request = params.row as HRTransfer;
+                const isOwner = (request as any).requesterId === user?.id;
+                const canCancel = isOwner && ['PENDING_SCHOOL', 'PENDING_WOREDA', 'PENDING_ZONE', 'PENDING_BUREAU'].includes(request.status);
+
+                if (!canCancel) return null;
+
+                return (
+                    <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleCancel(request)}
+                        title="Cancel Request"
+                    >
+                        <RejectIcon />
+                    </IconButton>
+                );
+            }
         }
     ];
 
@@ -373,16 +453,41 @@ export default function TransfersPage() {
                         Manage and track personnel transfer requests across institutions
                     </Typography>
                 </Box>
-                {activeTab === 0 && (
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => setOpenDialog(true)}
-                        sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
-                    >
-                        New Transfer Request
-                    </Button>
-                )}
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    {selectedIds.length > 0 && canApprove && (
+                        <>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                startIcon={<RejectIcon />}
+                                onClick={() => handleBulkAction('reject')}
+                                sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
+                            >
+                                Reject ({selectedIds.length})
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                startIcon={<ApproveIcon />}
+                                onClick={() => handleBulkAction('approve')}
+                                sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
+                            >
+                                Approve ({selectedIds.length})
+                            </Button>
+                        </>
+                    )}
+                    {activeTab === 0 && (
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => setOpenDialog(true)}
+                            sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
+                        >
+                            New Transfer Request
+                        </Button>
+                    )}
+                </Box>
             </Box>
 
             {/* Approval Workflow Visual */}
@@ -455,12 +560,14 @@ export default function TransfersPage() {
             ) : activeTab === 1 && canApprove ? (
                 <DataTable
                     title="Pending Approvals"
-                    subtitle={`${pendingRequests.length} requests awaiting your decision. Click a row to see progress.`}
+                    subtitle={`${pendingRequests.length} requests awaiting your decision. Select multiple for bulk actions.`}
                     columns={columnsWithApprovals}
                     rows={pendingRequests}
                     loading={loading}
                     module="hr"
                     onView={(row) => setSelectedRequestId(row.id)}
+                    checkboxSelection
+                    onSelectionChange={(ids) => setSelectedIds(ids as string[])}
                 />
             ) : (
                 <DataTable
@@ -571,6 +678,60 @@ export default function TransfersPage() {
                             value={formData.reason}
                             onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                         />
+
+                        {/* File Attachments (Simplified) */}
+                        <Box sx={{
+                            p: 2,
+                            border: '2px dashed',
+                            borderColor: 'divider',
+                            borderRadius: 2,
+                            bgcolor: alpha(theme.palette.primary.main, 0.05),
+                            textAlign: 'center'
+                        }}>
+                            <Button
+                                component="label"
+                                variant="outlined"
+                                startIcon={<CloudUploadIcon />}
+                                sx={{ mb: 1 }}
+                            >
+                                Upload Supporting Documents
+                                <input
+                                    type="file"
+                                    hidden
+                                    multiple
+                                    onChange={(e) => {
+                                        // Mock upload: just store the filenames for now
+                                        const files = Array.from(e.target.files || []);
+                                        const fileNames = files.map(f => f.name);
+                                        setFormData(prev => ({ 
+                                            ...prev, 
+                                            attachments: [...(prev.attachments || []), ...fileNames] 
+                                        }));
+                                        toast.success(`${files.length} files attached.`);
+                                    }}
+                                />
+                            </Button>
+                            <Typography variant="caption" display="block" color="text.secondary">
+                                (Max 5MB per file: PDF, JPG, PNG)
+                            </Typography>
+                            {formData.attachments && formData.attachments.length > 0 && (
+                                <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    {formData.attachments.map((name, idx) => (
+                                        <Chip 
+                                            key={idx} 
+                                            label={name} 
+                                            size="small" 
+                                            onDelete={() => {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    attachments: prev.attachments?.filter((_, i) => i !== idx)
+                                                }));
+                                            }}
+                                        />
+                                    ))}
+                                </Box>
+                            )}
+                        </Box>
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ p: 2.5 }}>
