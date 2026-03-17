@@ -12,11 +12,13 @@ export interface PerformanceTrend {
     name: string;
     score: number;
     enrollment: number;
+    [key: string]: string | number | undefined;
 }
 
 export interface SubjectPerformance {
     name: string;
     value: number;
+    [key: string]: string | number | undefined;
 }
 
 export const analyticsService = {

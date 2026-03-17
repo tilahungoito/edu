@@ -12,8 +12,10 @@ export interface Kebele {
 }
 
 export const kebelesService = {
-    getAll: async (): Promise<Kebele[]> => {
-        const response = await apiClient.get<Kebele[]>('/kebeles');
+    getAll: async (woredaId?: string): Promise<Kebele[]> => {
+        const params = new URLSearchParams();
+        if (woredaId) params.append('woredaId', woredaId);
+        const response = await apiClient.get<Kebele[]>(`/kebeles?${params.toString()}`);
         return response.data;
     },
 
