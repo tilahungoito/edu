@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, Chip } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
@@ -8,11 +10,44 @@ import { ScheduleReportDialog } from '@/app/components/reports/ScheduleReportDia
 
 const columns: GridColDef<ScheduledReport>[] = [
     { field: 'name', headerName: 'Report Name', flex: 1, minWidth: 200 },
-    { field: 'reportType', headerName: 'Type', width: 130, valueGetter: (value: string) => value?.toUpperCase() },
-    { field: 'frequency', headerName: 'Frequency', width: 120, valueGetter: (value: string) => value?.toUpperCase() },
-    { field: 'lastRun', headerName: 'Last Run', width: 130, valueFormatter: (value?: string | Date) => value ? new Date(value).toLocaleDateString() : 'Never' },
-    { field: 'nextRun', headerName: 'Next Run', width: 130, valueFormatter: (value?: string | Date) => value ? new Date(value).toLocaleDateString() : '-' },
-    { field: 'recipients', headerName: 'Recipients', width: 220, valueGetter: (value: string[]) => value?.length > 0 ? value.join(', ') : 'No recipients' },
+    { 
+        field: 'reportType', 
+        headerName: 'Type', 
+        width: 130, 
+        valueGetter: (value: any) => value?.toString().toUpperCase() 
+    },
+    { 
+        field: 'frequency', 
+        headerName: 'Frequency', 
+        width: 120, 
+        valueGetter: (value: any) => value?.toString().toUpperCase() 
+    },
+    { 
+        field: 'lastRun', 
+        headerName: 'Last Run', 
+        width: 130, 
+        valueFormatter: (value?: any) => {
+            if (!value) return 'Never';
+            return new Date(value).toLocaleDateString();
+        }
+    },
+    { 
+        field: 'nextRun', 
+        headerName: 'Next Run', 
+        width: 130, 
+        valueFormatter: (value?: any) => {
+            if (!value) return '-';
+            return new Date(value).toLocaleDateString();
+        }
+    },
+    { 
+        field: 'recipients', 
+        headerName: 'Recipients', 
+        width: 220, 
+        valueGetter: (value: any) => {
+            return Array.isArray(value) && value.length > 0 ? value.join(', ') : 'No recipients';
+        }
+    },
     {
         field: 'status',
         headerName: 'Status',
