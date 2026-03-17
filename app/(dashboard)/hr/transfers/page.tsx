@@ -38,6 +38,7 @@ import {
     MoreVert as MoreIcon,
     CloudUpload as CloudUploadIcon,
     AttachFile as AttachFileIcon,
+    History as HistoryIcon,
 } from '@mui/icons-material';
 import { DataTable } from '@/app/components/tables';
 import { PermissionGate } from '@/app/lib/core';
@@ -161,7 +162,7 @@ function getActiveStep(status: TransferStatus, isStudent: boolean = false) {
         };
         return stepMap[status] ?? -1;
     }
-    const stepMap: Record<TransferStatus, number> = {
+    const stepMap: Partial<Record<TransferStatus, number>> = {
         DRAFT: -1,
         PENDING_SCHOOL: 0,
         PENDING_WOREDA: 1,
@@ -602,6 +603,16 @@ export default function TransfersPage() {
                             headerName: 'Executed Date',
                             width: 130,
                             valueFormatter: (value) => value ? new Date(value as string).toLocaleDateString() : '-'
+                        },
+                        {
+                            field: 'snapshot',
+                            headerName: 'Snapshot',
+                            width: 100,
+                            renderCell: (params) => (
+                                <IconButton size="small" color="primary" onClick={() => toast.success('Viewing Academic Record Snapshot...')}>
+                                    <HistoryIcon fontSize="small" />
+                                </IconButton>
+                            )
                         }
                     ]}
                     rows={history}

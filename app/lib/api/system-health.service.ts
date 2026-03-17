@@ -2,7 +2,8 @@ import apiClient from './api-client';
 
 export interface HealthStatus {
     status: string;
-    timestamp: string;
+    info: Record<string, any>;
+    details: Record<string, any>;
     uptime: number;
     memory: {
         heapUsed: string;

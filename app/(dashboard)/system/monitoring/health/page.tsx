@@ -143,7 +143,7 @@ export default function SystemHealthPage() {
             <Box sx={{ mb: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <Box>
                     <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: -1 }}>
-                        System Health
+                        System Pulse
                     </Typography>
                     <Typography variant="body1" color="text.secondary" fontWeight={500}>
                         Real-time system performance and status monitoring
@@ -192,18 +192,26 @@ export default function SystemHealthPage() {
                                         SYSTEM STATUS
                                     </Typography>
                                     <Typography variant="h5" fontWeight={700} sx={{ mt: 1 }}>
-                                        {health ? 'Operational' : 'Offline'}
+                                        {health?.status === 'ok' ? 'Healthy' : health ? 'Degraded' : 'Offline'}
                                     </Typography>
                                 </Box>
-                                <HealthyIcon sx={{ fontSize: 32, color: health ? 'success.main' : 'error.main', opacity: 0.2 }} />
+                                <HealthyIcon sx={{ fontSize: 32, color: health?.status === 'ok' ? 'success.main' : 'error.main', opacity: 0.2 }} />
                             </Box>
                             {health && (
-                                <Chip
-                                    label={`Environment: ${health.environment}`}
-                                    size="small"
-                                    color="success"
-                                    variant="outlined"
-                                />
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    <Chip 
+                                        label={`DB: ${health.info?.database?.status === 'up' ? 'UP' : 'DOWN'}`} 
+                                        size="small" 
+                                        color={health.info?.database?.status === 'up' ? 'success' : 'error'} 
+                                        variant="outlined"
+                                    />
+                                    <Chip 
+                                        label={`Redis: ${health.info?.redis?.status === 'up' ? 'UP' : 'DOWN'}`} 
+                                        size="small" 
+                                        color={health.info?.redis?.status === 'up' ? 'success' : 'error'} 
+                                        variant="outlined"
+                                    />
+                                </Box>
                             )}
                         </CardContent>
                     </Card>
@@ -274,13 +282,13 @@ export default function SystemHealthPage() {
                                         PERFORMANCE
                                     </Typography>
                                     <Typography variant="h5" fontWeight={700} sx={{ mt: 1 }}>
-                                        Optimal
+                                        {health?.info?.storage?.status === 'up' ? 'Healthy' : 'Warning'}
                                     </Typography>
                                 </Box>
                                 <PerformanceIcon sx={{ fontSize: 32, color: 'primary.main', opacity: 0.2 }} />
                             </Box>
                             <Typography variant="body2" color="text.secondary">
-                                All systems responding normally
+                                {health?.info?.storage?.status === 'up' ? 'Storage: Optimized' : 'Storage: Checking...'}
                             </Typography>
                         </CardContent>
                     </Card>
