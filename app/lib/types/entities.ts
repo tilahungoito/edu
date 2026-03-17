@@ -121,7 +121,10 @@ export type TransferStatus =
     | 'PENDING_TARGET_SCHOOL'
     | 'APPROVED'
     | 'REJECTED'
-    | 'CANCELLED';
+    | 'CANCELLED'
+    | 'PENDING_WOREDA_TARGET'
+    | 'PENDING_ZONE_TARGET'
+    | 'PENDING_BUREAU_TARGET';
 
 export type TransferType =
     | 'permanent'
@@ -156,6 +159,7 @@ export interface HRTransfer extends Omit<BaseEntity, 'status'> {
     approvals: TransferApproval[];
     status: TransferStatus;
     attachments?: string[];
+    requestIds?: string[]; // For bulk operations context if needed
 }
 
 // ====================================
