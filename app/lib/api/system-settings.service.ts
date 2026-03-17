@@ -6,6 +6,7 @@ export interface SystemSetting {
     value: string;
     description?: string;
     type: string;
+    category: string;
     createdAt: string;
     updatedAt: string;
 }
