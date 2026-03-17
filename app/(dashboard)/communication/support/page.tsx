@@ -204,40 +204,12 @@ export default function HelpRequestsPage() {
             </Box>
 
             <DataTable
+                title="Help Requests"
+                module="communication"
                 rows={filteredRequests}
                 columns={columns}
                 loading={loading}
-                pageSize={10}
-                rowsPerPageOptions={[10, 25, 50]}
-                sx={{
-                    border: 'none',
-                    '& .MuiDataGrid-main': {
-                        borderRadius: 2,
-                        border: 'none',
-                        boxShadow: 0,
-                    },
-                    '& .MuiDataGrid-columnHeaders': {
-                        backgroundColor: theme => theme.palette.grey[50],
-                        fontWeight: 700,
-                        borderBottom: '2px solid',
-                        borderColor: theme => theme.palette.divider,
-                    },
-                    '& .MuiDataGrid-row': {
-                        borderBottom: '1px solid',
-                        borderColor: theme => theme.palette.divider,
-                        '&:hover': {
-                            backgroundColor: theme => theme.palette.action.hover,
-                        },
-                    },
-                    '& .MuiDataGrid-cell': {
-                        border: 'none',
-                        py: 1.5,
-                    },
-                    '& .MuiDataGrid-footerContainer': {
-                        borderTop: 'none',
-                        backgroundColor: theme => theme.palette.background.paper,
-                    },
-                }}
+                showSearch={false}
             />
 
             {/* View/Action Dialog */}
