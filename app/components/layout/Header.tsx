@@ -32,8 +32,8 @@ import {
 import { useAuthStore } from '@/app/lib/store';
 import { useThemeStore } from '@/app/lib/store/theme-store';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import announcementsService from '@/app/lib/api/announcements.service';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import announcementsService, { Announcement } from '@/app/lib/api/announcements.service';
 import { searchService, SearchResult } from '@/app/lib/api/search.service';
 
 interface HeaderProps {
@@ -46,6 +46,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
     const user = useAuthStore(state => state.user);
     const logout = useAuthStore(state => state.logout);
     const { mode, toggleTheme } = useThemeStore();
+    const queryClient = useQueryClient();
 
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [notificationAnchor, setNotificationAnchor] = useState<null | HTMLElement>(null);
@@ -59,6 +60,22 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
         queryKey: ['announcements', 'unread-count'],
         queryFn: () => announcementsService.getUnreadCount(),
         refetchInterval: 30000, // Poll every 30s
+        enabled: !!user,
+    });
+
+    const { data: announcements = [] } = useQuery({
+        queryKey: ['announcements'],
+        queryFn: () => announcementsService.getAll(),
+        refetchInterval: 60000, 
+        enabled: Boolean(notificationAnchor), // Fetch when menu opens
+    });
+
+    const markAsReadMutation = useMutation({
+        mutationFn: (id: string) => announcementsService.markAsRead(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['announcements'] });
+            queryClient.invalidateQueries({ queryKey: ['announcements', 'unread-count'] });
+        }
     });
 
     useEffect(() => {
@@ -100,6 +117,13 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
         handleMenuClose();
         await logout();
         router.push('/login');
+    };
+
+    const handleAnnouncementClick = (announcement: Announcement) => {
+        if (!announcement.isRead) {
+            markAsReadMutation.mutate(announcement.id);
+        }
+        // Could navigate or open a dialog here depending on the priority/target
     };
 
     const drawerWidth = sidebarCollapsed ? 80 : 280;
@@ -386,54 +410,58 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                 >
                     <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
                         <Typography variant="subtitle1" fontWeight={600}>
-                            Notifications
+                            System Announcements
                         </Typography>
                     </Box>
                     <Box sx={{ p: 2 }}>
-                        <Box
-                            sx={{
-                                p: 1.5,
-                                borderRadius: 2,
-                                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                                mb: 1,
-                            }}
-                        >
-                            <Typography variant="body2" fontWeight={500}>
-                                New transfer request
+                        {announcements.length > 0 ? (
+                            announcements.slice(0, 5).map((announcement) => (
+                                <Box
+                                    key={announcement.id}
+                                    onClick={() => handleAnnouncementClick(announcement)}
+                                    sx={{
+                                        p: 1.5,
+                                        borderRadius: 2,
+                                        backgroundColor: announcement.isRead
+                                            ? alpha(theme.palette.action.hover, 0.05)
+                                            : alpha(theme.palette.primary.main, 0.08),
+                                        mb: 1,
+                                        cursor: 'pointer',
+                                        transition: 'background-color 0.2s',
+                                        '&:hover': {
+                                            backgroundColor: announcement.isRead
+                                              ? alpha(theme.palette.action.hover, 0.1)
+                                              : alpha(theme.palette.primary.main, 0.12),
+                                        }
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                        <Typography variant="body2" fontWeight={announcement.isRead ? 500 : 700}>
+                                            {announcement.title}
+                                        </Typography>
+                                        {!announcement.isRead && (
+                                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />
+                                        )}
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                        {announcement.content}
+                                    </Typography>
+                                    <Typography variant="caption" color="primary" fontWeight={600} sx={{ fontSize: '0.65rem' }}>
+                                        {new Date(announcement.createdAt).toLocaleDateString()} • {announcement.createdBy.firstName}
+                                    </Typography>
+                                </Box>
+                            ))
+                        ) : (
+                            <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>
+                                No recent announcements.
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                A staff transfer request is waiting for approval
-                            </Typography>
-                        </Box>
-                        <Box
-                            sx={{
-                                p: 1.5,
-                                borderRadius: 2,
-                                backgroundColor: alpha(theme.palette.warning.main, 0.08),
-                                mb: 1,
-                            }}
-                        >
-                            <Typography variant="body2" fontWeight={500}>
-                                Budget request pending
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                3 budget requests need your attention
-                            </Typography>
-                        </Box>
-                        <Box
-                            sx={{
-                                p: 1.5,
-                                borderRadius: 2,
-                                backgroundColor: alpha(theme.palette.success.main, 0.08),
-                            }}
-                        >
-                            <Typography variant="body2" fontWeight={500}>
-                                Report generated
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                Monthly report is ready for download
-                            </Typography>
-                        </Box>
+                        )}
+                        
+                        {announcements.length > 5 && (
+                             <Typography variant="body2" color="primary" textAlign="center" sx={{ mt: 1, cursor: 'pointer', fontWeight: 600 }}>
+                                 View All Announcements
+                             </Typography>
+                        )}
                     </Box>
                 </Menu>
             </Toolbar>
