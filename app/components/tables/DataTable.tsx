@@ -35,6 +35,8 @@ import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     Visibility as ViewIcon,
+    ToggleOn as ActivateIcon,
+    ToggleOff as DeactivateIcon,
 } from '@mui/icons-material';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { DetailsModal } from '../common/DetailsModal';
@@ -59,6 +61,7 @@ interface DataTableProps<T extends { id: string }> {
     onEdit?: (row: T) => void;
     onDelete?: (row: T) => void;
     onView?: (row: T) => void;
+    onToggleStatus?: (row: T) => void;
     onRefresh?: () => void;
 
     // Toolbar options
@@ -139,12 +142,14 @@ function CustomToolbar({
                         placeholder="Search..."
                         value={searchValue}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-                                </InputAdornment>
-                            ),
+                        slotProps={{
+                            input: {
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                                    </InputAdornment>
+                                ),
+                            }
                         }}
                         sx={{
                             width: { xs: '100%', md: 220 },
@@ -258,6 +263,7 @@ export function DataTable<T extends { id: string }>({
     onEdit,
     onDelete,
     onView,
+    onToggleStatus,
     onRefresh,
     renderRowActions,
     showSearch = true,
@@ -275,17 +281,31 @@ export function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
     const theme = useTheme();
     const [searchValue, setSearchValue] = useState('');
-    const [rowSelection, setRowSelection] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
+    const [rowSelection, setRowSelection] = useState<GridRowSelectionModel>([]);
     const [paginationModel, setPaginationModel] = useState({
         pageSize: 10,
         page: 0,
     });
 
     // Modal states
-    const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; row: T | null }>({
+    const [confirmation, setConfirmation] = useState<{
+        open: boolean;
+        title: string;
+        message: string;
+        confirmLabel: string;
+        confirmColor: 'error' | 'warning' | 'primary' | 'success';
+        action: 'delete' | 'toggleStatus' | null;
+        row: T | null;
+    }>({
         open: false,
+        title: '',
+        message: '',
+        confirmLabel: 'Confirm',
+        confirmColor: 'primary',
+        action: null,
         row: null,
     });
+
     const [detailsModal, setDetailsModal] = useState<{ open: boolean; row: T | null }>({
         open: false,
         row: null,
@@ -294,7 +314,7 @@ export function DataTable<T extends { id: string }>({
     const handleRowSelectionChange = (model: GridRowSelectionModel) => {
         setRowSelection(model);
         if (onSelectionChange) {
-            onSelectionChange(Array.from(model.ids).map(id => String(id)));
+            onSelectionChange(model.map(id => String(id)));
         }
     };
     const [actionMenuAnchor, setActionMenuAnchor] = useState<{
@@ -320,11 +340,16 @@ export function DataTable<T extends { id: string }>({
         setActionMenuAnchor(null);
     };
 
-    const handleConfirmDelete = () => {
-        if (confirmDelete.row && onDelete) {
-            onDelete(confirmDelete.row);
+    const handleConfirm = () => {
+        if (!confirmation.row || !confirmation.action) return;
+
+        if (confirmation.action === 'delete' && onDelete) {
+            onDelete(confirmation.row);
+        } else if (confirmation.action === 'toggleStatus' && onToggleStatus) {
+            onToggleStatus(confirmation.row);
         }
-        setConfirmDelete({ open: false, row: null });
+
+        setConfirmation(prev => ({ ...prev, open: false, row: null, action: null }));
     };
 
     // Add actions column if actions are provided
@@ -339,10 +364,11 @@ export function DataTable<T extends { id: string }>({
                         const color = status ? statusColors[status as string] : 'default';
                         return (
                             <Chip
-                                label={status ? (typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : String(status)) : '-'}
+                                label={status ? (typeof status === 'string' ? status.charAt(0).toUpperCase() + status.slice(1) : (status ? 'Active' : 'Inactive')) : '-'}
                                 size="small"
-                                color={(color as any) || 'default'}
-                                sx={{ fontWeight: 500 }}
+                                color={(color as any) || (status === true ? 'success' : status === false ? 'error' : 'default')}
+                                variant="soft"
+                                sx={{ fontWeight: 700, borderRadius: '6px' }}
                             />
                         );
                     },
@@ -350,14 +376,15 @@ export function DataTable<T extends { id: string }>({
             }
             return col;
         }),
-        ...(onView || onEdit || onDelete
+        ...(onView || onEdit || onDelete || onToggleStatus
             ? [
                 {
                     field: 'actions',
                     headerName: 'Actions',
-                    width: 100,
+                    width: 80,
                     sortable: false,
                     filterable: false,
+                    align: 'right',
                     renderCell: (params: GridRenderCellParams) => (
                         <IconButton
                             size="small"
@@ -374,8 +401,9 @@ export function DataTable<T extends { id: string }>({
     return (
         <Card
             sx={{
-                borderRadius: 3,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                borderRadius: 4,
+                boxShadow: '0 10px 40px rgba(0,0,0,0.04)',
+                border: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
                 overflow: 'hidden',
             }}
         >
@@ -423,18 +451,28 @@ export function DataTable<T extends { id: string }>({
                 sx={{
                     border: 'none',
                     '& .MuiDataGrid-cell': {
-                        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                        borderBottom: `1px solid ${alpha(theme.palette.divider, 0.4)}`,
+                        py: 2,
                     },
                     '& .MuiDataGrid-columnHeaders': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                        borderBottom: `2px solid ${theme.palette.divider}`,
+                        backgroundColor: alpha(theme.palette.primary.main, 0.02),
+                        borderBottom: `2.5px solid ${alpha(theme.palette.divider, 0.8)}`,
+                        fontWeight: 800,
+                    },
+                    '& .MuiDataGrid-columnHeaderTitle': {
+                        fontWeight: 700,
+                        color: theme.palette.text.secondary,
+                        fontSize: '0.8rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
                     },
                     '& .MuiDataGrid-row:hover': {
-                        backgroundColor: alpha(theme.palette.primary.main, 0.04),
+                        backgroundColor: alpha(theme.palette.primary.main, 0.02),
                     },
                     '& .MuiDataGrid-footerContainer': {
                         borderTop: `1px solid ${theme.palette.divider}`,
                     },
+                    minHeight: 400,
                 }}
                 autoHeight
             />
@@ -444,58 +482,112 @@ export function DataTable<T extends { id: string }>({
                 anchorEl={actionMenuAnchor?.element}
                 open={Boolean(actionMenuAnchor)}
                 onClose={handleActionClose}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                 PaperProps={{
-                    sx: { borderRadius: 2, minWidth: 150 },
+                    sx: { 
+                        borderRadius: 3, 
+                        minWidth: 180,
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                        mt: 1,
+                        p: 0.5
+                    },
                 }}
             >
                 {onView && (
                     <MenuItem
+                        sx={{ borderRadius: 1.5, py: 1 }}
                         onClick={() => {
                             setDetailsModal({ open: true, row: actionMenuAnchor!.row });
                             handleActionClose();
                         }}
                     >
-                        <ViewIcon fontSize="small" sx={{ mr: 1 }} />
-                        View
+                        <ViewIcon fontSize="small" sx={{ mr: 1.5, color: 'primary.main' }} />
+                        <Typography variant="body2" fontWeight={600}>View Details</Typography>
                     </MenuItem>
                 )}
                 {onEdit && (
                     <PermissionGate permission={{ module, action: 'edit' }}>
                         <MenuItem
+                            sx={{ borderRadius: 1.5, py: 1 }}
                             onClick={() => {
                                 onEdit(actionMenuAnchor!.row);
                                 handleActionClose();
                             }}
                         >
-                            <EditIcon fontSize="small" sx={{ mr: 1 }} />
-                            Edit
+                            <EditIcon fontSize="small" sx={{ mr: 1.5, color: 'info.main' }} />
+                            <Typography variant="body2" fontWeight={600}>Edit Record</Typography>
                         </MenuItem>
                     </PermissionGate>
                 )}
+                
+                {onToggleStatus && actionMenuAnchor && (
+                    <PermissionGate permission={{ module, action: 'edit' }}>
+                        <MenuItem
+                            sx={{ borderRadius: 1.5, py: 1 }}
+                            onClick={() => {
+                                const row = actionMenuAnchor.row;
+                                const isActive = (row as any).isActive || (row as any).user?.isActive;
+                                setConfirmation({
+                                    open: true,
+                                    title: isActive ? 'Deactivate Account' : 'Activate Account',
+                                    message: `Are you sure you want to ${isActive ? 'deactivate' : 'activate'} this record? This will ${isActive ? 'restrict' : 'restore'} their access.`,
+                                    confirmLabel: isActive ? 'Deactivate' : 'Activate',
+                                    confirmColor: isActive ? 'warning' : 'success',
+                                    action: 'toggleStatus',
+                                    row: row,
+                                });
+                                handleActionClose();
+                            }}
+                        >
+                            {(actionMenuAnchor.row as any).isActive || (actionMenuAnchor.row as any).user?.isActive ? (
+                                <DeactivateIcon fontSize="small" sx={{ mr: 1.5, color: 'warning.main' }} />
+                            ) : (
+                                <ActivateIcon fontSize="small" sx={{ mr: 1.5, color: 'success.main' }} />
+                            )}
+                            <Typography variant="body2" fontWeight={600}>
+                                {(actionMenuAnchor.row as any).isActive || (actionMenuAnchor.row as any).user?.isActive ? 'Deactivate' : 'Activate'}
+                            </Typography>
+                        </MenuItem>
+                    </PermissionGate>
+                )}
+
+                {(onView || onEdit || onToggleStatus) && onDelete && <Divider sx={{ my: 0.5 }} />}
+
                 {onDelete && (
                     <PermissionGate permission={{ module, action: 'delete' }}>
                         <MenuItem
+                            sx={{ borderRadius: 1.5, py: 1, color: 'error.main' }}
                             onClick={() => {
-                                setConfirmDelete({ open: true, row: actionMenuAnchor!.row });
+                                setConfirmation({
+                                    open: true,
+                                    title: `Delete ${title?.slice(0, -1) || 'Item'}`,
+                                    message: `Are you sure you want to delete this ${title?.toLowerCase().slice(0, -1) || 'item'}? This action cannot be undone.`,
+                                    confirmLabel: 'Delete',
+                                    confirmColor: 'error',
+                                    action: 'delete',
+                                    row: actionMenuAnchor!.row,
+                                });
                                 handleActionClose();
                             }}
-                            sx={{ color: 'error.main' }}
                         >
-                            <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
-                            Delete
+                            <DeleteIcon fontSize="small" sx={{ mr: 1.5 }} />
+                            <Typography variant="body2" fontWeight={600}>Delete Permanent</Typography>
                         </MenuItem>
                     </PermissionGate>
                 )}
                 {renderRowActions && actionMenuAnchor && renderRowActions(actionMenuAnchor.row, handleActionClose)}
             </Menu>
 
-            {/* Universal Modals */}
+            {/* Universal Confirmation Dialog */}
             <ConfirmDialog
-                open={confirmDelete.open}
-                title={`Delete ${title?.slice(0, -1) || 'Item'}`}
-                message={`Are you sure you want to delete this ${title?.toLowerCase().slice(0, -1) || 'item'}? This action cannot be undone.`}
-                onConfirm={handleConfirmDelete}
-                onClose={() => setConfirmDelete({ open: false, row: null })}
+                open={confirmation.open}
+                title={confirmation.title}
+                message={confirmation.message}
+                confirmLabel={confirmation.confirmLabel}
+                confirmColor={confirmation.confirmColor}
+                onConfirm={handleConfirm}
+                onClose={() => setConfirmation(prev => ({ ...prev, open: false, row: null, action: null }))}
             />
 
             {detailsModal.row && (
@@ -510,5 +602,5 @@ export function DataTable<T extends { id: string }>({
     );
 }
 
-
 export default DataTable;
+

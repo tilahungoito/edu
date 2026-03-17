@@ -25,10 +25,12 @@ import { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables/DataTable';
 import { StudentDialog } from '@/app/components/management/StudentDialog';
 import studentsService, { Student } from '@/app/lib/api/students.service';
+import { usersService } from '@/app/lib/api/users.service';
 import { useAuthStore } from '@/app/lib/store';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { institutionsService } from '@/app/lib/api/institutions.service';
+import { toast } from 'react-hot-toast';
 
 export default function StudentsPage() {
     const theme = useTheme();
@@ -137,21 +139,6 @@ export default function StudentsPage() {
             minWidth: 150,
             valueGetter: (params, row) => row.institution?.name || 'N/A',
         },
-        {
-            field: 'isActive',
-            headerName: 'Status',
-            width: 100,
-            valueGetter: (value, row) => row.user?.isActive,
-            renderCell: (params) => (
-                <Chip
-                    label={params.value ? 'Active' : 'Inactive'}
-                    size="small"
-                    color={params.value ? 'success' : 'error'}
-                    variant="soft"
-                    sx={{ fontWeight: 700, borderRadius: '6px', height: 24 }}
-                />
-            ),
-        },
     ], [theme]);
 
     const handleAdd = () => {
@@ -164,15 +151,31 @@ export default function StudentsPage() {
         setIsDialogOpen(true);
     };
 
-    const handleDelete = async (student: Student) => {
+    const handleToggleStatus = async (student: Student) => {
         try {
-            await studentsService.delete(student.id);
+            const isActive = student.user?.isActive;
+            if (isActive) {
+                await usersService.deactivate(student.userId);
+                toast.success('Student account deactivated');
+            } else {
+                await usersService.activate(student.userId);
+                toast.success('Student account activated');
+            }
             refetch();
-        } catch (error) {
-            console.error('Error deleting student:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to update status');
         }
     };
 
+    const handleDelete = async (student: Student) => {
+        try {
+            await studentsService.delete(student.id);
+            toast.success('Student deleted successfully');
+            refetch();
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to delete student');
+        }
+    };
 
     return (
         <Box className="animate-fade-in" sx={{ p: { xs: 2.5, md: 3, lg: 5 }, maxWidth: '100%', overflow: 'hidden' }}>
@@ -221,10 +224,14 @@ export default function StudentsPage() {
                 module="students"
                 onAdd={handleAdd}
                 onEdit={handleEdit}
-                onView={() => { }}
+                onView={(student) => {
+                    console.log('Viewing student:', student);
+                }}
                 onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
                 onRefresh={refetch}
                 showSearch={true}
+                statusField="isActive"
                 toolbarActions={
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                         {user?.tenantType !== 'school' && (
@@ -258,10 +265,10 @@ export default function StudentsPage() {
                 onClose={() => setIsDialogOpen(false)}
                 onSuccess={() => {
                     refetch();
-                    // Optional: show toast notification
                 }}
                 student={selectedStudent}
             />
         </Box>
     );
 }
+
