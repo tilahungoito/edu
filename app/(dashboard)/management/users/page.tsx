@@ -1,23 +1,16 @@
 'use client';
 
-import React from 'react';
-import { Box, Typography, Button, Grid, alpha, Avatar, Chip } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, alpha, Avatar } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
-
 import { usersService } from '@/app/lib/api/users.service';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
-import { useState, useEffect } from 'react';
 import type { User } from '@/app/lib/api/api-client';
 import { UserDialog } from '@/app/components/management/UserDialog';
-import { IconButton, Tooltip, Menu, MenuItem as MuiMenuItem, Snackbar, Alert as MuiAlert } from '@mui/material';
-import {
-    CheckCircle as ActivateIcon,
-    Cancel as DeactivateIcon,
-    Refresh as RefreshIcon,
-} from '@mui/icons-material';
-import { ConfirmDialog } from '@/app/components/common/ConfirmDialog';
+import { Refresh as RefreshIcon } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
+import { toast } from 'react-hot-toast';
 
 // Roles that can create users
 const CREATE_ROLES = [
@@ -33,28 +26,11 @@ export default function UsersManagementPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const user = useAuthStore(state => state.user);
 
     // Check if user can create other users
     const canCreate = user?.roles?.some(r => CREATE_ROLES.includes(r.name)) ?? false;
-
-    const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-        open: false,
-        message: '',
-        severity: 'success',
-    });
-
-    const [confirmAction, setConfirmAction] = useState<{
-        open: boolean;
-        type: 'activate' | 'deactivate' | null;
-        userId: string | null;
-        userName: string | null;
-    }>({
-        open: false,
-        type: null,
-        userId: null,
-        userName: null,
-    });
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -63,6 +39,7 @@ export default function UsersManagementPage() {
             setUsers(data);
         } catch (error) {
             console.error('Error fetching users:', error);
+            toast.error('Failed to fetch users');
         } finally {
             setLoading(false);
         }
@@ -77,24 +54,34 @@ export default function UsersManagementPage() {
         fetchUsers();
     });
 
-    const handleAction = async (action: 'activate' | 'deactivate', userId: string) => {
+    const handleToggleStatus = async (userRecord: any) => {
         try {
-            if (action === 'activate') await usersService.activate(userId);
-            else if (action === 'deactivate') await usersService.deactivate(userId);
-
-            setNotification({
-                open: true,
-                message: `User ${action}d successfully`,
-                severity: 'success',
-            });
+            if (userRecord.isActive) {
+                await usersService.deactivate(userRecord.id);
+                toast.success('User deactivated successfully');
+            } else {
+                await usersService.activate(userRecord.id);
+                toast.success('User activated successfully');
+            }
             fetchUsers();
         } catch (error: any) {
-            setNotification({
-                open: true,
-                message: error.message || `Failed to ${action} user`,
-                severity: 'error',
-            });
+            toast.error(error.message || 'Failed to update user status');
         }
+    };
+
+    const handleDelete = async (userRecord: any) => {
+        try {
+            await usersService.remove(userRecord.id);
+            toast.success('User removed successfully');
+            fetchUsers();
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to remove user');
+        }
+    };
+
+    const handleEdit = (userRecord: any) => {
+        setSelectedUser(userRecord);
+        setDialogOpen(true);
     };
 
     const columns: GridColDef[] = [
@@ -117,20 +104,13 @@ export default function UsersManagementPage() {
         },
         { field: 'role', headerName: 'Role', width: 120 },
         { field: 'tenant', headerName: 'Scope', width: 150 },
-        {
-            field: 'status',
-            headerName: 'Status',
-            width: 100,
-        },
     ];
 
     const mappedUsers = users.map(u => ({
-        id: u.id,
+        ...u,
         name: (u as any).firstName ? `${(u as any).firstName} ${(u as any).lastName}` : (u.username || u.email),
-        email: u.email,
         role: (u.role as any)?.name || 'User',
         tenant: u.scopeType || 'System',
-        status: u.isActive ? 'active' : 'inactive'
     }));
 
     return (
@@ -153,53 +133,17 @@ export default function UsersManagementPage() {
                 columns={columns}
                 loading={loading}
                 module="management"
-                onAdd={canCreate ? () => setDialogOpen(true) : undefined}
+                onAdd={canCreate ? () => { setSelectedUser(null); setDialogOpen(true); } : undefined}
                 allowedRoles={CREATE_ROLES}
-                onView={() => { }}
-                onDelete={async (user) => {
-                    await usersService.remove(user.id);
-                    fetchUsers();
+                onEdit={handleEdit}
+                onView={(row) => {
+                    console.log('Viewing user:', row);
                 }}
-                renderRowActions={(user, handleClose) => (
-                    user.status === 'inactive' ? (
-                        <MuiMenuItem
-                            onClick={() => {
-                                setConfirmAction({
-                                    open: true,
-                                    type: 'activate',
-                                    userId: user.id,
-                                    userName: user.name,
-                                });
-                                handleClose();
-                            }}
-                        >
-                            <ActivateIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} />
-                            Activate
-                        </MuiMenuItem>
-                    ) : (
-                        <MuiMenuItem
-                            onClick={() => {
-                                setConfirmAction({
-                                    open: true,
-                                    type: 'deactivate',
-                                    userId: user.id,
-                                    userName: user.name,
-                                });
-                                handleClose();
-                            }}
-                        >
-                            <DeactivateIcon fontSize="small" sx={{ mr: 1, color: 'warning.main' }} />
-                            Deactivate
-                        </MuiMenuItem>
-                    )
-                )}
+                onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
                 onRefresh={fetchUsers}
                 showDensitySelector={true}
-                statusField="status"
-                statusColors={{
-                    'active': 'success',
-                    'inactive': 'error'
-                }}
+                statusField="isActive"
                 toolbarActions={
                     <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button
@@ -217,37 +161,17 @@ export default function UsersManagementPage() {
 
             <UserDialog
                 open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
+                user={selectedUser}
+                onClose={() => {
+                    setDialogOpen(false);
+                    setSelectedUser(null);
+                }}
                 onSuccess={() => {
                     fetchUsers();
-                    setNotification({ open: true, message: 'User created successfully', severity: 'success' });
+                    toast.success(selectedUser ? 'User updated successfully' : 'User created successfully');
                 }}
             />
-
-            <ConfirmDialog
-                open={confirmAction.open}
-                title={`${confirmAction.type?.charAt(0).toUpperCase()}${confirmAction.type?.slice(1)} ${confirmAction.userName}`}
-                message={`Are you sure you want to ${confirmAction.type} this user?`}
-                confirmColor={confirmAction.type === 'activate' ? 'success' : 'warning'}
-                onConfirm={() => {
-                    if (confirmAction.type && confirmAction.userId) {
-                        handleAction(confirmAction.type, confirmAction.userId);
-                    }
-                    setConfirmAction({ open: false, type: null, userId: null, userName: null });
-                }}
-                onClose={() => setConfirmAction({ open: false, type: null, userId: null, userName: null })}
-            />
-
-            <Snackbar
-                open={notification.open}
-                autoHideDuration={6000}
-                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            >
-                <MuiAlert severity={notification.severity} variant="filled" sx={{ width: '100%' }}>
-                    {notification.message}
-                </MuiAlert>
-            </Snackbar>
         </Box>
     );
 }
+

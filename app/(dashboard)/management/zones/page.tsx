@@ -1,17 +1,14 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, alpha } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { zonesService } from '@/app/lib/api/zones.service';
-import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
-import { Zone } from '@/app/lib/types/entities';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
+import { toast } from 'react-hot-toast';
 
-const zoneColumns: GridColDef<Zone>[] = [
+const zoneColumns: GridColDef[] = [
     { field: 'name', headerName: 'Zone Name', flex: 1.5, minWidth: 140 },
     { field: 'code', headerName: 'Code', width: 70 },
     { field: 'totalWoredas', headerName: 'Woredas', flex: 0.8, minWidth: 80, type: 'number' },
@@ -32,7 +29,6 @@ const zoneColumns: GridColDef<Zone>[] = [
         type: 'number',
         valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
-    { field: 'status', headerName: 'Status', width: 90 },
 ];
 
 export default function ZonesPage() {
@@ -48,6 +44,7 @@ export default function ZonesPage() {
             setZones(data);
         } catch (error) {
             console.error('Error fetching zones:', error);
+            toast.error('Failed to load zones');
         } finally {
             setLoading(false);
         }
@@ -68,36 +65,27 @@ export default function ZonesPage() {
         try {
             if (id) {
                 await zonesService.update(id, data);
+                toast.success('Zone updated successfully');
             } else {
                 await zonesService.create(data);
+                toast.success('Zone created successfully');
             }
             setDialogOpen(false);
             setEditData(null);
             fetchZones();
-        } catch (error) {
-            console.error('Error saving zone:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error saving zone');
         }
     };
 
     const handleDeleteZone = async (zone: any) => {
-        if (!window.confirm(`Are you sure you want to delete ${zone.name}?`)) return;
         try {
             await zonesService.delete(zone.id);
+            toast.success(`Zone "${zone.name}" deleted successfully`);
             fetchZones();
-        } catch (error) {
-            console.error('Error deleting zone:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error deleting zone');
         }
-    };
-
-    const handleEditZone = (zone: any) => {
-        setEditData(zone);
-        setDialogOpen(true);
-    };
-
-    const handleViewZone = (zone: any) => {
-        // Implementation for view: could navigate to a details page or show another dialog
-        console.log('Viewing zone:', zone);
-        // window.location.href = `/management/zones/${zone.id}`;
     };
 
     return (
@@ -113,7 +101,7 @@ export default function ZonesPage() {
 
             <DataTable
                 title="All Zones"
-                subtitle={`${filteredZones.length} zones`}
+                subtitle={`${filteredZones.length} zones registered`}
                 columns={zoneColumns}
                 rows={filteredZones}
                 loading={loading}
@@ -124,8 +112,13 @@ export default function ZonesPage() {
                     setEditData(null);
                     setDialogOpen(true);
                 }}
-                onEdit={handleEditZone}
-                onView={handleViewZone}
+                onEdit={(zone) => {
+                    setEditData(zone);
+                    setDialogOpen(true);
+                }}
+                onView={(zone) => {
+                    // Standardized View is already handled inside DataTable via DetailsModal
+                }}
                 onDelete={handleDeleteZone}
                 onRefresh={fetchZones}
                 statusField="status"
@@ -149,3 +142,4 @@ export default function ZonesPage() {
         </Box>
     );
 }
+
