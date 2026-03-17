@@ -51,7 +51,8 @@ export default function StudentRegistrationPage() {
 
         // Academic Info
         program: '',
-        year: ''
+        year: '',
+        gender: '' as 'MALE' | 'FEMALE' | ''
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +79,7 @@ export default function StudentRegistrationPage() {
             }
         }
         if (step === 1) {
-            if (!formData.program || !formData.year) {
+            if (!formData.program || !formData.year || !formData.gender) {
                 setError('All academic fields are required');
                 return false;
             }
@@ -127,7 +128,8 @@ export default function StudentRegistrationPage() {
                 phone: formData.phone,
                 institutionId: user.tenantId,
                 program: formData.program,
-                year: parseInt(formData.year)
+                year: parseInt(formData.year),
+                gender: formData.gender as 'MALE' | 'FEMALE'
             });
 
             setSuccess(true);
@@ -150,7 +152,8 @@ export default function StudentRegistrationPage() {
             password: '',
             confirmPassword: '',
             program: '',
-            year: ''
+            year: '',
+            gender: ''
         });
         setActiveStep(0);
         setSuccess(false);
@@ -291,6 +294,19 @@ export default function StudentRegistrationPage() {
                                 onChange={handleChange}
                                 InputProps={{ inputProps: { min: 1, max: 12 } }}
                             />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField
+                                fullWidth
+                                select
+                                label="Gender"
+                                name="gender"
+                                value={formData.gender}
+                                onChange={handleChange}
+                            >
+                                <MenuItem value="MALE">Male</MenuItem>
+                                <MenuItem value="FEMALE">Female</MenuItem>
+                            </TextField>
                         </Grid>
                     </Grid>
                 )}
