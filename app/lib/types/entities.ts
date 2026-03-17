@@ -375,7 +375,28 @@ export interface AuditLogFilter {
     action?: string;
     entity?: string;
     userId?: string;
-    startDate?: Date;
     endDate?: Date;
+}
+
+// ====================================
+// SUPPORT / HELP REQUEST TYPES
+// ====================================
+
+export type HelpRequestStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED';
+
+export interface HelpRequest extends BaseEntity {
+    subject: string;
+    description: string;
+    priority: 'Low' | 'Medium' | 'High';
+    status: HelpRequestStatus;
+    requesterId: string;
+    requester?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        role?: { id: string, name: string };
+    };
+    adminComment?: string;
 }
 
