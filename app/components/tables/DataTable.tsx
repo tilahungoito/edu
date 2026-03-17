@@ -281,7 +281,7 @@ export function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
     const theme = useTheme();
     const [searchValue, setSearchValue] = useState('');
-    const [rowSelection, setRowSelection] = useState<GridRowSelectionModel>([]);
+    const [rowSelection, setRowSelection] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
     const [paginationModel, setPaginationModel] = useState({
         pageSize: 10,
         page: 0,
@@ -314,7 +314,7 @@ export function DataTable<T extends { id: string }>({
     const handleRowSelectionChange = (model: GridRowSelectionModel) => {
         setRowSelection(model);
         if (onSelectionChange) {
-            onSelectionChange(model.map(id => String(id)));
+            onSelectionChange(Array.from(model.ids).map(id => String(id)));
         }
     };
     const [actionMenuAnchor, setActionMenuAnchor] = useState<{
