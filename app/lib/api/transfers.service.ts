@@ -12,6 +12,7 @@ export interface CreateTransferRequestDto {
 export interface UpdateTransferStatusDto {
     status: TransferStatus;
     comment?: string;
+    adminComment?: string;
 }
 
 export const transfersService = {

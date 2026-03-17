@@ -58,9 +58,9 @@ export default function ApprovalsPage() {
             setSubmitting(true);
             await transfersService.updateStatus(selectedRequest.id, {
                 status: actionType,
-                comment: comment
+                adminComment: comment
             });
-            toast.success(`Request ${actionType === 'APPROVED' ? 'approved' : 'rejected'} successfully`);
+            toast.success(`Request ${actionType === 'APPROVED' ? 'processed' : 'rejected'} successfully`);
             setSelectedRequest(null);
             fetchData();
         } catch (error: any) {
@@ -68,6 +68,28 @@ export default function ApprovalsPage() {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const formatStatus = (status: string) => {
+        const labels: Record<string, string> = {
+            'PENDING_SCHOOL': 'Awaiting School',
+            'PENDING_WOREDA': 'Awaiting Woreda',
+            'PENDING_ZONE': 'Awaiting Zone',
+            'PENDING_BUREAU': 'Awaiting Bureau',
+            'PENDING_TARGET_SCHOOL': 'Awaiting Target School',
+            'APPROVED': 'Approved',
+            'REJECTED': 'Rejected',
+            'CANCELLED': 'Cancelled',
+            'DRAFT': 'Draft'
+        };
+        return labels[status] || status.replace('PENDING_', 'Pending ');
+    };
+
+    const getStatusColor = (status: string): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
+        if (status === 'APPROVED') return 'success';
+        if (status === 'REJECTED' || status === 'CANCELLED') return 'error';
+        if (status?.startsWith('PENDING')) return 'warning';
+        return 'default';
     };
 
     const columns: GridColDef<HRTransfer>[] = [
@@ -90,13 +112,14 @@ export default function ApprovalsPage() {
         {
             field: 'status',
             headerName: 'Stage',
-            width: 120,
+            width: 170,
             renderCell: (params) => (
                 <Chip
-                    label={params.value?.replace('PENDING_', '')}
+                    label={formatStatus(params.value)}
                     size="small"
-                    color="warning"
+                    color={getStatusColor(params.value)}
                     variant="outlined"
+                    sx={{ fontWeight: 600 }}
                 />
             )
         },
@@ -119,7 +142,7 @@ export default function ApprovalsPage() {
                         startIcon={<ApproveIcon />}
                         onClick={() => handleOpenAction(params.row, 'APPROVED')}
                     >
-                        Approve
+                        Proceed
                     </Button>
                     <Button
                         size="small"
@@ -158,12 +181,12 @@ export default function ApprovalsPage() {
             {/* Comment Dialog */}
             <Dialog open={!!selectedRequest} onClose={() => !submitting && setSelectedRequest(null)} fullWidth maxWidth="sm">
                 <DialogTitle>
-                    {actionType === 'APPROVED' ? 'Approve Transfer Request' : 'Reject Transfer Request'}
+                    {actionType === 'APPROVED' ? 'Process Transfer Request' : 'Reject Transfer Request'}
                 </DialogTitle>
                 <DialogContent>
                     <Box sx={{ mt: 1 }}>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
-                            Requester: {selectedRequest?.staffName}
+                            Target: {(selectedRequest as any)?.targetInstitution?.name || (selectedRequest as any)?.toSchoolName || '-'}
                         </Typography>
                         <TextField
                             fullWidth
@@ -185,7 +208,7 @@ export default function ApprovalsPage() {
                         onClick={handleConfirmAction}
                         disabled={submitting}
                     >
-                        {submitting ? 'Processing...' : (actionType === 'APPROVED' ? 'Confirm Approval' : 'Confirm Rejection')}
+                        {submitting ? 'Processing...' : (actionType === 'APPROVED' ? 'Confirm Proceed' : 'Confirm Rejection')}
                     </Button>
                 </DialogActions>
             </Dialog>
