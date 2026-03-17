@@ -150,8 +150,8 @@ export function AnalyticsChart({
                     <ResponsiveContainer width="100%" height={height}>
                         <BarChart 
                             data={data}
-                            onClick={(e) => {
-                                if (e && e.activeTooltipIndex !== undefined) {
+                            onClick={(e: any) => {
+                                if (e && typeof e.activeTooltipIndex === 'number') {
                                     onClick?.(data[e.activeTooltipIndex], e.activeTooltipIndex);
                                 }
                             }}
