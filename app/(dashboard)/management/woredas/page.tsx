@@ -1,16 +1,14 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Grid, alpha, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { woredasService } from '@/app/lib/api/woredas.service';
 import { zonesService } from '@/app/lib/api/zones.service';
-import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 import { useAuthStore } from '@/app/lib/store';
+import { toast } from 'react-hot-toast';
 
 const woredaColumns: GridColDef[] = [
     { field: 'name', headerName: 'Woreda Name', flex: 1, minWidth: 150 },
@@ -61,6 +59,7 @@ export default function WoredasPage() {
             setZones(zonesData);
         } catch (error) {
             console.error('Error fetching woredas data:', error);
+            toast.error('Failed to load woredas');
         } finally {
             setLoading(false);
         }
@@ -82,29 +81,27 @@ export default function WoredasPage() {
         try {
             if (editingWoreda) {
                 await woredasService.update(editingWoreda.id, data);
+                toast.success('Woreda updated successfully');
             } else {
                 await woredasService.create(data);
+                toast.success('Woreda created successfully');
             }
             setDialogOpen(false);
             setEditingWoreda(null);
             fetchData();
-        } catch (error) {
-            console.error('Error saving woreda:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error saving woreda');
         }
     };
 
     const handleDeleteWoreda = async (woreda: any) => {
         try {
             await woredasService.delete(woreda.id);
+            toast.success(`Woreda "${woreda.name}" deleted successfully`);
             fetchData();
-        } catch (error) {
-            console.error('Error deleting woreda:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error deleting woreda');
         }
-    };
-
-    const handleEditWoreda = (woreda: any) => {
-        setEditingWoreda(woreda);
-        setDialogOpen(true);
     };
 
     return (
@@ -119,8 +116,8 @@ export default function WoredasPage() {
             </Box>
 
             <DataTable
-                title="Woredas"
-                subtitle={`${filteredWoredas.length} woredas`}
+                title="All Woredas"
+                subtitle={`${filteredWoredas.length} woredas registered`}
                 columns={woredaColumns}
                 rows={filteredWoredas}
                 loading={loading}
@@ -131,8 +128,13 @@ export default function WoredasPage() {
                     setEditingWoreda(null);
                     setDialogOpen(true);
                 }}
-                onEdit={handleEditWoreda}
-                onView={(woreda) => { console.log('View woreda:', woreda); }}
+                onEdit={(woreda) => {
+                    setEditingWoreda(woreda);
+                    setDialogOpen(true);
+                }}
+                onView={(woreda) => {
+                    // Standardized View is already handled inside DataTable
+                }}
                 onDelete={handleDeleteWoreda}
                 onRefresh={fetchData}
                 statusField="status"
@@ -176,3 +178,4 @@ export default function WoredasPage() {
         </Box>
     );
 }
+
