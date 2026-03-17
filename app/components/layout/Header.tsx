@@ -268,24 +268,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                         </IconButton>
                     </Tooltip>
 
-                    {/* Theme Toggle */}
-                    <Tooltip title={`Switch to ${mode === 'light' ? 'dark' : 'light'} mode`}>
-                        <IconButton
-                            onClick={toggleTheme}
-                            sx={{
-                                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                                '&:hover': {
-                                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                                },
-                            }}
-                        >
-                            {mode === 'light' ? (
-                                <DarkModeIcon sx={{ color: theme.palette.text.secondary }} />
-                            ) : (
-                                <LightModeIcon sx={{ color: theme.palette.text.secondary }} />
-                            )}
-                        </IconButton>
-                    </Tooltip>
+
 
                     {/* Notifications */}
                     <Tooltip title="Notifications">
@@ -381,6 +364,16 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
                             <SettingsIcon fontSize="small" />
                         </ListItemIcon>
                         Settings
+                    </MenuItem>
+                    <MenuItem onClick={toggleTheme}>
+                        <ListItemIcon>
+                            {mode === 'light' ? (
+                                <DarkModeIcon fontSize="small" />
+                            ) : (
+                                <LightModeIcon fontSize="small" />
+                            )}
+                        </ListItemIcon>
+                        {mode === 'light' ? 'Dark Mode' : 'Light Mode'}
                     </MenuItem>
                     <Divider sx={{ my: 1 }} />
                     <MenuItem onClick={handleLogout}>
