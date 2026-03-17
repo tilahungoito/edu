@@ -76,7 +76,7 @@ export default function ManagementPage() {
 
             <Grid container spacing={3}>
                 {managementModules.map((mod) => (
-                    <Grid item xs={12} sm={6} md={4} key={mod.title} {...{ item: true, xs: 12, sm: 6, md: 4 } as any}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={mod.title}>
                         <Card
                             sx={{
                                 height: '100%',

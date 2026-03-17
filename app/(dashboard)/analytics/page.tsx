@@ -46,7 +46,7 @@ export default function AnalyticsOverviewPage() {
 
             <Grid container spacing={3}>
                 {analyticsCards.map((card) => (
-                    <Grid item xs={12} md={6} key={card.title} {...{ item: true, xs: 12, md: 6 } as any}>
+                    <Grid size={{ xs: 12, md: 6 }} key={card.title}>
                         <Card
                             sx={{
                                 height: '100%',
@@ -92,7 +92,7 @@ export default function AnalyticsOverviewPage() {
                 ))}
 
                 {/* Summary stat */}
-                <Grid item xs={12} {...{ item: true, xs: 12 } as any}>
+                <Grid size={{ xs: 12 }}>
                     <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid', borderColor: 'divider' }}>
                         <CardContent sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
                             <BarChartIcon sx={{ fontSize: 28, color: '#f59e0b' }} />
