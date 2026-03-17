@@ -26,18 +26,21 @@ import {
     Lock as LockIcon,
 } from '@mui/icons-material';
 import { adminService } from '@/app/lib/api/admin.service';
+import { usersService } from '@/app/lib/api/users.service';
 import { useAuthStore } from '@/app/lib/store';
 import { ScopeSelector } from './ScopeSelector';
 import { ROLE_HIERARCHY, getManagedRoles } from '@/app/lib/utils/rbac-utils';
 import { Role } from '@/app/lib/types/roles';
+import type { User } from '@/app/lib/api/api-client';
 
 interface UserDialogProps {
     open: boolean;
+    user?: User | null;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
+export function UserDialog({ open, user: editingUser, onClose, onSuccess }: UserDialogProps) {
     const user = useAuthStore(state => state.user);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -60,25 +63,40 @@ export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
     // Validation State
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Reset form when dialog opens
+    // Reset form when dialog opens or editingUser changes
     useEffect(() => {
         if (open) {
-            setFormData({
-                email: '',
-                username: '',
-                password: '', // Empty by default
-                phone: '',
-                firstName: '',
-                lastName: '',
-                targetRole: '' as Role | '',
-                scopeId: '',
-                program: '',
-                year: 1,
-            });
+            if (editingUser) {
+                setFormData({
+                    email: editingUser.email || '',
+                    username: editingUser.username || '',
+                    password: '', // Keep empty for editing
+                    phone: editingUser.phone || '',
+                    firstName: (editingUser as any).firstName || '',
+                    lastName: (editingUser as any).lastName || '',
+                    targetRole: (editingUser.role?.name as Role) || '',
+                    scopeId: editingUser.scopeId || '',
+                    program: (editingUser as any).program || '',
+                    year: (editingUser as any).year || 1,
+                });
+            } else {
+                setFormData({
+                    email: '',
+                    username: '',
+                    password: '',
+                    phone: '',
+                    firstName: '',
+                    lastName: '',
+                    targetRole: '' as Role | '',
+                    scopeId: '',
+                    program: '',
+                    year: 1,
+                });
+            }
             setErrors({});
             setError(null);
         }
-    }, [open]);
+    }, [open, editingUser]);
 
     // Get available roles based on current user's role
     const creatorRole = (user?.roles?.[0]?.name as Role) || '';
@@ -149,9 +167,13 @@ export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
 
         if (!formData.phone) newErrors.phone = 'Phone number is required';
 
-        if (!formData.password) {
-            newErrors.password = 'Password is required';
-        } else if (formData.password.length < 6) {
+        if (!editingUser) {
+            if (!formData.password) {
+                newErrors.password = 'Password is required';
+            } else if (formData.password.length < 6) {
+                newErrors.password = 'Password must be at least 6 characters';
+            }
+        } else if (formData.password && formData.password.length < 6) {
             newErrors.password = 'Password must be at least 6 characters';
         }
 
@@ -183,22 +205,44 @@ export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
         setError(null);
 
         try {
-            await adminService.createUser(formData.targetRole, {
-                email: formData.email,
-                username: formData.username,
-                password: formData.password,
-                phone: formData.phone,
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                scopeId: formData.scopeId || undefined,
-                program: formData.targetRole === 'STUDENT' ? formData.program : undefined,
-                year: formData.targetRole === 'STUDENT' ? Number(formData.year) : undefined,
-            });
+            if (editingUser) {
+                // Update existing user
+                const updateData: any = {
+                    email: formData.email,
+                    username: formData.username,
+                    phone: formData.phone,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    scopeId: formData.scopeId || null,
+                    program: formData.targetRole === 'STUDENT' ? formData.program : undefined,
+                    year: formData.targetRole === 'STUDENT' ? Number(formData.year) : undefined,
+                };
+
+                // Only include password if it's being changed
+                if (formData.password) {
+                    updateData.password = formData.password;
+                }
+
+                await usersService.update(editingUser.id, updateData);
+            } else {
+                // Create new user
+                await adminService.createUser(formData.targetRole, {
+                    email: formData.email,
+                    username: formData.username,
+                    password: formData.password,
+                    phone: formData.phone,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    scopeId: formData.scopeId || undefined,
+                    program: formData.targetRole === 'STUDENT' ? formData.program : undefined,
+                    year: formData.targetRole === 'STUDENT' ? Number(formData.year) : undefined,
+                });
+            }
             onSuccess();
             onClose();
         } catch (err: any) {
-            console.error('Create user error:', err);
-            setError(err.response?.data?.message || err.message || 'Failed to create user');
+            console.error(editingUser ? 'Update user error:' : 'Create user error:', err);
+            setError(err.response?.data?.message || err.message || `Failed to ${editingUser ? 'update' : 'create'} user`);
         } finally {
             setLoading(false);
         }
@@ -207,9 +251,9 @@ export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>
-                Create New User
+                {editingUser ? 'Edit User' : 'Create New User'}
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Add a new administrative or staff account to the system
+                    {editingUser ? `Updating details for ${editingUser.username}` : 'Add a new administrative or staff account to the system'}
                 </Typography>
             </DialogTitle>
 
@@ -309,7 +353,7 @@ export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
                                 value={formData.password}
                                 onChange={handleChange}
                                 error={!!errors.password}
-                                helperText={errors.password}
+                                helperText={errors.password || (editingUser ? "Leave blank to keep current password" : "")}
                                 InputProps={{
                                     endAdornment: (
                                         <InputAdornment position="end">
@@ -426,7 +470,7 @@ export function UserDialog({ open, onClose, onSuccess }: UserDialogProps) {
                             boxShadow: '0 4px 14px rgba(0,0,0,0.1)'
                         }}
                     >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Create User'}
+                        {loading ? <CircularProgress size={24} color="inherit" /> : (editingUser ? 'Update User' : 'Create User')}
                     </Button>
                 </DialogActions>
             </form>
