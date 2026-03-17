@@ -12,23 +12,23 @@ export interface SystemSetting {
 
 export const systemSettingsService = {
     getAll: async () => {
-        const response = await apiClient.get<SystemSetting[]>('/system-settings');
+        const response = await apiClient.get<SystemSetting[]>('system-settings');
         return response.data;
     },
     getByKey: async (key: string) => {
-        const response = await apiClient.get<SystemSetting>(`/system-settings/${key}`);
+        const response = await apiClient.get<SystemSetting>(`system-settings/${key}`);
         return response.data;
     },
     create: async (data: Partial<SystemSetting>) => {
-        const response = await apiClient.post<SystemSetting>('/system-settings', data);
+        const response = await apiClient.post<SystemSetting>('system-settings', data);
         return response.data;
     },
     update: async (key: string, data: Partial<SystemSetting>) => {
-        const response = await apiClient.patch<SystemSetting>(`/system-settings/${key}`, data);
+        const response = await apiClient.patch<SystemSetting>(`system-settings/${key}`, data);
         return response.data;
     },
     remove: async (key: string) => {
-        await apiClient.delete(`/system-settings/${key}`);
+        await apiClient.delete(`system-settings/${key}`);
     }
 };
 

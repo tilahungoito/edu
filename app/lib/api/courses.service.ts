@@ -39,27 +39,27 @@ export const coursesService = {
     },
 
     create: async (data: CreateCourseData) => {
-        const response = await apiClient.post<Course>('/courses', data);
+        const response = await apiClient.post<Course>('courses', data);
         return response.data;
     },
 
     transfer: async (id: string, instructorId: string) => {
-        const response = await apiClient.patch<Course>(`/courses/${id}/transfer`, { instructorId });
+        const response = await apiClient.patch<Course>(`courses/${id}/transfer`, { instructorId });
         return response.data;
     },
 
     assignInstructor: async (id: string, instructorId: string) => {
-        const response = await apiClient.patch<Course>(`/courses/${id}/assign`, { instructorId });
+        const response = await apiClient.patch<Course>(`courses/${id}/assign`, { instructorId });
         return response.data;
     },
 
     getByInstructor: async (instructorId: string) => {
-        const response = await apiClient.get<Course[]>(`/courses/instructor/${instructorId}`);
+        const response = await apiClient.get<Course[]>(`courses/instructor/${instructorId}`);
         return response.data;
     },
 
     remove: async (id: string) => {
-        const response = await apiClient.delete(`/courses/${id}`);
+        const response = await apiClient.delete(`courses/${id}`);
         return response.data;
     },
 };

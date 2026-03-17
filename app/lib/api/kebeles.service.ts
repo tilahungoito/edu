@@ -15,26 +15,26 @@ export const kebelesService = {
     getAll: async (woredaId?: string): Promise<Kebele[]> => {
         const params = new URLSearchParams();
         if (woredaId) params.append('woredaId', woredaId);
-        const response = await apiClient.get<Kebele[]>(`/kebeles?${params.toString()}`);
+        const response = await apiClient.get<Kebele[]>(`kebeles?${params.toString()}`);
         return response.data;
     },
 
     getById: async (id: string): Promise<Kebele> => {
-        const response = await apiClient.get<Kebele>(`/kebeles/${id}`);
+        const response = await apiClient.get<Kebele>(`kebeles/${id}`);
         return response.data;
     },
 
     create: async (data: Partial<Kebele>): Promise<Kebele> => {
-        const response = await apiClient.post<Kebele>('/kebeles', data);
+        const response = await apiClient.post<Kebele>('kebeles', data);
         return response.data;
     },
 
     update: async (id: string, data: Partial<Kebele>): Promise<Kebele> => {
-        const response = await apiClient.patch<Kebele>(`/kebeles/${id}`, data);
+        const response = await apiClient.patch<Kebele>(`kebeles/${id}`, data);
         return response.data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await apiClient.delete(`/kebeles/${id}`);
+        await apiClient.delete(`kebeles/${id}`);
     }
 };

@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Permission } from '../types/permissions';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1/';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/').replace(/\/$/, '') + '/v1/';
 
 // Create axios instance with base configuration
 const apiClient: AxiosInstance = axios.create({
@@ -105,13 +105,13 @@ export interface User {
 export const authApi = {
     // Login user
     login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
-        const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
+        const response = await apiClient.post<LoginResponse>('auth/login', credentials);
         return response.data;
     },
 
     // Get current user profile
     getMe: async (): Promise<User> => {
-        const response = await apiClient.get<User>('/auth/me');
+        const response = await apiClient.get<User>('auth/me');
         return response.data;
     },
 
@@ -125,13 +125,13 @@ export const authApi = {
         scopeType?: string;
         scopeId?: string;
     }) => {
-        const response = await apiClient.post('/auth/register', data);
+        const response = await apiClient.post('auth/register', data);
         return response.data;
     },
 
     // Logout user
     logout: async (): Promise<{ message: string }> => {
-        const response = await apiClient.post<{ message: string }>('/auth/logout');
+        const response = await apiClient.post<{ message: string }>('auth/logout');
         return response.data;
     },
 };

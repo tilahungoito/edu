@@ -15,7 +15,7 @@ export const staffService = {
         // Ideally, we'd pass a list of roles, but our backend simple filter supports one role.
         // Let's rely on the scopeId primarily for now, as that will get everyone in that school.
 
-        const response = await apiClient.get<User[]>(`/users?${params.toString()}`);
+        const response = await apiClient.get<User[]>(`users?${params.toString()}`);
         return response.data;
     },
 
@@ -26,7 +26,7 @@ export const staffService = {
         if (schoolId) {
             params.append('scopeId', schoolId);
         }
-        const response = await apiClient.get<User[]>(`/users?${params.toString()}`);
+        const response = await apiClient.get<User[]>(`users?${params.toString()}`);
         return response.data;
     }
 };

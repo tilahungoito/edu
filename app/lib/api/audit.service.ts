@@ -16,7 +16,7 @@ export const auditService = {
                 }
             });
         }
-        const response = await apiClient.get<AuditLog[]>(`/audit?${queryParams.toString()}`);
+        const response = await apiClient.get<AuditLog[]>(`audit?${queryParams.toString()}`);
         // Transform dates
         const logs = response.data.map(log => ({
             ...log,
@@ -29,7 +29,7 @@ export const auditService = {
     },
 
     getById: async (id: string): Promise<AuditLog> => {
-        const response = await apiClient.get<AuditLog>(`/audit/${id}`);
+        const response = await apiClient.get<AuditLog>(`audit/${id}`);
         return {
             ...response.data,
             createdAt: new Date(response.data.createdAt),

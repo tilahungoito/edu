@@ -48,21 +48,21 @@ export const studentsService = {
     },
 
     getById: async (id: string) => {
-        const response = await apiClient.get<Student>(`/students/${id}`);
+        const response = await apiClient.get<Student>(`students/${id}`);
         return response.data;
     },
 
     create: async (data: CreateStudentData) => {
-        const response = await apiClient.post<Student>('/students', data);
+        const response = await apiClient.post<Student>('students', data);
         return response.data;
     },
 
     update: async (id: string, data: UpdateStudentData) => {
-        const response = await apiClient.patch<Student>(`/students/${id}`, data);
+        const response = await apiClient.patch<Student>(`students/${id}`, data);
         return response.data;
     },
     delete: async (id: string) => {
-        const response = await apiClient.delete(`/students/${id}`);
+        const response = await apiClient.delete(`students/${id}`);
         return response.data;
     },
 };

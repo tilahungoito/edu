@@ -37,7 +37,7 @@ export const adminService = {
      * Get users created by the current admin
      */
     getMyCreatedUsers: async () => {
-        const response = await apiClient.get('/admin/my-created-users');
+        const response = await apiClient.get('admin/my-created-users');
         return response.data;
     }
 };

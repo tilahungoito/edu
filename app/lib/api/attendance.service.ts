@@ -23,27 +23,27 @@ export interface MarkStaffAttendanceData {
 
 export const attendanceService = {
     markStudent: async (data: MarkStudentAttendanceData) => {
-        const response = await apiClient.post('/attendance/student', data);
+        const response = await apiClient.post('attendance/student', data);
         return response.data;
     },
 
     markBulkStudent: async (data: { records: MarkStudentAttendanceData[] }) => {
-        const response = await apiClient.post('/attendance/student/bulk', data);
+        const response = await apiClient.post('attendance/student/bulk', data);
         return response.data;
     },
 
     markStaff: async (data: MarkStaffAttendanceData) => {
-        const response = await apiClient.post('/attendance/staff', data);
+        const response = await apiClient.post('attendance/staff', data);
         return response.data;
     },
 
     getStudentHistory: async (enrollmentId: string) => {
-        const response = await apiClient.get<AttendanceRecord[]>(`/attendance/student/${enrollmentId}`);
+        const response = await apiClient.get<AttendanceRecord[]>(`attendance/student/${enrollmentId}`);
         return response.data;
     },
 
     getStaffHistory: async (userId: string) => {
-        const response = await apiClient.get<AttendanceRecord[]>(`/attendance/staff/${userId}`);
+        const response = await apiClient.get<AttendanceRecord[]>(`attendance/staff/${userId}`);
         return response.data;
     },
 };

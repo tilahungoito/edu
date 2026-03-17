@@ -15,7 +15,7 @@ export interface HealthStatus {
 
 export const systemHealthService = {
     getHealth: async (): Promise<HealthStatus> => {
-        const response = await apiClient.get<HealthStatus>('/health');
+        const response = await apiClient.get<HealthStatus>('health');
         return response.data;
     }
 };

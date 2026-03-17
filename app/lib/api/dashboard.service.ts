@@ -31,7 +31,7 @@ export interface InstructorStats {
 
 export const dashboardService = {
     getStats: async (): Promise<DashboardStats | InstitutionStats | StudentStats | InstructorStats> => {
-        const response = await apiClient.get<DashboardStats | InstitutionStats | StudentStats | InstructorStats>('/dashboard/stats');
+        const response = await apiClient.get<DashboardStats | InstitutionStats | StudentStats | InstructorStats>('dashboard/stats');
         return response.data;
     }
 };

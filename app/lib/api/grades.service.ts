@@ -30,17 +30,17 @@ export interface CreateGradeData {
 
 export const gradesService = {
     create: async (data: CreateGradeData) => {
-        const response = await apiClient.post<Grade>('/grades', data);
+        const response = await apiClient.post<Grade>('grades', data);
         return response.data;
     },
 
     getByCourse: async (courseId: string) => {
-        const response = await apiClient.get<Grade[]>(`/grades/course/${courseId}`);
+        const response = await apiClient.get<Grade[]>(`grades/course/${courseId}`);
         return response.data;
     },
 
     getTranscript: async (studentId: string) => {
-        const response = await apiClient.get<Transcript>(`/grades/transcript/${studentId}`);
+        const response = await apiClient.get<Transcript>(`grades/transcript/${studentId}`);
         return response.data;
     },
 };

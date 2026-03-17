@@ -12,59 +12,59 @@ export const usersService = {
                 if (value) queryParams.append(key, value);
             });
         }
-        const response = await apiClient.get<User[]>(`/users?${queryParams.toString()}`);
+        const response = await apiClient.get<User[]>(`users?${queryParams.toString()}`);
         return response.data;
     },
 
     getById: async (id: string): Promise<User> => {
-        const response = await apiClient.get<User>(`/users/${id}`);
+        const response = await apiClient.get<User>(`users/${id}`);
         return response.data;
     },
 
     update: async (id: string, data: any): Promise<User> => {
-        const response = await apiClient.patch<User>(`/users/${id}`, data);
+        const response = await apiClient.patch<User>(`users/${id}`, data);
         return response.data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await apiClient.delete(`/users/${id}`);
+        await apiClient.delete(`users/${id}`);
     },
 
     getMe: async (): Promise<User> => {
-        const response = await apiClient.get<User>('/profile');
+        const response = await apiClient.get<User>('profile');
         return response.data;
     },
 
     updateProfile: async (data: Partial<User>): Promise<User> => {
-        const response = await apiClient.patch<User>('/profile', data);
+        const response = await apiClient.patch<User>('profile', data);
         return response.data;
     },
 
     changePassword: async (data: any): Promise<void> => {
-        await apiClient.patch('/profile/password', data);
+        await apiClient.patch('profile/password', data);
     },
 
     activate: async (id: string): Promise<void> => {
-        await apiClient.patch(`/users/${id}/activate`);
+        await apiClient.patch(`users/${id}/activate`);
     },
 
     deactivate: async (id: string): Promise<void> => {
-        await apiClient.patch(`/users/${id}/deactivate`);
+        await apiClient.patch(`users/${id}/deactivate`);
     },
 
     remove: async (id: string): Promise<void> => {
-        await apiClient.delete(`/users/${id}`);
+        await apiClient.delete(`users/${id}`);
     },
 
     updateRole: async (id: string, roleId: string): Promise<User> => {
-        const response = await apiClient.patch<User>(`/users/${id}/role`, { roleId });
+        const response = await apiClient.patch<User>(`users/${id}/role`, { roleId });
         return response.data;
     },
 
     uploadProfileImage: async (file: File): Promise<User> => {
         const formData = new FormData();
         formData.append('file', file);
-        const response = await apiClient.post<User>('/profile/upload-image', formData, {
+        const response = await apiClient.post<User>('profile/upload-image', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

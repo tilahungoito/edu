@@ -57,30 +57,30 @@ export const schedulesService = {
     },
 
     create: async (data: CreateScheduleData) => {
-        const response = await apiClient.post<Schedule>('/schedules', data);
+        const response = await apiClient.post<Schedule>('schedules', data);
         return response.data;
     },
 
     delete: async (id: string) => {
-        await apiClient.delete(`/schedules/${id}`);
+        await apiClient.delete(`schedules/${id}`);
     }
 };
 
 export const scheduleConfigService = {
     getRooms: async (institutionId: string) => {
-        const response = await apiClient.get(`/schedule-config/rooms/${institutionId}`);
+        const response = await apiClient.get(`schedule-config/rooms/${institutionId}`);
         return response.data;
     },
     getPeriods: async (institutionId: string) => {
-        const response = await apiClient.get(`/schedule-config/periods/${institutionId}`);
+        const response = await apiClient.get(`schedule-config/periods/${institutionId}`);
         return response.data;
     },
     getTimeSlots: async (institutionId: string) => {
-        const response = await apiClient.get(`/schedule-config/timeslots/${institutionId}`);
+        const response = await apiClient.get(`schedule-config/timeslots/${institutionId}`);
         return response.data;
     },
     createPeriod: async (data: any) => {
-        const response = await apiClient.post('/schedule-config/periods', data);
+        const response = await apiClient.post('schedule-config/periods', data);
         return response.data;
     }
 };

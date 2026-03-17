@@ -29,26 +29,26 @@ export const institutionsService = {
                 if (value !== undefined && value !== null) queryParams.append(key, String(value));
             });
         }
-        const response = await apiClient.get<Institution[]>(`/institutions?${queryParams.toString()}`);
+        const response = await apiClient.get<Institution[]>(`institutions?${queryParams.toString()}`);
         return response.data;
     },
 
     getById: async (id: string): Promise<Institution> => {
-        const response = await apiClient.get<Institution>(`/institutions/${id}`);
+        const response = await apiClient.get<Institution>(`institutions/${id}`);
         return response.data;
     },
 
     create: async (data: Partial<Institution>): Promise<Institution> => {
-        const response = await apiClient.post<Institution>('/institutions', data);
+        const response = await apiClient.post<Institution>('institutions', data);
         return response.data;
     },
 
     update: async (id: string, data: Partial<Institution>): Promise<Institution> => {
-        const response = await apiClient.patch<Institution>(`/institutions/${id}`, data);
+        const response = await apiClient.patch<Institution>(`institutions/${id}`, data);
         return response.data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await apiClient.delete(`/institutions/${id}`);
+        await apiClient.delete(`institutions/${id}`);
     }
 };

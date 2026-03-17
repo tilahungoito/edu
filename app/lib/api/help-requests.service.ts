@@ -13,27 +13,27 @@ export interface UpdateHelpRequestStatusDto {
 
 export const helpRequestsService = {
     async create(data: CreateHelpRequestDto) {
-        const res = await apiClient.post('/help-requests', data);
+        const res = await apiClient.post('help-requests', data);
         return res.data;
     },
 
     async getAll() {
-        const res = await apiClient.get('/help-requests');
+        const res = await apiClient.get('help-requests');
         return res.data;
     },
 
     async getMyRequests() {
-        const res = await apiClient.get('/help-requests/my');
+        const res = await apiClient.get('help-requests/my');
         return res.data;
     },
 
     async getById(id: string) {
-        const res = await apiClient.get(`/help-requests/${id}`);
+        const res = await apiClient.get(`help-requests/${id}`);
         return res.data;
     },
 
     async updateStatus(id: string, data: UpdateHelpRequestStatusDto) {
-        const res = await apiClient.patch(`/help-requests/${id}/status`, data);
+        const res = await apiClient.patch(`help-requests/${id}/status`, data);
         return res.data;
     }
 };

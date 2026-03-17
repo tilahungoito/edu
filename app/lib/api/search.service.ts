@@ -13,7 +13,7 @@ export const searchService = {
         if (!query || query.length < 2) return [];
         
         try {
-            const response = await apiClient.get<SearchResult[]>(`/search?q=${encodeURIComponent(query)}`);
+            const response = await apiClient.get<SearchResult[]>(`search?q=${encodeURIComponent(query)}`);
             return response.data;
         } catch (error) {
             console.error('Search error:', error);

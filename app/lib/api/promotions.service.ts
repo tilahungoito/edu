@@ -22,17 +22,17 @@ export interface PromoteStudentsData {
 
 export const promotionsService = {
     promote: async (data: PromoteStudentsData) => {
-        const response = await apiClient.post<AcademicHistory[]>('/promotions/promote', data);
+        const response = await apiClient.post<AcademicHistory[]>('promotions/promote', data);
         return response.data;
     },
 
     getHistory: async (studentId: string) => {
-        const response = await apiClient.get<AcademicHistory[]>(`/promotions/history/${studentId}`);
+        const response = await apiClient.get<AcademicHistory[]>(`promotions/history/${studentId}`);
         return response.data;
     },
 
     getStats: async (institutionId: string) => {
-        const response = await apiClient.get<any[]>(`/promotions/stats/${institutionId}`);
+        const response = await apiClient.get<any[]>(`promotions/stats/${institutionId}`);
         return response.data;
     },
 };

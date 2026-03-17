@@ -51,43 +51,43 @@ export interface GenderPerformance {
 
 export const analyticsService = {
     getKPIs: async (scopeType?: string, scopeId?: string): Promise<KPI[]> => {
-        const response = await apiClient.get<KPI[]>('/analytics/kpis', {
+        const response = await apiClient.get<KPI[]>('analytics/kpis', {
             params: { scopeType, scopeId }
         });
         return response.data;
     },
     getPerformanceTrends: async (scopeType?: string, scopeId?: string): Promise<PerformanceTrend[]> => {
-        const response = await apiClient.get<PerformanceTrend[]>('/analytics/performance-trends', {
+        const response = await apiClient.get<PerformanceTrend[]>('analytics/performance-trends', {
             params: { scopeType, scopeId }
         });
         return response.data;
     },
     getSubjectPerformance: async (scopeType?: string, scopeId?: string): Promise<SubjectPerformance[]> => {
-        const response = await apiClient.get<SubjectPerformance[]>('/analytics/subject-performance', {
+        const response = await apiClient.get<SubjectPerformance[]>('analytics/subject-performance', {
             params: { scopeType, scopeId }
         });
         return response.data;
     },
     getGradeDistribution: async (scopeType?: string, scopeId?: string): Promise<GradeDistribution[]> => {
-        const response = await apiClient.get<GradeDistribution[]>('/analytics/grade-distribution', {
+        const response = await apiClient.get<GradeDistribution[]>('analytics/grade-distribution', {
             params: { scopeType, scopeId }
         });
         return response.data;
     },
     getEnrollmentStats: async (scopeType?: string, scopeId?: string): Promise<EnrollmentStats> => {
-        const response = await apiClient.get<EnrollmentStats>('/analytics/enrollment-stats', {
+        const response = await apiClient.get<EnrollmentStats>('analytics/enrollment-stats', {
             params: { scopeType, scopeId }
         });
         return response.data;
     },
     getStudentsByBucket: async (scopeType?: string, scopeId?: string, bucketIndex?: number): Promise<StudentDrilldown[]> => {
-        const response = await apiClient.get<StudentDrilldown[]>('/analytics/students-by-bucket', {
+        const response = await apiClient.get<StudentDrilldown[]>('analytics/students-by-bucket', {
             params: { scopeType, scopeId, bucketIndex }
         });
         return response.data;
     },
     getGenderGap: async (scopeType?: string, scopeId?: string): Promise<GenderPerformance> => {
-        const response = await apiClient.get<GenderPerformance>('/analytics/gender-gap', {
+        const response = await apiClient.get<GenderPerformance>('analytics/gender-gap', {
             params: { scopeType, scopeId }
         });
         return response.data;

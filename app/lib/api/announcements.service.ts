@@ -42,35 +42,35 @@ export interface UpdateAnnouncementDto {
 
 const announcementsService = {
     getAll: async (): Promise<Announcement[]> => {
-        const response = await apiClient.get('/announcements');
+        const response = await apiClient.get('announcements');
         return response.data;
     },
 
     getById: async (id: string): Promise<Announcement> => {
-        const response = await apiClient.get(`/announcements/${id}`);
+        const response = await apiClient.get(`announcements/${id}`);
         return response.data;
     },
 
     create: async (data: CreateAnnouncementDto): Promise<Announcement> => {
-        const response = await apiClient.post('/announcements', data);
+        const response = await apiClient.post('announcements', data);
         return response.data;
     },
 
     update: async (id: string, data: UpdateAnnouncementDto): Promise<Announcement> => {
-        const response = await apiClient.patch(`/announcements/${id}`, data);
+        const response = await apiClient.patch(`announcements/${id}`, data);
         return response.data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await apiClient.delete(`/announcements/${id}`);
+        await apiClient.delete(`announcements/${id}`);
     },
 
     markAsRead: async (id: string): Promise<void> => {
-        await apiClient.post(`/announcements/${id}/read`);
+        await apiClient.post(`announcements/${id}/read`);
     },
 
     getUnreadCount: async (): Promise<{ unreadCount: number }> => {
-        const response = await apiClient.get('/announcements/unread-count');
+        const response = await apiClient.get('announcements/unread-count');
         return response.data;
     },
 };
