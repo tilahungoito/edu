@@ -384,7 +384,7 @@ export interface AuditLogFilter {
 
 export type HelpRequestStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED';
 
-export interface HelpRequest extends BaseEntity {
+export interface HelpRequest extends Omit<BaseEntity, 'status'> {
     subject: string;
     description: string;
     priority: 'Low' | 'Medium' | 'High';
