@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
@@ -9,6 +7,7 @@ import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 import { useAuthStore } from '@/app/lib/store';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
+import { toast } from 'react-hot-toast';
 
 const kebeleColumns: GridColDef<Kebele>[] = [
     { field: 'name', headerName: 'Kebele Name', flex: 1, minWidth: 200 },
@@ -47,6 +46,7 @@ export default function KebelesPage() {
             setKebeles(data);
         } catch (error) {
             console.error('Error fetching kebeles data:', error);
+            toast.error('Failed to load kebeles');
         } finally {
             setLoading(false);
         }
@@ -67,29 +67,27 @@ export default function KebelesPage() {
         try {
             if (editingKebele) {
                 await kebelesService.update(editingKebele.id, data);
+                toast.success('Kebele updated successfully');
             } else {
                 await kebelesService.create(data);
+                toast.success('Kebele created successfully');
             }
             setDialogOpen(false);
             setEditingKebele(null);
             fetchData();
-        } catch (error) {
-            console.error('Error saving kebele:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error saving kebele');
         }
     };
 
     const handleDeleteKebele = async (kebele: any) => {
         try {
             await kebelesService.delete(kebele.id);
+            toast.success(`Kebele "${kebele.name}" deleted successfully`);
             fetchData();
-        } catch (error) {
-            console.error('Error deleting kebele:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error deleting kebele');
         }
-    };
-
-    const handleEditKebele = (kebele: Kebele) => {
-        setEditingKebele(kebele);
-        setDialogOpen(true);
     };
 
     return (
@@ -104,8 +102,8 @@ export default function KebelesPage() {
             </Box>
 
             <DataTable
-                title="Kebeles"
-                subtitle={`${scopedKebeles.length} kebeles in system`}
+                title="All Kebeles"
+                subtitle={`${scopedKebeles.length} kebeles registered`}
                 columns={kebeleColumns}
                 rows={scopedKebeles}
                 loading={loading}
@@ -115,8 +113,13 @@ export default function KebelesPage() {
                     setDialogOpen(true);
                 } : undefined}
                 allowedRoles={CREATE_ROLES}
-                onEdit={handleEditKebele}
-                onView={(kebele) => { console.log('View kebele:', kebele); }}
+                onEdit={(kebele) => {
+                    setEditingKebele(kebele);
+                    setDialogOpen(true);
+                }}
+                onView={(kebele) => {
+                    // Standardized View is already handled inside DataTable
+                }}
                 onDelete={handleDeleteKebele}
                 onRefresh={fetchData}
                 checkboxSelection
@@ -138,3 +141,4 @@ export default function KebelesPage() {
         </Box>
     );
 }
+
