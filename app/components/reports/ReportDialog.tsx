@@ -135,9 +135,86 @@ export function ReportDialog({ open, onClose, reportType, scopeId, scopeType }: 
                         </Box>
                     </Box>
                 );
-            // Add other cases as needed
+            case 'inventory':
+                return (
+                    <Box>
+                        <Typography variant="h6" gutterBottom>Inventory Summary</Typography>
+                        <Grid container spacing={2} sx={{ mb: 3 }}>
+                            <Grid size={{ xs: 6, md: 4 }}>
+                                <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'white' }}>
+                                    <Typography variant="caption">Total Value</Typography>
+                                    <Typography variant="h5" fontWeight={700}>${data.totalValue?.toLocaleString()}</Typography>
+                                </Paper>
+                            </Grid>
+                            <Grid size={{ xs: 6, md: 4 }}>
+                                <Paper sx={{ p: 2, bgcolor: 'info.light', color: 'white' }}>
+                                    <Typography variant="caption">Total Items</Typography>
+                                    <Typography variant="h5" fontWeight={700}>{data.totalItems?.toLocaleString()}</Typography>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                        
+                        <Typography variant="subtitle2" gutterBottom>Condition Distribution</Typography>
+                        <Grid container spacing={1} sx={{ mb: 2 }}>
+                            {data.conditions?.map((c: any, i: number) => (
+                                <Grid size={{ xs: 3 }} key={i}>
+                                    <Box sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                                        <Typography variant="caption" display="block">{c.name}</Typography>
+                                        <Typography variant="body1" fontWeight={600}>{c.value}</Typography>
+                                    </Box>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Box>
+                );
+            case 'budget':
+                return (
+                    <Box>
+                        <Typography variant="h6" gutterBottom>Budget Execution Summary</Typography>
+                        <Grid container spacing={2} sx={{ mb: 3 }}>
+                            <Grid size={{ xs: 12, md: 4 }}>
+                                <Paper sx={{ p: 2, border: '1px solid', borderColor: 'primary.main' }}>
+                                    <Typography variant="caption" color="text.secondary">Total Allocated</Typography>
+                                    <Typography variant="h5" color="primary.main" fontWeight={700}>${data.totalAllocated?.toLocaleString()}</Typography>
+                                </Paper>
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
+                                <Paper sx={{ p: 2, border: '1px solid', borderColor: 'success.main' }}>
+                                    <Typography variant="caption" color="text.secondary">Total Spent</Typography>
+                                    <Typography variant="h5" color="success.main" fontWeight={700}>${data.totalSpent?.toLocaleString()}</Typography>
+                                </Paper>
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
+                                <Paper sx={{ p: 2, border: '1px solid', borderColor: 'warning.main', bgcolor: 'warning.lighter' }}>
+                                    <Typography variant="caption" color="text.secondary">Execution Rate</Typography>
+                                    <Typography variant="h5" color="warning.main" fontWeight={700}>{data.executionRate}%</Typography>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+
+                        <Typography variant="subtitle2" gutterBottom>Spending by Category</Typography>
+                        <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                                <TableHead sx={{ bgcolor: 'action.hover' }}>
+                                    <TableRow>
+                                        <TableCell>Category</TableCell>
+                                        <TableCell align="right">Amount</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {data.categories?.map((cat: any, i: number) => (
+                                        <TableRow key={i}>
+                                            <TableCell>{cat.name}</TableCell>
+                                            <TableCell align="right">${cat.value?.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
+                );
             default:
-                return <pre style={{ overflow: 'auto' }}>{JSON.stringify(data, null, 2)}</pre>;
+                return <pre style={{ overflow: 'auto', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>{JSON.stringify(data, null, 2)}</pre>;
         }
     };
 
