@@ -15,8 +15,6 @@ import {
 } from '@mui/material';
 import { 
     Security as SecurityIcon, 
-    Edit as EditIcon,
-    DeleteOutline as DeleteIcon,
     Group as GroupIcon,
     Refresh as RefreshIcon,
     Add as AddIcon
@@ -26,6 +24,7 @@ import { GridColDef } from '@mui/x-data-grid';
 import { rolesService, RoleWithCount } from '@/app/lib/api/roles.service';
 import { RoleDialog } from '@/app/components/management/RoleDialog';
 import { PermissionDialog } from '@/app/components/management/PermissionDialog';
+import { toast } from 'react-hot-toast';
 
 export default function RolesPermissionsPage() {
     const theme = useTheme();
@@ -37,13 +36,6 @@ export default function RolesPermissionsPage() {
     const [roleDialogOpen, setRoleDialogOpen] = useState(false);
     const [permDialogOpen, setPermDialogOpen] = useState(false);
     const [selectedRole, setSelectedRole] = useState<RoleWithCount | null>(null);
-    
-    // Notification state
-    const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-        open: false,
-        message: '',
-        severity: 'success'
-    });
 
     const fetchRoles = async () => {
         setLoading(true);
@@ -64,22 +56,12 @@ export default function RolesPermissionsPage() {
     }, []);
 
     const handleDeleteRole = async (role: RoleWithCount) => {
-        if (!confirm(`Are you sure you want to delete the "${role.name}" role? This action cannot be undone.`)) return;
-
         try {
             await rolesService.deleteRole(role.id);
-            setNotification({
-                open: true,
-                message: `Role "${role.name}" deleted successfully`,
-                severity: 'success'
-            });
+            toast.success(`Role "${role.name}" deleted successfully`);
             fetchRoles();
         } catch (err: any) {
-            setNotification({
-                open: true,
-                message: err.message || 'Failed to delete role',
-                severity: 'error'
-            });
+            toast.error(err.message || 'Failed to delete role');
         }
     };
 
@@ -143,27 +125,6 @@ export default function RolesPermissionsPage() {
                     <Typography variant="body2">{params.value?.users || 0}</Typography>
                 </Box>
             )
-        },
-        {
-            field: 'actions',
-            headerName: 'Actions',
-            width: 120,
-            sortable: false,
-            align: 'right',
-            renderCell: (params) => (
-                <Box>
-                    <Tooltip title="Manage Permissions">
-                        <IconButton size="small" onClick={() => handleOpenPermissions(params.row)} color="primary">
-                            <EditIcon fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Role">
-                        <IconButton size="small" onClick={() => handleDeleteRole(params.row)} color="error">
-                            <DeleteIcon fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-            )
         }
     ];
 
@@ -215,6 +176,8 @@ export default function RolesPermissionsPage() {
                 columns={columns}
                 loading={loading}
                 module="system"
+                onEdit={handleOpenPermissions}
+                onDelete={handleDeleteRole}
                 onRefresh={fetchRoles}
             />
 
@@ -222,11 +185,7 @@ export default function RolesPermissionsPage() {
                 open={roleDialogOpen} 
                 onClose={() => setRoleDialogOpen(false)} 
                 onSuccess={() => {
-                    setNotification({
-                        open: true,
-                        message: 'Role created successfully',
-                        severity: 'success'
-                    });
+                    toast.success('Role created successfully');
                     fetchRoles();
                 }}
             />
@@ -239,26 +198,12 @@ export default function RolesPermissionsPage() {
                 }}
                 role={selectedRole}
                 onSuccess={() => {
-                    setNotification({
-                        open: true,
-                        message: 'Permissions updated successfully',
-                        severity: 'success'
-                    });
+                    toast.success('Permissions updated successfully');
                     fetchRoles();
                 }}
             />
-
-            <Snackbar
-                open={notification.open}
-                autoHideDuration={6000}
-                onClose={() => setNotification(prev => ({ ...prev, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            >
-                <Alert severity={notification.severity} variant="filled" sx={{ borderRadius: 2, boxShadow: 6 }}>
-                    {notification.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 }
+
 
