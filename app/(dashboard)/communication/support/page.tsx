@@ -62,8 +62,12 @@ export default function HelpRequestsPage() {
 
         try {
             setSubmitting(true);
+            const statusMap: Record<'APPROVED' | 'REJECTED', 'RESOLVED' | 'REJECTED'> = {
+                APPROVED: 'RESOLVED',
+                REJECTED: 'REJECTED',
+            };
             await helpRequestsService.updateStatus(selectedRequest.id, {
-                status: actionType,
+                status: statusMap[actionType],
                 adminComment: comment
             });
             toast.success(`Request ${actionType === 'APPROVED' ? 'processed' : 'rejected'} successfully`);
