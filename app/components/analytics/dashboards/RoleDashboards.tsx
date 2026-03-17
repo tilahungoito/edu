@@ -26,34 +26,25 @@ export function BureauDashboard({ stats, loading, zones, columns, tableTitle, on
 
     return (
         <Box>
-            <KPIGrid kpis={kpis} loading={loading} columns={6} />
+            <KPIGrid kpis={kpis} loading={loading} columns={4} />
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3, my: 4 }}>
                 <AnalyticsChart
                     title="Enrollment Trends"
                     subtitle="Students and teachers over time"
-                    data={[
-                        { name: 'Jan', students: 420000, teachers: 14200 },
-                        { name: 'Feb', students: 425000, teachers: 14350 },
-                        { name: 'Mar', students: 430000, teachers: 14500 },
-                        { name: 'Apr', students: 435000, teachers: 14650 },
-                    ]}
+                    data={stats?.enrollmentTrends || []}
                     type="area"
                     dataKeys={['students', 'teachers']}
                     loading={loading}
-                    height={320}
+                    height={300}
                 />
                 <AnalyticsChart
                     title="Institution Levels"
                     subtitle="Distribution by tier"
-                    data={[
-                        { name: 'Primary', value: 620 },
-                        { name: 'Secondary', value: 245 },
-                        { name: 'Preparatory', value: 83 },
-                    ]}
+                    data={stats?.institutionLevels || []}
                     type="pie"
                     loading={loading}
-                    height={320}
+                    height={300}
                 />
             </Box>
 
@@ -98,11 +89,11 @@ export function InstitutionDashboard({ stats, loading, user }: any) {
                 <AnalyticsChart
                     title="Daily Attendance & Collections"
                     subtitle="Last 5 business days"
-                    data={chartData}
+                    data={stats?.attendanceAndRevenue || []}
                     type="area"
                     dataKeys={['attendance', 'revenue']}
                     loading={loading}
-                    height={350}
+                    height={300}
                 />
 
                 <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
@@ -110,15 +101,20 @@ export function InstitutionDashboard({ stats, loading, user }: any) {
                         <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Quick Actions</Typography>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             {[
-                                { label: 'Register Student', icon: <PeopleIcon />, color: theme.palette.primary.main },
-                                { label: 'Create Course', icon: <SchoolIcon />, color: theme.palette.secondary.main },
-                                { label: 'Record Fee', icon: <CourseIcon />, color: theme.palette.success.main },
+                                { label: 'Register Student', icon: <PeopleIcon />, color: theme.palette.primary.main, href: '/students' },
+                                { label: 'Course Catalog', icon: <SchoolIcon />, color: theme.palette.secondary.main, href: '/academics/courses' },
+                                { label: 'Transfers', icon: <CourseIcon />, color: theme.palette.success.main, href: '/hr/transfers' },
                             ].map((action, i) => (
-                                <Box key={i} sx={{
+                                <Box key={i} 
+                                    component="a"
+                                    href={action.href}
+                                    sx={{
                                     p: 2, borderRadius: 3, cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', gap: 2,
                                     bgcolor: alpha(action.color, 0.05),
                                     border: `1px solid ${alpha(action.color, 0.1)}`,
+                                    textDecoration: 'none',
+                                    color: 'inherit',
                                     '&:hover': { bgcolor: alpha(action.color, 0.1) }
                                 }}>
                                     <Avatar sx={{ bgcolor: action.color, width: 32, height: 32 }}>
@@ -154,12 +150,12 @@ export function InstructorDashboard({ stats, loading }: any) {
                     subtitle="Average scores across assigned subjects"
                     data={stats?.courses?.map((c: any) => ({
                         name: c.code,
-                        score: 0 // We don't have avg score in stats yet, but we can list the courses
+                        score: c.avgScore || 0 
                     })) || []}
                     type="bar"
                     dataKeys={['score']}
                     loading={loading}
-                    height={350}
+                    height={300}
                 />
             </Box>
         </Box>
@@ -171,7 +167,7 @@ export function StudentDashboard({ stats, loading, user }: any) {
 
     const kpis = [
         { label: 'Current Courses', value: stats?.enrollments?.length || 0, icon: 'School', trend: 'stable' as const },
-        { label: 'GPA', value: 'N/A', icon: 'Badge', trend: 'up' as const },
+        { label: 'GPA', value: stats?.gpa || 'N/A', icon: 'Badge', trend: 'up' as const },
         { label: 'Attendance', value: `${stats?.attendanceRate || 0}%`, icon: 'People', trend: 'up' as const },
         { label: 'Pending Dues', value: '0 ETB', icon: 'Budget', trend: 'stable' as const },
     ];
@@ -184,17 +180,13 @@ export function StudentDashboard({ stats, loading, user }: any) {
                     <CardContent>
                         <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Upcoming Schedule</Typography>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            {[
-                                { time: '08:30 AM', subject: 'Advanced Mathematics', room: 'Hall 4A' },
-                                { time: '10:45 AM', subject: 'Inorganic Chemistry', room: 'Lab 2' },
-                                { time: '02:00 PM', subject: 'Computer Programming', room: 'IT Center' },
-                            ].map((cls, i) => (
+                            {stats?.upcomingSchedule?.map((cls: any, i: number) => (
                                 <Box key={i} sx={{ p: 2, borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.04), borderLeft: `4px solid ${theme.palette.primary.main}` }}>
                                     <Typography variant="caption" color="text.secondary" fontWeight={700}>{cls.time}</Typography>
                                     <Typography variant="body2" fontWeight={800}>{cls.subject}</Typography>
                                     <Typography variant="caption" color="text.secondary">{cls.room}</Typography>
                                 </Box>
-                            ))}
+                            )) || <Typography variant="body2" color="text.secondary">No upcoming classes.</Typography>}
                         </Box>
                     </CardContent>
                 </Card>
@@ -212,7 +204,7 @@ export function StudentDashboard({ stats, loading, user }: any) {
                             type="pie"
                             dataKeys={['count']}
                             loading={loading}
-                            height={200}
+                            height={250}
                         />
                     </CardContent>
                 </Card>
@@ -239,31 +231,22 @@ export function RegistrarDashboard({ stats, loading }: any) {
                 <AnalyticsChart
                     title="Enrollment Trends"
                     subtitle="Processed applications this month"
-                    data={[
-                        { name: 'Week 1', value: 45 },
-                        { name: 'Week 2', value: 52 },
-                        { name: 'Week 3', value: 38 },
-                        { name: 'Week 4', value: 65 },
-                    ]}
+                    data={stats?.enrollmentTrends || []}
                     type="area"
                     dataKeys={['value']}
                     loading={loading}
-                    height={350}
+                    height={300}
                 />
                 <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                     <CardContent>
                         <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Recent Activities</Typography>
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            {[
-                                { action: 'Approved Application', target: 'Student #12345', time: '2 mins ago' },
-                                { action: 'Issued Transcript', target: 'Student #67890', time: '1 hour ago' },
-                                { action: 'Updated Record', target: 'Student #54321', time: '3 hours ago' },
-                            ].map((act, i) => (
+                            {stats?.recentActivities?.map((act: any, i: number) => (
                                 <Box key={i} sx={{ p: 2, borderRadius: 3, bgcolor: alpha(theme.palette.action.hover, 0.04) }}>
                                     <Typography variant="body2" fontWeight={700}>{act.action}</Typography>
                                     <Typography variant="caption" color="text.secondary">{act.target} • {act.time}</Typography>
                                 </Box>
-                            ))}
+                            )) || <Typography variant="body2" color="text.secondary">No recent activities.</Typography>}
                         </Box>
                     </CardContent>
                 </Card>
@@ -276,10 +259,10 @@ export function AccountantDashboard({ stats, loading }: any) {
     // const theme = useTheme(); // Unused
 
     const kpis = [
-        { label: 'Total Revenue', value: '1.2M ETB', icon: 'Budget', trend: 'up' as const },
-        { label: 'Outstanding Fees', value: '450K ETB', icon: 'MoneyOff', trend: 'down' as const },
-        { label: 'Paid Invoices', value: 1250, icon: 'Receipt', trend: 'up' as const },
-        { label: 'Pending Payments', value: 45, icon: 'Pending', trend: 'stable' as const },
+        { label: 'Total Revenue', value: `${stats?.totalRevenue?.toLocaleString() || 0} ETB`, icon: 'Budget', trend: 'up' as const },
+        { label: 'Active Students', value: stats?.students || 0, icon: 'People', trend: 'stable' as const },
+        { label: 'Active Courses', value: stats?.courses || 0, icon: 'School', trend: 'up' as const },
+        { label: 'Total Enrollments', value: stats?.enrollments || 0, icon: 'Groups', trend: 'stable' as const },
     ];
 
     return (
@@ -288,17 +271,12 @@ export function AccountantDashboard({ stats, loading }: any) {
             <Box sx={{ mt: 4 }}>
                 <AnalyticsChart
                     title="Financial Overview"
-                    subtitle="Revenue vs Outstanding"
-                    data={[
-                        { name: 'Jan', revenue: 250000, outstanding: 80000 },
-                        { name: 'Feb', revenue: 320000, outstanding: 60000 },
-                        { name: 'Mar', revenue: 280000, outstanding: 95000 },
-                        { name: 'Apr', revenue: 410000, outstanding: 45000 },
-                    ]}
+                    subtitle="Daily Revenue Collection"
+                    data={stats?.attendanceAndRevenue || []}
                     type="bar"
-                    dataKeys={['revenue', 'outstanding']}
+                    dataKeys={['revenue']}
                     loading={loading}
-                    height={350}
+                    height={300}
                 />
             </Box>
         </Box>

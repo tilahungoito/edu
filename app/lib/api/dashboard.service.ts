@@ -9,6 +9,8 @@ export interface DashboardStats {
         _count: number;
     }[];
     recentLogs: any[];
+    enrollmentTrends?: { name: string; students: number; teachers: number }[];
+    institutionLevels?: { name: string; value: number }[];
 }
 
 export interface InstitutionStats {
@@ -16,11 +18,14 @@ export interface InstitutionStats {
     courses: number;
     enrollments: number;
     totalRevenue: number;
+    attendanceAndRevenue?: { name: string; attendance: number; revenue: number }[];
 }
 
 export interface StudentStats {
     enrollments: any[];
     attendanceRate: number;
+    gpa?: string;
+    upcomingSchedule?: { time: string; subject: string; room: string }[];
 }
 
 export interface InstructorStats {
@@ -29,9 +34,18 @@ export interface InstructorStats {
     recentAttendance: any[];
 }
 
+export interface RegistrarStats {
+    recentEnrollments: number;
+    pendingApplications: number;
+    totalStudents: number;
+    transcriptsIssued: number;
+    enrollmentTrends?: { name: string; value: number }[];
+    recentActivities?: { action: string; target: string; time: string }[];
+}
+
 export const dashboardService = {
-    getStats: async (): Promise<DashboardStats | InstitutionStats | StudentStats | InstructorStats> => {
-        const response = await apiClient.get<DashboardStats | InstitutionStats | StudentStats | InstructorStats>('dashboard/stats');
+    getStats: async (): Promise<DashboardStats | InstitutionStats | StudentStats | InstructorStats | RegistrarStats> => {
+        const response = await apiClient.get<DashboardStats | InstitutionStats | StudentStats | InstructorStats | RegistrarStats>('dashboard/stats');
         return response.data;
     }
 };
