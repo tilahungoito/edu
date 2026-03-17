@@ -44,6 +44,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
         institutionId: '',
         program: '',
         year: 1,
+        gender: '' as 'MALE' | 'FEMALE' | '',
     });
 
     // Validation State
@@ -89,6 +90,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                     institutionId: student.institutionId,
                     program: student.program,
                     year: student.year,
+                    gender: student.gender || '',
                 });
             } else {
                 setFormData({
@@ -98,6 +100,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                     institutionId: user?.tenantType === 'school' ? user.tenantId : '',
                     program: '',
                     year: 1,
+                    gender: '',
                 });
             }
             setErrors({});
@@ -126,6 +129,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
         if (!formData.institutionId) newErrors.institutionId = 'Institution is required';
         if (!formData.program) newErrors.program = 'Academic program is required';
         if (!formData.year || formData.year < 1) newErrors.year = 'Valid year is required';
+        if (!formData.gender) newErrors.gender = 'Gender is required';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -145,6 +149,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                     institutionId: formData.institutionId,
                     program: formData.program,
                     year: Number(formData.year),
+                    gender: formData.gender,
                 } as UpdateStudentData);
             } else {
                 await studentsService.create({
@@ -286,6 +291,23 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                                 helperText={errors.year}
                                 InputProps={{ inputProps: { min: 1, max: 8 } }}
                             />
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <TextField
+                                select
+                                label="Gender"
+                                name="gender"
+                                fullWidth
+                                required
+                                value={formData.gender}
+                                onChange={handleChange}
+                                error={!!errors.gender}
+                                helperText={errors.gender}
+                            >
+                                <MenuItem value="MALE">Male</MenuItem>
+                                <MenuItem value="FEMALE">Female</MenuItem>
+                            </TextField>
                         </Grid>
                     </Grid>
                 </DialogContent>

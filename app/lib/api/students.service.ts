@@ -13,6 +13,7 @@ export interface Student {
     institutionId: string;
     program: string;
     year: number;
+    gender: 'MALE' | 'FEMALE';
     createdAt: string;
     updatedAt: string;
     institution?: {
@@ -28,6 +29,7 @@ export interface CreateStudentData {
     institutionId: string;
     program: string;
     year: number;
+    gender: 'MALE' | 'FEMALE';
 }
 
 export interface UpdateStudentData {
@@ -35,6 +37,7 @@ export interface UpdateStudentData {
     institutionId?: string;
     program?: string;
     year?: number;
+    gender?: 'MALE' | 'FEMALE';
 }
 
 export const studentsService = {
