@@ -1,7 +1,5 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip, Autocomplete, Button, Grid, alpha } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Chip, Button, alpha } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables';
 import { institutionsService, Institution } from '@/app/lib/api/institutions.service';
@@ -12,12 +10,10 @@ import { useRouter } from 'next/navigation';
 import { useTheme, Tooltip, IconButton } from '@mui/material';
 import { CalendarMonth as CalendarIcon, BarChart as ReportIcon } from '@mui/icons-material';
 import Link from 'next/link';
-
-import type { ModuleType, ResourceType, Role } from '@/app/lib/types';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
-
+import { toast } from 'react-hot-toast';
 
 // Roles that can create schools
 const CREATE_ROLES = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN'];
@@ -55,8 +51,6 @@ export default function SchoolsPage() {
             if (user.tenantType === 'zone') {
                 setSelectedZone(user.tenantId || '');
             } else if (user.tenantType === 'woreda') {
-                // If woreda admin, they might not have zoneId directly available
-                // but fetchData will handle it if we have selectedWoreda
                 setSelectedWoreda(user.tenantId || '');
             }
         }
@@ -144,6 +138,7 @@ export default function SchoolsPage() {
             setWoredas(woredasData);
         } catch (error) {
             console.error('Error fetching schools data:', error);
+            toast.error('Failed to load schools data');
         } finally {
             setLoading(false);
         }
@@ -179,29 +174,27 @@ export default function SchoolsPage() {
 
             if (editingSchool) {
                 await institutionsService.update(editingSchool.id, data);
+                toast.success('School updated successfully');
             } else {
                 await institutionsService.create(data);
+                toast.success('School created successfully');
             }
             setDialogOpen(false);
             setEditingSchool(null);
             fetchData();
-        } catch (error) {
-            console.error('Error saving school:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error saving school');
         }
     };
 
     const handleDeleteSchool = async (school: any) => {
         try {
             await institutionsService.delete(school.id);
+            toast.success(`School "${school.name}" deleted successfully`);
             fetchData();
-        } catch (error) {
-            console.error('Error deleting school:', error);
+        } catch (error: any) {
+            toast.error(error.message || 'Error deleting school');
         }
-    };
-
-    const handleEditSchool = (school: any) => {
-        setEditingSchool(school);
-        setDialogOpen(true);
     };
 
     // Determine parent context for TenantDialog
@@ -252,7 +245,7 @@ export default function SchoolsPage() {
 
             <DataTable
                 title="Schools"
-                subtitle={`${filteredSchools.length} schools`}
+                subtitle={`${filteredSchools.length} schools registered`}
                 columns={columns}
                 rows={filteredSchools}
                 loading={loading}
@@ -262,15 +255,15 @@ export default function SchoolsPage() {
                     setDialogOpen(true);
                 } : undefined}
                 allowedRoles={CREATE_ROLES}
-                onEdit={handleEditSchool}
-                onView={(school) => { console.log('View school:', school); }}
+                onEdit={(school) => {
+                    setEditingSchool(school);
+                    setDialogOpen(true);
+                }}
+                onView={(school) => {
+                    // Standardized View is handled inside DataTable
+                }}
                 onDelete={handleDeleteSchool}
                 onRefresh={fetchData}
-                statusField="status"
-                statusColors={{
-                    active: 'success',
-                    inactive: 'error',
-                }}
                 checkboxSelection
                 toolbarActions={
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -350,3 +343,4 @@ export default function SchoolsPage() {
         </Box>
     );
 }
+
