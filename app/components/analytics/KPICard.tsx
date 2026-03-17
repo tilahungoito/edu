@@ -23,6 +23,7 @@ import {
     Inventory2 as InventoryIcon,
     AccountBalance as BudgetIcon,
     Warning as WarningIcon,
+    DateRange as DateRangeIcon,
 } from '@mui/icons-material';
 import type { KPIData } from '@/app/lib/types';
 
@@ -37,6 +38,7 @@ const iconMap: Record<string, React.ReactNode> = {
     Inventory: <InventoryIcon />,
     Budget: <BudgetIcon />,
     Warning: <WarningIcon />,
+    DateRange: <DateRangeIcon />,
 };
 
 interface KPICardProps {

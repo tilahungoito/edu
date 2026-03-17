@@ -1,39 +1,168 @@
 'use client';
 
-import React from 'react';
-import { Box, Typography } from '@mui/material';
-import { AnalyticsChart } from '@/app/components/analytics';
-
-const enrollmentData = [
-    { name: 'Mekelle', value: 125000 },
-    { name: 'Adigrat', value: 85000 },
-    { name: 'Axum', value: 78000 },
-    { name: 'Shire', value: 62000 },
-    { name: 'Wukro', value: 45000 },
-    { name: 'Adwa', value: 52000 },
-];
+import React, { useState } from 'react';
+import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Skeleton, alpha } from '@mui/material';
+import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
+import { useQuery } from '@tanstack/react-query';
+import { analyticsService } from '@/app/lib/api/analytics.service';
+import { regionsService } from '@/app/lib/api/regions.service';
+import { zonesService } from '@/app/lib/api/zones.service';
+import { woredasService } from '@/app/lib/api/woredas.service';
+import { kebelesService } from '@/app/lib/api/kebeles.service';
 
 export default function EnrollmentAnalyticsPage() {
+    const [scope, setScope] = useState<{ type: string; id: string | null }>({ type: 'SYSTEM', id: null });
+    
+    // Geographical State
+    const [regionId, setRegionId] = useState<string>('');
+    const [zoneId, setZoneId] = useState<string>('');
+    const [woredaId, setWoredaId] = useState<string>('');
+    const [kebeleId, setKebeleId] = useState<string>('');
+
+    // Geographical Data Fetching
+    const { data: regions } = useQuery({ queryKey: ['regions'], queryFn: () => regionsService.getAll() });
+    const { data: zones } = useQuery({ queryKey: ['zones', regionId], queryFn: () => zonesService.getAll(regionId), enabled: !!regionId });
+    const { data: woredas } = useQuery({ queryKey: ['woredas', zoneId], queryFn: () => woredasService.getAll(zoneId), enabled: !!zoneId });
+    const { data: kebeles } = useQuery({ queryKey: ['kebeles', woredaId], queryFn: () => kebelesService.getAll(woredaId), enabled: !!woredaId });
+
+    // Enrollment Data Fetching
+    const { data: stats, isLoading } = useQuery({ 
+        queryKey: ['analytics', 'enrollment', scope], 
+        queryFn: () => analyticsService.getEnrollmentStats(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
+    });
+
+    const handleRegionChange = (id: string) => {
+        setRegionId(id);
+        setZoneId('');
+        setWoredaId('');
+        setKebeleId('');
+        setScope(id ? { type: 'REGION', id } : { type: 'SYSTEM', id: null });
+    };
+
+    const handleZoneChange = (id: string) => {
+        setZoneId(id);
+        setWoredaId('');
+        setKebeleId('');
+        setScope(id ? { type: 'ZONE', id } : { type: 'REGION', id: regionId });
+    };
+
+    const handleWoredaChange = (id: string) => {
+        setWoredaId(id);
+        setKebeleId('');
+        setScope(id ? { type: 'WOREDA', id } : { type: 'ZONE', id: zoneId });
+    };
+
+    const handleKebeleChange = (id: string) => {
+        setKebeleId(id);
+        setScope(id ? { type: 'KEBELE', id } : { type: 'WOREDA', id: woredaId });
+    };
+
     return (
         <Box>
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" fontWeight={700} gutterBottom>
-                    Enrollment Distribution
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    Analyze student distribution across zones and regions
-                </Typography>
+            {/* Header and Filters */}
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                    <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: -1 }}>
+                        Enrollment Distribution
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                        Real-time student population metrics and geographical spread
+                    </Typography>
+                </Box>
+
+                <Paper elevation={0} sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', minWidth: 300, borderRadius: 3, border: '1px solid', borderColor: 'divider', background: (theme) => alpha(theme.palette.background.paper, 0.8), backdropFilter: 'blur(8px)' }}>
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Region</InputLabel>
+                        <Select value={regionId} label="Region" onChange={(e) => handleRegionChange(e.target.value)}>
+                            <MenuItem value=""><em>All Systems</em></MenuItem>
+                            {regions?.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!regionId}>
+                        <InputLabel>Zone</InputLabel>
+                        <Select value={zoneId} label="Zone" onChange={(e) => handleZoneChange(e.target.value)}>
+                            <MenuItem value=""><em>All Zones</em></MenuItem>
+                            {zones?.map(z => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!zoneId}>
+                        <InputLabel>Woreda</InputLabel>
+                        <Select value={woredaId} label="Woreda" onChange={(e) => handleWoredaChange(e.target.value)}>
+                            <MenuItem value=""><em>All Woredas</em></MenuItem>
+                            {woredas?.map(w => <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!woredaId}>
+                        <InputLabel>Kebele</InputLabel>
+                        <Select value={kebeleId} label="Kebele" onChange={(e) => handleKebeleChange(e.target.value)}>
+                            <MenuItem value=""><em>All Kebeles</em></MenuItem>
+                            {kebeles?.map(k => <MenuItem key={k.id} value={k.id}>{k.name}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                </Paper>
             </Box>
 
-            <Box sx={{ height: 600 }}>
-                <AnalyticsChart
-                    title="Student Count by Zone"
-                    subtitle="2023-2024 Academic Year"
-                    data={enrollmentData}
-                    type="pie"
-                    height={500}
-                />
+            {/* KPIs */}
+            <Box sx={{ mb: 4 }}>
+                {isLoading ? (
+                    <Grid container spacing={3}>
+                        {[1, 2, 3, 4].map((i) => (
+                            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
+                                <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2 }} />
+                            </Grid>
+                        ))}
+                    </Grid>
+                ) : (
+                    <KPIGrid kpis={(stats?.kpis || []) as any} loading={false} />
+                )}
             </Box>
+
+            {/* Charts Section */}
+            <Grid container spacing={4}>
+                <Grid size={{ xs: 12, lg: 8 }}>
+                    {isLoading ? (
+                        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 3 }} />
+                    ) : (
+                        <AnalyticsChart
+                            title="Geographical Spread"
+                            subtitle={`Student count by ${scope.type === 'SYSTEM' ? 'Region' : 'Zone/Woreda'}`}
+                            data={stats?.distribution || []}
+                            type="bar"
+                            dataKeys={['value']}
+                            height={400}
+                        />
+                    )}
+                </Grid>
+
+                <Grid size={{ xs: 12, lg: 4 }}>
+                    {isLoading ? (
+                        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 3 }} />
+                    ) : (
+                        <AnalyticsChart
+                            title="Academic Programs"
+                            subtitle="Distribution of students by program"
+                            data={stats?.byProgram || []}
+                            type="pie"
+                            height={400}
+                        />
+                    )}
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                    {isLoading ? (
+                        <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 3 }} />
+                    ) : (
+                        <AnalyticsChart
+                            title="Enrollment by Academic Year"
+                            subtitle="Trends across different grade levels"
+                            data={stats?.byYear || []}
+                            type="area"
+                            dataKeys={['value']}
+                            height={300}
+                        />
+                    )}
+                </Grid>
+            </Grid>
         </Box>
     );
 }

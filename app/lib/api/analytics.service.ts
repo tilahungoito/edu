@@ -28,6 +28,13 @@ export interface GradeDistribution {
     [key: string]: string | number | undefined;
 }
 
+export interface EnrollmentStats {
+    kpis: KPI[];
+    distribution: { name: string; value: number }[];
+    byProgram: { name: string; value: number }[];
+    byYear: { name: string; value: number }[];
+}
+
 export const analyticsService = {
     getKPIs: async (scopeType?: string, scopeId?: string): Promise<KPI[]> => {
         const response = await apiClient.get<KPI[]>('/analytics/kpis', {
@@ -49,6 +56,12 @@ export const analyticsService = {
     },
     getGradeDistribution: async (scopeType?: string, scopeId?: string): Promise<GradeDistribution[]> => {
         const response = await apiClient.get<GradeDistribution[]>('/analytics/grade-distribution', {
+            params: { scopeType, scopeId }
+        });
+        return response.data;
+    },
+    getEnrollmentStats: async (scopeType?: string, scopeId?: string): Promise<EnrollmentStats> => {
+        const response = await apiClient.get<EnrollmentStats>('/analytics/enrollment-stats', {
             params: { scopeType, scopeId }
         });
         return response.data;
