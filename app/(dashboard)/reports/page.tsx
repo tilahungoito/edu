@@ -36,7 +36,7 @@ export default function ReportsPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     
     // Filters
-    const [scopeType, setScopeType] = useState(user?.scopeType || 'SYSTEM');
+    const [scopeType, setScopeType] = useState<string>(user?.scopeType || 'SYSTEM');
     const [scopeId, setScopeId] = useState(user?.scopeId || '');
     const [period, setPeriod] = useState('2025/26 Semester I');
 
@@ -93,7 +93,7 @@ export default function ReportsPage() {
 
             <Grid container spacing={3}>
                 {reportTypes.map((report, index) => (
-                    <Grid item xs={12} md={6} lg={4} key={index}>
+                    <Grid size={{ xs: 12, md: 6, lg: 4 }} key={index}>
                         <Card sx={{ 
                             height: '100%', 
                             borderRadius: 3, 
