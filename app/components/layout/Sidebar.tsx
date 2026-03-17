@@ -181,14 +181,17 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
                 }
 
                 // Role check - if allowedRoles is specified and user has one of them, allow access
-                if (item.allowedRoles && item.allowedRoles.length > 0) {
-                    const userHasRole = item.allowedRoles.some(role => hasRole(role));
-                    if (userHasRole) return true; // Role match grants access
-                    return false; // No role match, deny
-                }
+                const hasMatchingRole = item.allowedRoles && item.allowedRoles.length > 0 
+                    ? item.allowedRoles.some(role => hasRole(role)) 
+                    : false;
+                
+                if (hasMatchingRole) return true;
 
-                // Fall back to permission check if no allowedRoles specified
-                if (item.permission && !hasPermission(item.permission)) return false;
+                // Fall back to permission check if role check didn't pass or wasn't specified
+                if (item.permission && hasPermission(item.permission)) return true;
+
+                // If neither role nor permission granted access, but one was required, deny
+                if (item.allowedRoles?.length || item.permission) return false;
 
                 return true;
             });
@@ -228,15 +231,18 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
                 return false;
             }
 
-            // Role check - Role match grants access even if permission check fails
-            if (child.allowedRoles && child.allowedRoles.length > 0) {
-                const userHasRole = child.allowedRoles.some(role => hasRole(role));
-                if (userHasRole) return true;
-                return false;
-            }
+            // Role check - Role match grants access
+            const hasMatchingRole = child.allowedRoles && child.allowedRoles.length > 0
+                ? child.allowedRoles.some(role => hasRole(role))
+                : false;
+            
+            if (hasMatchingRole) return true;
 
             // Fallback to permission check
-            if (child.permission && !hasPermission(child.permission)) return false;
+            if (child.permission && hasPermission(child.permission)) return true;
+
+            // If neither granted access, but one was required, deny
+            if (child.allowedRoles?.length || child.permission) return false;
 
             return true;
         });

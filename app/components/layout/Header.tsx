@@ -102,15 +102,15 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
         router.push('/login');
     };
 
-    const drawerWidth = sidebarCollapsed ? 72 : 280;
+    const drawerWidth = sidebarCollapsed ? 80 : 280;
 
     return (
         <AppBar
             position="fixed"
             elevation={0}
             sx={{
-                width: `calc(100% - ${drawerWidth}px)`,
-                ml: `${drawerWidth}px`,
+                width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+                ml: { xs: 0, md: `${drawerWidth}px` },
                 backgroundColor: theme.palette.background.paper,
                 borderBottom: `1px solid ${theme.palette.divider}`,
                 transition: theme.transitions.create(['width', 'margin'], {

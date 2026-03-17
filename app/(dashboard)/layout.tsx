@@ -61,6 +61,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         component="main"
                         sx={{
                             flexGrow: 1,
+                            width: { xs: '100%', md: `calc(100% - ${sidebarCollapsed ? 80 : 280}px)` },
                             backgroundColor: theme.palette.background.default,
                             minHeight: '100vh',
                             transition: theme.transitions.create(['margin', 'width'], {
