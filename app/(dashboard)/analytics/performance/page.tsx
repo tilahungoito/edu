@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha } from '@mui/material';
+import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha, Dialog, DialogTitle, DialogContent, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Switch, FormControlLabel } from '@mui/material';
 import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
 import { useQuery } from '@tanstack/react-query';
-import { analyticsService } from '@/app/lib/api/analytics.service';
+import { analyticsService, StudentDrilldown } from '@/app/lib/api/analytics.service';
 import { regionsService } from '@/app/lib/api/regions.service';
 import { zonesService } from '@/app/lib/api/zones.service';
 import { woredasService } from '@/app/lib/api/woredas.service';
@@ -13,6 +13,11 @@ import { kebelesService } from '@/app/lib/api/kebeles.service';
 export default function PerformanceAnalyticsPage() {
     const [scope, setScope] = useState<{ type: string; id: string | null }>({ type: 'SYSTEM', id: null });
     
+    // Drilldown State
+    const [drilldownOpen, setDrilldownOpen] = useState(false);
+    const [selectedBucket, setSelectedBucket] = useState<{ index: number; name: string } | null>(null);
+    const [showGenderGap, setShowGenderGap] = useState(false);
+
     // Geographical State
     const [regionId, setRegionId] = useState<string>('');
     const [zoneId, setZoneId] = useState<string>('');
@@ -42,6 +47,23 @@ export default function PerformanceAnalyticsPage() {
         queryKey: ['analytics', 'distribution', scope], 
         queryFn: () => analyticsService.getGradeDistribution(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
     });
+    const { data: genderGap, isLoading: genderLoading } = useQuery({
+        queryKey: ['analytics', 'gender-gap', scope],
+        queryFn: () => analyticsService.getGenderGap(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined),
+        enabled: showGenderGap
+    });
+
+    // Drilldown Query
+    const { data: drilledStudents, isLoading: drilling } = useQuery({
+        queryKey: ['analytics', 'drilldown', scope, selectedBucket?.index],
+        queryFn: () => analyticsService.getStudentsByBucket(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined, selectedBucket?.index),
+        enabled: drilldownOpen && selectedBucket !== null
+    });
+
+    const handleChartClick = (data: any, index: number) => {
+        setSelectedBucket({ index, name: data.name });
+        setDrilldownOpen(true);
+    };
 
     const handleRegionChange = (id: string) => {
         setRegionId(id);
@@ -71,6 +93,7 @@ export default function PerformanceAnalyticsPage() {
 
     return (
         <Box>
+            {/* Header and Filters */}
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
                     <Typography variant="h4" fontWeight={800} gutterBottom sx={{ letterSpacing: -1 }}>
@@ -113,6 +136,7 @@ export default function PerformanceAnalyticsPage() {
                 </Paper>
             </Box>
 
+            {/* KPIs */}
             <Box sx={{ mb: 4 }}>
                 {kpisLoading ? (
                     <Grid container spacing={3}>
@@ -127,23 +151,39 @@ export default function PerformanceAnalyticsPage() {
                 )}
             </Box>
 
+            {/* Distribution Charts */}
             <Grid container spacing={4}>
                 <Grid size={{ xs: 12 }}>
-                    {distributionLoading ? (
+                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                        <FormControlLabel
+                            control={<Switch checked={showGenderGap} onChange={(e) => setShowGenderGap(e.target.checked)} />}
+                            label={<Typography variant="body2" fontWeight={600}>Compare by Gender</Typography>}
+                        />
+                    </Box>
+                    {distributionLoading || (showGenderGap && genderLoading) ? (
                         <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 3 }} />
                     ) : (
                         <AnalyticsChart
-                            title="Grade Distribution"
-                            subtitle="Student performance spread across achievement levels"
-                            data={gradeDistribution?.map(d => ({ name: d.range, count: d.count })) || []}
+                            title={showGenderGap ? "Gender Performance Gap" : "Grade Distribution"}
+                            subtitle={showGenderGap ? "Achievement levels split by Male vs Female" : "Click any bar to see the students in that range"}
+                            data={showGenderGap ? 
+                                genderGap?.ranges.map((r, i) => ({ 
+                                    name: r, 
+                                    Male: genderGap.series[0].data[i], 
+                                    Female: genderGap.series[1].data[i] 
+                                })) || [] :
+                                gradeDistribution?.map(d => ({ name: d.range, count: d.count })) || []
+                            }
                             type="bar"
-                            dataKeys={['count']}
-                            colors={gradeDistribution?.map(d => d.color) || []}
+                            dataKeys={showGenderGap ? ['Male', 'Female'] : ['count']}
+                            colors={showGenderGap ? [genderGap?.series[0].color || '#1565C0', genderGap?.series[1].color || '#C2185B'] : gradeDistribution?.map(d => d.color) || []}
                             height={400}
+                            onClick={showGenderGap ? undefined : handleChartClick}
                         />
                     )}
                 </Grid>
 
+                {/* Second Row Charts */}
                 <Grid size={{ xs: 12, lg: 7 }}>
                     {trendsLoading ? (
                         <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
@@ -174,6 +214,66 @@ export default function PerformanceAnalyticsPage() {
                     )}
                 </Grid>
             </Grid>
+
+            {/* Drilldown Dialog */}
+            <Dialog open={drilldownOpen} onClose={() => setDrilldownOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6" fontWeight={700}>
+                            Students in {selectedBucket?.name} Range
+                        </Typography>
+                        <Button onClick={() => setDrilldownOpen(false)} color="inherit">Close</Button>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {drilling ? (
+                        <Stack spacing={2} sx={{ py: 2 }}>
+                            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} variant="rectangular" height={40} />)}
+                        </Stack>
+                    ) : (
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Name</TableCell>
+                                    <TableCell>School</TableCell>
+                                    <TableCell align="center">Score</TableCell>
+                                    <TableCell>Program</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {drilledStudents?.map((s) => (
+                                    <TableRow key={s.id} hover>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight={600}>{s.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{s.email}</Typography>
+                                        </TableCell>
+                                        <TableCell>{s.school}</TableCell>
+                                        <TableCell align="center">
+                                            <Chip 
+                                                label={s.score} 
+                                                size="small" 
+                                                sx={{ 
+                                                    fontWeight: 700,
+                                                    bgcolor: (theme) => alpha(gradeDistribution?.find(d => d.range === selectedBucket?.name)?.color || theme.palette.primary.main, 0.1),
+                                                    color: (theme) => gradeDistribution?.find(d => d.range === selectedBucket?.name)?.color || theme.palette.primary.main
+                                                }} 
+                                            />
+                                        </TableCell>
+                                        <TableCell>{s.program}</TableCell>
+                                    </TableRow>
+                                ))}
+                                {drilledStudents?.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                                            <Typography color="text.secondary">No students found in this range.</Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </DialogContent>
+            </Dialog>
         </Box>
     );
 }

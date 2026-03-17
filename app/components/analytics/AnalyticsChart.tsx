@@ -84,6 +84,7 @@ export function AnalyticsChart({
     showGrid = true,
     onExport,
     onRefresh,
+    onClick,
 }: AnalyticsChartProps) {
     const theme = useTheme();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
