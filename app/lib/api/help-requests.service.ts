@@ -1,5 +1,4 @@
 import apiClient from './api-client';
-import { HelpRequest } from '../types/entities';
 
 export interface CreateHelpRequestDto {
     subject: string;
@@ -8,28 +7,33 @@ export interface CreateHelpRequestDto {
 }
 
 export interface UpdateHelpRequestStatusDto {
-    status: 'APPROVED' | 'REJECTED' | 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+    status: 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED' | 'REJECTED';
     adminComment?: string;
 }
 
 export const helpRequestsService = {
-    async create(data: CreateHelpRequestDto): Promise<HelpRequest> {
-        return apiClient.post('/help-requests', data);
+    async create(data: CreateHelpRequestDto) {
+        const res = await apiClient.post('/help-requests', data);
+        return res.data;
     },
 
-    async getAll(): Promise<HelpRequest[]> {
-        return apiClient.get('/help-requests');
+    async getAll() {
+        const res = await apiClient.get('/help-requests');
+        return res.data;
     },
 
-    async getMyRequests(): Promise<HelpRequest[]> {
-        return apiClient.get('/help-requests/my');
+    async getMyRequests() {
+        const res = await apiClient.get('/help-requests/my');
+        return res.data;
     },
 
-    async getById(id: string): Promise<HelpRequest> {
-        return apiClient.get(`/help-requests/${id}`);
+    async getById(id: string) {
+        const res = await apiClient.get(`/help-requests/${id}`);
+        return res.data;
     },
 
-    async updateStatus(id: string, data: UpdateHelpRequestStatusDto): Promise<HelpRequest> {
-        return apiClient.patch(`/help-requests/${id}/status`, data);
+    async updateStatus(id: string, data: UpdateHelpRequestStatusDto) {
+        const res = await apiClient.patch(`/help-requests/${id}/status`, data);
+        return res.data;
     }
 };
