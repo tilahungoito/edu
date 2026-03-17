@@ -59,6 +59,7 @@ interface AnalyticsChartProps {
     showGrid?: boolean;
     onExport?: () => void;
     onRefresh?: () => void;
+    onClick?: (data: any, index: number) => void;
 }
 
 const DEFAULT_COLORS = [
@@ -146,7 +147,14 @@ export function AnalyticsChart({
             case 'bar':
                 return (
                     <ResponsiveContainer width="100%" height={height}>
-                        <BarChart data={data}>
+                        <BarChart 
+                            data={data}
+                            onClick={(e) => {
+                                if (e && e.activeTooltipIndex !== undefined) {
+                                    onClick?.(data[e.activeTooltipIndex], e.activeTooltipIndex);
+                                }
+                            }}
+                        >
                             {showGrid && (
                                 <CartesianGrid
                                     strokeDasharray="3 3"
@@ -166,6 +174,7 @@ export function AnalyticsChart({
                                 axisLine={false}
                             />
                             <Tooltip
+                                cursor={{ fill: alpha(theme.palette.primary.main, 0.05) }}
                                 contentStyle={{
                                     backgroundColor: theme.palette.background.paper,
                                     border: `1px solid ${theme.palette.divider}`,
@@ -180,6 +189,7 @@ export function AnalyticsChart({
                                     dataKey={key}
                                     fill={colors[index % colors.length]}
                                     radius={[4, 4, 0, 0]}
+                                    style={{ cursor: onClick ? 'pointer' : 'default' }}
                                 />
                             ))}
                         </BarChart>

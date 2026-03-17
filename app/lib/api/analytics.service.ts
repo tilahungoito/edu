@@ -35,6 +35,20 @@ export interface EnrollmentStats {
     byYear: { name: string; value: number }[];
 }
 
+export interface StudentDrilldown {
+    id: string;
+    name: string;
+    email: string;
+    school: string;
+    score: number;
+    program: string;
+}
+
+export interface GenderPerformance {
+    ranges: string[];
+    series: { name: string; data: number[]; color: string }[];
+}
+
 export const analyticsService = {
     getKPIs: async (scopeType?: string, scopeId?: string): Promise<KPI[]> => {
         const response = await apiClient.get<KPI[]>('/analytics/kpis', {
@@ -62,6 +76,18 @@ export const analyticsService = {
     },
     getEnrollmentStats: async (scopeType?: string, scopeId?: string): Promise<EnrollmentStats> => {
         const response = await apiClient.get<EnrollmentStats>('/analytics/enrollment-stats', {
+            params: { scopeType, scopeId }
+        });
+        return response.data;
+    },
+    getStudentsByBucket: async (scopeType?: string, scopeId?: string, bucketIndex?: number): Promise<StudentDrilldown[]> => {
+        const response = await apiClient.get<StudentDrilldown[]>('/analytics/students-by-bucket', {
+            params: { scopeType, scopeId, bucketIndex }
+        });
+        return response.data;
+    },
+    getGenderGap: async (scopeType?: string, scopeId?: string): Promise<GenderPerformance> => {
+        const response = await apiClient.get<GenderPerformance>('/analytics/gender-gap', {
             params: { scopeType, scopeId }
         });
         return response.data;
