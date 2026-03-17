@@ -138,7 +138,7 @@ export function PermissionDialog({ open, onClose, role, onSuccess }: PermissionD
                                     <Divider sx={{ mb: 2 }} />
                                     <Grid container spacing={1}>
                                         {perms.map(perm => (
-                                            <Grid item xs={12} sm={6} md={4} key={perm.id}>
+                                            <Grid key={perm.id} size={{ xs: 12, sm: 6, md: 4 }}>
                                                 <FormControlLabel
                                                     control={
                                                         <Checkbox 
@@ -150,7 +150,7 @@ export function PermissionDialog({ open, onClose, role, onSuccess }: PermissionD
                                                     label={
                                                         <Box>
                                                             <Typography variant="body2" fontWeight={600} sx={{ textTransform: 'capitalize' }}>
-                                                                {perm.action} {perm.resourceType !== 'all' ? perm.resourceType : ''}
+                                                                {perm.action} {perm.resourceType && (perm.resourceType as string) !== 'all' ? perm.resourceType : ''}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                                                                 {perm.description || `${perm.action} access to ${perm.module}`}
