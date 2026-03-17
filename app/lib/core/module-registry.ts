@@ -763,6 +763,13 @@ moduleRegistry.register({
             path: '/messages',
             allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_LEADER', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'ACCOUNTANT'],
         },
+        {
+            id: 'messaging-support',
+            label: 'Support Tickets',
+            icon: 'SupportAgent',
+            path: '/communication/support',
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_LEADER', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'ACCOUNTANT'],
+        },
     ],
 });
 
