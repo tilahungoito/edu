@@ -24,7 +24,7 @@ const routePermissions: Record<string, string[]> = {
     '/dashboard/student': ['SYSTEM_ADMIN', 'STUDENT'],
 };
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // 1. Check if route is protected (starts with /dashboard)
