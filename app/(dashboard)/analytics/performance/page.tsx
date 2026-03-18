@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha, Drawer, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Switch, FormControlLabel, IconButton, Divider } from '@mui/material';
 import { Close as CloseIcon, FilterList as FilterIcon } from '@mui/icons-material';
 import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
+import { AdvancedPerformanceDashboard } from '@/app/components/analytics/AdvancedPerformanceDashboard';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsService, StudentDrilldown } from '@/app/lib/api/analytics.service';
 import { regionsService } from '@/app/lib/api/regions.service';
@@ -137,84 +138,14 @@ export default function PerformanceAnalyticsPage() {
                 </Paper>
             </Box>
 
-            {/* KPIs */}
-            <Box sx={{ mb: 4 }}>
-                {kpisLoading ? (
-                    <Grid container spacing={3}>
-                        {[1, 2, 3, 4].map((i) => (
-                            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={i}>
-                                <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2 }} />
-                            </Grid>
-                        ))}
-                    </Grid>
-                ) : (
-                    <KPIGrid kpis={(kpis || []) as any} loading={false} />
-                )}
+            {/* Advanced Performance Dashboard */}
+            <Box sx={{ mt: 4 }}>
+                <AdvancedPerformanceDashboard 
+                    scopeType={scope.type === 'SYSTEM' ? undefined : scope.type} 
+                    scopeId={scope.id || undefined} 
+                />
             </Box>
 
-            {/* Distribution Charts */}
-            <Grid container spacing={4}>
-                <Grid size={{ xs: 12 }}>
-                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
-                        <FormControlLabel
-                            control={<Switch checked={showGenderGap} onChange={(e) => setShowGenderGap(e.target.checked)} />}
-                            label={<Typography variant="body2" fontWeight={600}>Compare by Gender</Typography>}
-                        />
-                    </Box>
-                    {distributionLoading || (showGenderGap && genderLoading) ? (
-                        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 3 }} />
-                    ) : (
-                        <AnalyticsChart
-                            title={showGenderGap ? "Gender Performance Gap" : "Grade Distribution"}
-                            subtitle={showGenderGap ? "Achievement levels split by Male vs Female" : "Actionable Map: Click any entry to drill down into student records"}
-                            data={showGenderGap ? 
-                                genderGap?.ranges.map((r, i) => ({ 
-                                    name: r, 
-                                    Male: genderGap.series[0].data[i], 
-                                    Female: genderGap.series[1].data[i] 
-                                })) || [] :
-                                gradeDistribution?.map(d => ({ name: d.range, count: d.count })) || []
-                            }
-                            type="bar"
-                            dataKeys={showGenderGap ? ['Male', 'Female'] : ['count']}
-                            colors={showGenderGap ? [genderGap?.series[0].color || '#1565C0', genderGap?.series[1].color || '#C2185B'] : gradeDistribution?.map(d => d.color) || []}
-                            height={400}
-                            onClick={showGenderGap ? undefined : handleChartClick}
-                        />
-                    )}
-                </Grid>
-
-                {/* Second Row Charts */}
-                <Grid size={{ xs: 12, lg: 7 }}>
-                    {trendsLoading ? (
-                        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
-                    ) : (
-                        <AnalyticsChart
-                            title="Academic Growth Engine"
-                            subtitle="Historical correlation between average scores and student volume"
-                            data={trends || []}
-                            type="area"
-                            dataKeys={['score', 'enrollment']}
-                            height={400}
-                        />
-                    )}
-                </Grid>
-
-                <Grid size={{ xs: 12, lg: 5 }}>
-                    {subjectLoading ? (
-                        <Skeleton variant="rectangular" height={400} sx={{ borderRadius: 2 }} />
-                    ) : (
-                        <AnalyticsChart
-                            title="Subject Bottleneck Analysis"
-                            subtitle="Average performance across key departments"
-                            data={subjectPerformance || []}
-                            type="bar"
-                            dataKeys={['value']}
-                            height={400}
-                        />
-                    )}
-                </Grid>
-            </Grid>
 
             {/* Drilldown Drawer */}
             <Drawer 
