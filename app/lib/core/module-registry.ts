@@ -120,6 +120,7 @@ moduleRegistry.register({
                     label: 'Enrollment',
                     path: '/analytics/enrollment',
                     permission: { module: 'analytics', action: 'view' },
+                    allowedRoles: ['INSTITUTION_ADMIN', 'REGISTRAR'],
                 },
             ],
         },
