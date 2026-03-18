@@ -57,6 +57,10 @@ import {
     Chat as ChatIcon,
     ContentCopy as ContentCopyIcon,
     Groups as GroupsIcon,
+    TrendingUp as TrendingUpIcon,
+    History as HistoryIcon,
+    SupportAgent as SupportAgentIcon,
+    AccountTree as AccountTreeIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
 import { moduleRegistry } from '@/app/lib/core';
@@ -86,7 +90,6 @@ const iconConfig: Record<string, { icon: React.ReactNode, color: string }> = {
     Devices: { icon: <DevicesIcon />, color: '#64748b' },
     LocalShipping: { icon: <ShippingIcon />, color: '#f59e0b' },
     PieChart: { icon: <PieChartIcon />, color: '#06b6d4' },
-    AccountTree: { icon: <BudgetIcon />, color: '#8b5cf6' },
     Receipt: { icon: <ReceiptIcon />, color: '#10b981' },
     RequestQuote: { icon: <ReceiptIcon />, color: '#f59e0b' },
     Description: { icon: <ReportsIcon />, color: '#3b82f6' },
@@ -107,6 +110,10 @@ const iconConfig: Record<string, { icon: React.ReactNode, color: string }> = {
     Chat: { icon: <ChatIcon />, color: '#ec4899' },
     ContentCopy: { icon: <ContentCopyIcon />, color: '#8b5cf6' },
     Groups: { icon: <GroupsIcon />, color: '#10b981' },
+    TrendingUp: { icon: <TrendingUpIcon />, color: '#10b981' },
+    History: { icon: <HistoryIcon />, color: '#64748b' },
+    SupportAgent: { icon: <SupportAgentIcon />, color: '#06b6d4' },
+    AccountTree: { icon: <AccountTreeIcon />, color: '#8b5cf6' },
 };
 
 interface SidebarProps {

@@ -37,3 +37,5 @@ export const regionsService = {
         await apiClient.delete(`regions/${id}`);
     }
 };
+
+export default regionsService;

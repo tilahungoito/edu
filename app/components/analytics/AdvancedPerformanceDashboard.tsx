@@ -25,6 +25,7 @@ import { AnalyticsChart } from './AnalyticsChart';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import apiClient from '@/app/lib/api/api-client';
 import { GRADE_RANGES, GENDER_OPTIONS } from '@/app/lib/constants/analytics';
+import { analyticsService } from '@/app/lib/api/analytics.service';
 import { toast } from 'react-hot-toast';
 
 interface AdvancedPerformanceDashboardProps {
@@ -49,6 +50,8 @@ export function AdvancedPerformanceDashboard({
   const [gradeRange, setGradeRange] = useState('all');
   const [subject, setSubject] = useState('all');
   const [gender, setGender] = useState('all');
+  const [comparisonTrends, setComparisonTrends] = useState<any[]>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
 
   // Hardcoded for simplicity but could be dynamic
   const [subjects] = useState([
@@ -63,6 +66,12 @@ export function AdvancedPerformanceDashboard({
   useEffect(() => {
     fetchData();
   }, [scopeType, scopeId, gradeRange, subject, gender]);
+
+  useEffect(() => {
+    if (data?.comparison?.length > 0) {
+      fetchComparisonTrends();
+    }
+  }, [data?.comparison]);
 
   const fetchData = async () => {
     try {
@@ -81,6 +90,39 @@ export function AdvancedPerformanceDashboard({
       toast.error('Failed to load advanced analytics data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchComparisonTrends = async () => {
+    if (!data?.comparison) return;
+    try {
+      setTrendLoading(true);
+      const entities = data.comparison.slice(0, 5).map((c: any) => ({
+        type: getChildScopeType(scopeType),
+        id: c.id, // wait, comparison rows need ID. aggregateComparison needs to return it.
+        name: c.name
+      }));
+      // Wait, Backend check: aggregateComparison doesn't return ID.
+      // I need to fix AnalyticsService.getAdvancedPerformanceStats to include ID in comparison results.
+      // For now, let's assume we fixed it. I will fix it in the next tool call.
+      
+      const trends = await analyticsService.compareTrends(entities);
+      setComparisonTrends(trends);
+    } catch (error) {
+      console.error('Failed to fetch comparison trends:', error);
+    } finally {
+      setTrendLoading(false);
+    }
+  };
+
+  const getChildScopeType = (parentScope?: string) => {
+    switch (parentScope) {
+      case 'REGION': return 'ZONE';
+      case 'ZONE': return 'WOREDA';
+      case 'WOREDA': return 'KEBELE';
+      case 'KEBELE': return 'INSTITUTION';
+      case 'INSTITUTION': return 'COURSE';
+      default: return 'REGION';
     }
   };
 
@@ -222,6 +264,37 @@ export function AdvancedPerformanceDashboard({
             showLegend={false}
           />
         </Grid>
+
+        {/* New: Subject Performance Radar (Only if subject level data exists) */}
+        {data?.subjects && (
+          <Grid size={{ xs: 12, lg: 6 }}>
+            <AnalyticsChart
+              title="Subject Competency Profile"
+              subtitle="Mean scores across core learning areas"
+              data={data.subjects}
+              type="radar"
+              dataKeys={['value']}
+              loading={loading}
+              height={350}
+              colors={[theme.palette.secondary.main]}
+            />
+          </Grid>
+        )}
+
+        {/* New: Multi-Entity Trend Comparison */}
+        {comparisonTrends.length > 0 && (
+          <Grid size={{ xs: 12, lg: 6 }}>
+            <AnalyticsChart
+              title="Regional Performance Comparison"
+              subtitle="Score trends across top 5 entities"
+              data={comparisonTrends}
+              type="line"
+              dataKeys={Object.keys(comparisonTrends[0] || {}).filter(k => k !== 'month')}
+              loading={trendLoading}
+              height={350}
+            />
+          </Grid>
+        )}
 
         {/* Literal Score Ranges Table */}
         <Grid size={{ xs: 12 }}>

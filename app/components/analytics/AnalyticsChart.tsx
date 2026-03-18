@@ -36,9 +36,14 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
+    Radar,
+    RadarChart,
+    PolarGrid,
+    PolarAngleAxis,
+    PolarRadiusAxis,
 } from 'recharts';
 
-export type ChartType = 'line' | 'bar' | 'pie' | 'area';
+export type ChartType = 'line' | 'bar' | 'pie' | 'area' | 'radar';
 
 interface ChartDataPoint {
     name: string;
@@ -276,6 +281,36 @@ export function AnalyticsChart({
                             />
                             {showLegend && <Legend />}
                         </PieChart>
+                    </ResponsiveContainer>
+                );
+
+            case 'radar':
+                return (
+                    <ResponsiveContainer width="100%" height={height}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+                            <PolarGrid stroke={alpha(theme.palette.text.primary, 0.1)} />
+                            <PolarAngleAxis dataKey="name" stroke={theme.palette.text.secondary} fontSize={12} />
+                            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke={theme.palette.text.secondary} fontSize={10} />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: theme.palette.background.paper,
+                                    border: `1px solid ${theme.palette.divider}`,
+                                    borderRadius: 8,
+                                    boxShadow: theme.shadows[3],
+                                }}
+                            />
+                            {dataKeys.map((key, index) => (
+                                <Radar
+                                    key={key}
+                                    name={key}
+                                    dataKey={key}
+                                    stroke={colors[index % colors.length]}
+                                    fill={colors[index % colors.length]}
+                                    fillOpacity={0.5}
+                                />
+                            ))}
+                            {showLegend && <Legend />}
+                        </RadarChart>
                     </ResponsiveContainer>
                 );
 

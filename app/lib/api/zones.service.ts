@@ -41,3 +41,5 @@ export const zonesService = {
         await apiClient.delete(`zones/${id}`);
     }
 };
+
+export default zonesService;

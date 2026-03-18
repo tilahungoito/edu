@@ -37,10 +37,12 @@ import { woredasService } from '@/app/lib/api/woredas.service';
 import { kebelesService } from '@/app/lib/api/kebeles.service';
 import { institutionsService } from '@/app/lib/api/institutions.service';
 import { regionsService } from '@/app/lib/api/regions.service';
+import { notificationsService } from '@/app/lib/api/notifications.service';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import type { Zone, KPIData, TenantType, ResourceType } from '@/app/lib/types';
+import { Notifications as NotificationsIcon, DoneAll as DoneAllIcon } from '@mui/icons-material';
 
 // Sample chart data
 const enrollmentTrendData = [
@@ -157,6 +159,16 @@ export default function Dashboard() {
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogType, setDialogType] = useState<TenantType>('school');
+    const [notifications, setNotifications] = useState<any[]>([]);
+
+    const fetchNotifications = async () => {
+        try {
+            const data = await notificationsService.getAll();
+            setNotifications(data);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -212,7 +224,13 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchData();
+        fetchNotifications();
     }, [user]);
+
+    const handleMarkAllRead = async () => {
+        await notificationsService.markAllAsRead();
+        fetchNotifications();
+    };
 
     // Listen for real-time updates
     useRealTime('STATS_UPDATED', () => {
@@ -337,6 +355,44 @@ export default function Dashboard() {
                     Welcome back, {user?.firstName}! Here's an overview of the {user?.tenantType === 'bureau' ? 'Tigray Region' : user?.tenantName} education system.
                 </Typography>
             </Box>
+
+            {/* Notifications Section - Only show if there are unread alerts */}
+            {notifications.some(n => !n.isRead) && (
+                <Card sx={{ mb: 4, borderRadius: 4, border: `1px solid ${theme.palette.warning.light}`, bgcolor: alpha(theme.palette.warning.main, 0.02) }}>
+                    <CardHeader 
+                        title="Active Alerts & Notifications" 
+                        titleTypographyProps={{ variant: 'h6', fontWeight: 800 }}
+                        action={
+                            <Button startIcon={<DoneAllIcon />} size="small" onClick={handleMarkAllRead}>
+                                Mark All Read
+                            </Button>
+                        }
+                    />
+                    <CardContent sx={{ pt: 0 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            {notifications.filter(n => !n.isRead).map((n) => (
+                                <Box key={n.id} sx={{ 
+                                    p: 2, borderRadius: 2, 
+                                    display: 'flex', alignItems: 'flex-start', gap: 2,
+                                    bgcolor: n.type === 'ACADEMIC_ALERT' ? alpha(theme.palette.error.main, 0.05) : alpha(theme.palette.info.main, 0.05),
+                                    border: `1px solid ${n.type === 'ACADEMIC_ALERT' ? alpha(theme.palette.error.main, 0.1) : alpha(theme.palette.info.main, 0.1)}`
+                                }}>
+                                    <Box sx={{ color: n.type === 'ACADEMIC_ALERT' ? 'error.main' : 'info.main', mt: 0.5 }}>
+                                        <NotificationsIcon />
+                                    </Box>
+                                    <Box sx={{ flex: 1 }}>
+                                        <Typography variant="subtitle2" fontWeight={800}>{n.title}</Typography>
+                                        <Typography variant="body2" color="text.secondary">{n.message}</Typography>
+                                    </Box>
+                                    {n.link && (
+                                        <Button size="small" href={n.link} sx={{ alignSelf: 'center' }}>View</Button>
+                                    )}
+                                </Box>
+                            ))}
+                        </Box>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Dynamic Role-Based Dashboard */}
             {renderRoleDashboard()}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha, Drawer, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Switch, FormControlLabel, IconButton, Divider } from '@mui/material';
+import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha, Drawer, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Switch, FormControlLabel, IconButton, Divider, useTheme } from '@mui/material';
 import { Close as CloseIcon, FilterList as FilterIcon } from '@mui/icons-material';
 import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
 import { AdvancedPerformanceDashboard } from '@/app/components/analytics/AdvancedPerformanceDashboard';
@@ -25,10 +25,18 @@ export default function PerformanceAnalyticsPage() {
     const [zoneId, setZoneId] = useState<string>('');
     const [woredaId, setWoredaId] = useState<string>('');
     const [kebeleId, setKebeleId] = useState<string>('');
+    const theme = useTheme();
+
+    // Comparison State
+    const [comparisonMode, setComparisonMode] = useState(false);
+    const [compScope, setCompScope] = useState<{ type: string; id: string | null }>({ type: 'SYSTEM', id: null });
+    const [compRegionId, setCompRegionId] = useState<string>('');
+    const [compZoneId, setCompZoneId] = useState<string>('');
 
     // Geographical Data Fetching
     const { data: regions } = useQuery({ queryKey: ['regions'], queryFn: () => regionsService.getAll() });
     const { data: zones } = useQuery({ queryKey: ['zones', regionId], queryFn: () => zonesService.getAll(regionId), enabled: !!regionId });
+    const { data: compZones } = useQuery({ queryKey: ['zones', compRegionId], queryFn: () => zonesService.getAll(compRegionId), enabled: !!compRegionId });
     const { data: woredas } = useQuery({ queryKey: ['woredas', zoneId], queryFn: () => woredasService.getAll(zoneId), enabled: !!zoneId });
     const { data: kebeles } = useQuery({ queryKey: ['kebeles', woredaId], queryFn: () => kebelesService.getAll(woredaId), enabled: !!woredaId });
 
@@ -93,6 +101,17 @@ export default function PerformanceAnalyticsPage() {
         setScope(id ? { type: 'KEBELE', id } : { type: 'WOREDA', id: woredaId });
     };
 
+    // Update Comparison Scope
+    React.useEffect(() => {
+        if (!compRegionId) {
+            setCompScope({ type: 'SYSTEM', id: null });
+        } else if (!compZoneId) {
+            setCompScope({ type: 'REGION', id: compRegionId });
+        } else {
+            setCompScope({ type: 'ZONE', id: compZoneId });
+        }
+    }, [compRegionId, compZoneId]);
+
     return (
         <Box>
             {/* Header and Filters */}
@@ -138,13 +157,77 @@ export default function PerformanceAnalyticsPage() {
                 </Paper>
             </Box>
 
-            {/* Advanced Performance Dashboard */}
-            <Box sx={{ mt: 4 }}>
-                <AdvancedPerformanceDashboard 
-                    scopeType={scope.type === 'SYSTEM' ? undefined : scope.type} 
-                    scopeId={scope.id || undefined} 
+            {/* Comparison Mode Toggle */}
+            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <FormControlLabel
+                    control={<Switch checked={comparisonMode} onChange={(e) => setComparisonMode(e.target.checked)} color="primary" />}
+                    label={<Typography fontWeight={700}>Enable Side-by-Side Comparison</Typography>}
                 />
             </Box>
+
+            {!comparisonMode ? (
+                <Box sx={{ mt: 4 }}>
+                    <AdvancedPerformanceDashboard 
+                        scopeType={scope.type === 'SYSTEM' ? undefined : scope.type} 
+                        scopeId={scope.id || undefined} 
+                    />
+                </Box>
+            ) : (
+                <Grid container spacing={3} sx={{ mt: 2 }}>
+                    <Grid size={{ xs: 12, lg: 6 }}>
+                        <Box sx={{ p: 2, mb: 2, borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.05), border: '1px solid', borderColor: 'primary.main' }}>
+                            <Typography variant="subtitle2" fontWeight={800} color="primary.main" sx={{ mb: 2 }}>PRIMARY ENTITY</Typography>
+                            <Stack direction="row" spacing={1}>
+                                <FormControl size="small" fullWidth>
+                                    <InputLabel>Region</InputLabel>
+                                    <Select value={regionId} label="Region" onChange={(e) => handleRegionChange(e.target.value)}>
+                                        <MenuItem value=""><em>All Systems</em></MenuItem>
+                                        {regions?.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                                <FormControl size="small" fullWidth disabled={!regionId}>
+                                    <InputLabel>Zone</InputLabel>
+                                    <Select value={zoneId} label="Zone" onChange={(e) => handleZoneChange(e.target.value)}>
+                                        <MenuItem value=""><em>All Zones</em></MenuItem>
+                                        {zones?.map(z => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            </Stack>
+                        </Box>
+                        <AdvancedPerformanceDashboard 
+                            scopeType={scope.type === 'SYSTEM' ? undefined : scope.type} 
+                            scopeId={scope.id || undefined}
+                            title={`Analysis: ${scope.type === 'SYSTEM' ? 'System' : scope.type}`}
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, lg: 6 }}>
+                        <Box sx={{ p: 2, mb: 2, borderRadius: 3, bgcolor: alpha(theme.palette.secondary.main, 0.05), border: '1px solid', borderColor: 'secondary.main' }}>
+                            <Typography variant="subtitle2" fontWeight={800} color="secondary.main" sx={{ mb: 2 }}>COMPARISON ENTITY</Typography>
+                            <Stack direction="row" spacing={1}>
+                                <FormControl size="small" fullWidth>
+                                    <InputLabel>Region</InputLabel>
+                                    <Select value={compRegionId} label="Region" onChange={(e) => setCompRegionId(e.target.value)}>
+                                        <MenuItem value=""><em>All Systems</em></MenuItem>
+                                        {regions?.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                                <FormControl size="small" fullWidth disabled={!compRegionId}>
+                                    <InputLabel>Zone</InputLabel>
+                                    <Select value={compZoneId} label="Zone" onChange={(e) => setCompZoneId(e.target.value)}>
+                                        <MenuItem value=""><em>All Zones</em></MenuItem>
+                                        {compZones?.map(z => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
+                                    </Select>
+                                </FormControl>
+                            </Stack>
+                        </Box>
+                        <AdvancedPerformanceDashboard 
+                            scopeType={compScope.type === 'SYSTEM' ? undefined : compScope.type} 
+                            scopeId={compScope.id || undefined} 
+                            title={`Comparison: ${compScope.type === 'SYSTEM' ? 'System' : compScope.type}`}
+                        />
+                    </Grid>
+                </Grid>
+            )}
 
 
             {/* Drilldown Drawer */}

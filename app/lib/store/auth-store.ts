@@ -26,6 +26,7 @@ export function mapBackendUserToFrontendUser(backendUser: any): User {
         email: backendUser.email,
         firstName: backendUser.firstName || backendUser.username,
         lastName: backendUser.lastName || '',
+        username: backendUser.username,
         tenantType: tenantType,
         tenantId: backendUser.scopeId || '',
         tenantName: backendUser.tenantName || '',

@@ -69,7 +69,7 @@ export function InstitutionDashboard({ stats, loading, user }: any) {
     const kpis = [
         { label: 'Total Students', value: stats?.students || 0, icon: 'People', trend: 'up' as const },
         { label: 'Courses', value: stats?.courses || 0, icon: 'School', trend: 'stable' as const },
-        { label: 'Active Enrollments', value: stats?.enrollments || 0, icon: 'Groups', trend: 'up' as const },
+        { label: 'At-Risk Students', value: stats?.atRiskCount || 0, icon: 'Warning', trend: (stats?.atRiskCount > 0 ? 'down' : 'stable') as any, color: 'error' },
         { label: 'Revenue (ETB)', value: stats?.totalRevenue || 0, icon: 'Budget', trend: 'up' as const },
     ];
 
@@ -167,7 +167,7 @@ export function StudentDashboard({ stats, loading, user }: any) {
 
     const kpis = [
         { label: 'Current Courses', value: stats?.enrollments?.length || 0, icon: 'School', trend: 'stable' as const },
-        { label: 'GPA', value: stats?.gpa || 'N/A', icon: 'Badge', trend: 'up' as const },
+        { label: 'GPA', value: stats?.gpa || '0.00', icon: 'Badge', trend: 'up' as const },
         { label: 'Attendance', value: `${stats?.attendanceRate || 0}%`, icon: 'People', trend: 'up' as const },
         { label: 'Pending Dues', value: '0 ETB', icon: 'Budget', trend: 'stable' as const },
     ];
@@ -218,10 +218,10 @@ export function RegistrarDashboard({ stats, loading }: any) {
     const theme = useTheme();
 
     const kpis = [
-        { label: 'New Enrollments', value: stats?.recentEnrollments || 12, icon: 'People', trend: 'up' as const },
-        { label: 'Pending Apps', value: stats?.pendingApplications || 5, icon: 'Course', trend: 'stable' as const },
-        { label: 'Transcripts Issued', value: stats?.transcriptsIssued || 28, icon: 'School', trend: 'up' as const },
-        { label: 'Active Students', value: stats?.totalStudents || 850, icon: 'Groups', trend: 'stable' as const },
+        { label: 'New Enrollments', value: stats?.recentEnrollments || 0, icon: 'People', trend: 'up' as const },
+        { label: 'Unassigned Students', value: stats?.unassignedCount || 0, icon: 'Warning', trend: (stats?.unassignedCount > 0 ? 'down' : 'stable') as any, color: 'warning' },
+        { label: 'Transcripts Issued', value: stats?.transcriptsIssued || 0, icon: 'School', trend: 'up' as const },
+        { label: 'Active Students', value: stats?.totalStudents || 0, icon: 'Groups', trend: 'stable' as const },
     ];
 
     return (

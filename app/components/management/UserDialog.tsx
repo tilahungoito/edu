@@ -165,7 +165,11 @@ export function UserDialog({ open, user: editingUser, onClose, onSuccess }: User
             newErrors.email = 'Invalid email address';
         }
 
-        if (!formData.phone) newErrors.phone = 'Phone number is required';
+        if (!formData.phone) {
+            newErrors.phone = 'Phone number is required';
+        } else if (!/^[0-9]{10,15}$/.test(formData.phone)) {
+            newErrors.phone = 'Phone number must be between 10 and 15 digits';
+        }
 
         if (!editingUser) {
             if (!formData.password) {
@@ -173,8 +177,6 @@ export function UserDialog({ open, user: editingUser, onClose, onSuccess }: User
             } else if (formData.password.length < 6) {
                 newErrors.password = 'Password must be at least 6 characters';
             }
-        } else if (formData.password && formData.password.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters';
         }
 
         if (!formData.targetRole) newErrors.targetRole = 'Role is required';
@@ -213,15 +215,9 @@ export function UserDialog({ open, user: editingUser, onClose, onSuccess }: User
                     phone: formData.phone,
                     firstName: formData.firstName,
                     lastName: formData.lastName,
-                    scopeId: formData.scopeId || null,
                     program: formData.targetRole === 'STUDENT' ? formData.program : undefined,
                     year: formData.targetRole === 'STUDENT' ? Number(formData.year) : undefined,
                 };
-
-                // Only include password if it's being changed
-                if (formData.password) {
-                    updateData.password = formData.password;
-                }
 
                 await usersService.update(editingUser.id, updateData);
             } else {
@@ -343,49 +339,51 @@ export function UserDialog({ open, user: editingUser, onClose, onSuccess }: User
                                 helperText={errors.username}
                             />
                         </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                label="Password"
-                                name="password"
-                                type={showPassword ? 'text' : 'password'}
-                                fullWidth
-                                required
-                                value={formData.password}
-                                onChange={handleChange}
-                                error={!!errors.password}
-                                helperText={errors.password || (editingUser ? "Leave blank to keep current password" : "")}
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                edge="end"
-                                                tabIndex={-1}
-                                            >
-                                                {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                            />
-                            {/* Password Strength Indicator */}
-                            {formData.password && (
-                                <Box sx={{ mt: 1 }}>
-                                    <LinearProgress
-                                        variant="determinate"
-                                        value={passwordStrength}
-                                        color={getStrengthColor(passwordStrength)}
-                                        sx={{ height: 4, borderRadius: 2, bgcolor: alpha('#000', 0.05) }}
-                                    />
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                        <Typography variant="caption" color="text.secondary">Strength</Typography>
-                                        <Typography variant="caption" fontWeight={600} color={`${getStrengthColor(passwordStrength)}.main`}>
-                                            {passwordStrength < 40 ? 'Weak' : passwordStrength < 70 ? 'Medium' : 'Strong'}
-                                        </Typography>
+                        {!editingUser && (
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <TextField
+                                    label="Password"
+                                    name="password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    fullWidth
+                                    required
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    error={!!errors.password}
+                                    helperText={errors.password}
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    edge="end"
+                                                    tabIndex={-1}
+                                                >
+                                                    {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                                {/* Password Strength Indicator */}
+                                {formData.password && (
+                                    <Box sx={{ mt: 1 }}>
+                                        <LinearProgress
+                                            variant="determinate"
+                                            value={passwordStrength}
+                                            color={getStrengthColor(passwordStrength)}
+                                            sx={{ height: 4, borderRadius: 2, bgcolor: alpha('#000', 0.05) }}
+                                        />
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                            <Typography variant="caption" color="text.secondary">Strength</Typography>
+                                            <Typography variant="caption" fontWeight={600} color={`${getStrengthColor(passwordStrength)}.main`}>
+                                                {passwordStrength < 40 ? 'Weak' : passwordStrength < 70 ? 'Medium' : 'Strong'}
+                                            </Typography>
+                                        </Box>
                                     </Box>
-                                </Box>
-                            )}
-                        </Grid>
+                                )}
+                            </Grid>
+                        )}
 
                         {/* Role & Permission Section */}
                         <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>

@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';

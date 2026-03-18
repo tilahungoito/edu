@@ -91,5 +91,13 @@ export const analyticsService = {
             params: { scopeType, scopeId }
         });
         return response.data;
+    },
+    compareTrends: async (entities: { type: string; id: string; name: string }[]): Promise<any[]> => {
+        const response = await apiClient.get<any[]>('analytics/compare-trends', {
+            params: { entities: JSON.stringify(entities) }
+        });
+        return response.data;
     }
 };
+
+export default analyticsService;

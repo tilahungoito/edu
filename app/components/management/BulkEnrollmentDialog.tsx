@@ -85,6 +85,11 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
             return;
         }
 
+        if (!semester) {
+            setError('Please configure or select an Academic Semester to proceed.');
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {

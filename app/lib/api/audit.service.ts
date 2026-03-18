@@ -67,3 +67,5 @@ export const auditService = {
         window.URL.revokeObjectURL(url);
     },
 };
+
+export default auditService;

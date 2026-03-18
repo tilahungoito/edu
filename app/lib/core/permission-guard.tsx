@@ -31,8 +31,9 @@ export function PermissionGate({
 
     if (!user) return fallback;
 
-    // 1. SYSTEM_ADMIN has all permissions
-    if (user.roles.some(r => r.name === 'SYSTEM_ADMIN' || r.name === 'Bureau Admin')) {
+    // 1. Administrative roles have broad UI access
+    const adminRoles = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN'];
+    if (user.roles.some(r => adminRoles.includes(r.name))) {
         return children;
     }
 

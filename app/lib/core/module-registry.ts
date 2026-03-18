@@ -137,7 +137,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'communication', action: 'view' },
     isEnabled: true,
     order: 3,
-    category: 'Main',
+    category: 'Communication',
     menuItems: [
         {
             id: 'comm-announcements',
@@ -160,7 +160,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'management', action: 'view' },
     isEnabled: true,
     order: 4,
-    category: 'Hierarchy',
+    category: 'Administration',
     menuItems: [
         // Regions: Only System Admin can see and manage
         {
@@ -236,7 +236,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'students', action: 'view' },
     isEnabled: true,
     order: 5,
-    category: 'Core',
+    category: 'Administration',
     menuItems: [
         {
             id: 'students-list',
@@ -269,7 +269,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'academic', action: 'view' },
     isEnabled: true,
     order: 6,
-    category: 'Core',
+    category: 'Academic',
     menuItems: [
 
         {
@@ -369,8 +369,8 @@ moduleRegistry.register({
     basePath: '/academic/setup',
     requiredPermission: { module: 'academic', action: 'view' },
     isEnabled: true,
-    order: 6.5,
-    category: 'Institution Setup',
+    order: 7,
+    category: 'Academic',
     menuItems: [
         {
             id: 'setup-hub',
@@ -418,7 +418,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'hr', action: 'view' },
     isEnabled: true,
     order: 8,
-    category: 'Staffing',
+    category: 'Operations',
     menuItems: [
         {
             id: 'hr-overview',
@@ -520,7 +520,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'finance', action: 'view' },
     isEnabled: true,
     order: 10,
-    category: 'Finance',
+    category: 'Operations',
     menuItems: [
         {
             id: 'finance-payments',
@@ -544,7 +544,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'budget', action: 'view' },
     isEnabled: true,
     order: 11,
-    category: 'Finance',
+    category: 'Operations',
     menuItems: [
         {
             id: 'budget-overview',
@@ -595,7 +595,7 @@ moduleRegistry.register({
     requiredPermission: { module: 'reports', action: 'view' },
     isEnabled: true,
     order: 12,
-    category: 'Reports',
+    category: 'Operations',
     menuItems: [
         {
             id: 'reports-generator',

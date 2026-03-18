@@ -23,6 +23,7 @@ import {
     FormControl,
     InputLabel,
     Select,
+    Tooltip,
 } from '@mui/material';
 import {
     Assessment as GradesIcon,
@@ -33,16 +34,23 @@ import {
     CheckCircle as CheckIcon,
     Download as DownloadIcon,
     School as SchoolIcon,
+    LockOutlined as LockIcon,
+    HourglassEmpty as PendingIcon,
+    Send as SendIcon,
+    ThumbUp as ApproveIcon,
+    PictureAsPdf as PictureAsPdfIcon,
 } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar, getGridNumericOperators, GridFilterOperator } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Papa from 'papaparse';
+import toast from 'react-hot-toast';
 
 import coursesService from '@/app/lib/api/courses.service';
 import enrollmentsService from '@/app/lib/api/enrollments.service';
 import assessmentsService, { Assessment, AssessmentScore } from '@/app/lib/api/assessments.service';
-import { gradesService } from '@/app/lib/api/grades.service';
+import { gradesService, GradeBookStatus } from '@/app/lib/api/grades.service';
 import { useAuthStore } from '@/app/lib/store';
+
 
 const ASSESSMENT_TYPES = ['QUIZ', 'ASSIGNMENT', 'HOMEWORK', 'PRACTICAL', 'CLASS_PARTICIPATION', 'MIDTERM_EXAM', 'FINAL_EXAM'];
 
@@ -98,19 +106,36 @@ const customNumericOperators: GridFilterOperator<any, number, any>[] = [
     }
 ];
 
-// --- Helper Functions ---
-const calculateGradeLetter = (totalScore: number) => {
-    if (totalScore >= 90) return 'A+';
-    if (totalScore >= 85) return 'A';
-    if (totalScore >= 80) return 'A-';
-    if (totalScore >= 75) return 'B+';
-    if (totalScore >= 70) return 'B';
-    if (totalScore >= 65) return 'B-';
-    if (totalScore >= 60) return 'C+';
-    if (totalScore >= 50) return 'C';
-    if (totalScore >= 40) return 'D';
-    return 'F';
+// --- Grade categorisation matching Ethiopian spec ---
+const calculateGradeCategory = (score: number): { letter: string; category: string; } => {
+    if (score >= 90) return { letter: 'A+', category: 'Excellent' };
+    if (score >= 75) return { letter: 'A',  category: 'Very Good' };
+    if (score >= 50) return { letter: 'B',  category: 'Satisfactory' };
+    if (score >= 30) return { letter: 'C',  category: 'Needs Improvement' };
+    return                  { letter: 'F',  category: 'Fail' };
 };
+
+// legacy helper alias used in existing code
+const calculateGradeLetter = (score: number) => calculateGradeCategory(score).category;
+
+// Status badge helper
+const GradeBookStatusBadge = ({ status }: { status: GradeBookStatus | null }) => {
+    const theme = useTheme();
+    if (!status || status === 'DRAFT') return (
+        <Chip icon={<SchoolIcon />} label="Draft — Enter scores" size="small" color="default" variant="outlined" sx={{ fontWeight: 700 }} />
+    );
+    if (status === 'PENDING_REVIEW') return (
+        <Chip icon={<PendingIcon />} label="Pending Review" size="small" color="warning" sx={{ fontWeight: 700 }} />
+    );
+    if (status === 'APPROVED') return (
+        <Chip icon={<CheckIcon />} label="Approved" size="small" color="success" sx={{ fontWeight: 700 }} />
+    );
+    if (status === 'LOCKED') return (
+        <Chip icon={<LockIcon />} label="Locked" size="small" color="error" sx={{ fontWeight: 700 }} />
+    );
+    return null;
+};
+
 
 // Local component to prevent focus loss during inline editing
 function ScoreInputCell({ initialValue, maxScore, onChangeCommit }: { initialValue: string | number, maxScore: number, onChangeCommit: (val: number | null) => void }) {
@@ -177,13 +202,17 @@ function InstructorGradebookView() {
     const [csvImportOpen, setCsvImportOpen] = useState(false);
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
-    const [quickFilter, setQuickFilter] = useState<'ALL' | 'A' | 'B' | 'C' | 'F'>('ALL');
+    const [quickFilter, setQuickFilter] = useState<'ALL' | 'Excellent' | 'Very Good' | 'Satisfactory' | 'Needs Improvement' | 'Fail'>('ALL');
     
     const [scoreEdits, setScoreEdits] = useState<Record<string, Record<string, number>>>({}); // [assessmentId][enrollmentId] = score
     const [saving, setSaving] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [approving, setApproving] = useState(false);
 
     const isInstructor = user?.roles?.some(r => r.name === 'INSTRUCTOR');
+    const isAdmin = user?.roles?.some(r => ['INSTITUTION_ADMIN', 'REGISTRAR', 'SYSTEM_ADMIN'].includes(r.name));
     const institutionId = user?.tenantType === 'school' ? user?.tenantId : undefined;
+
 
     // 1. Fetch Courses
     const { data: courses, isLoading: loadingCourses } = useQuery({
@@ -238,6 +267,26 @@ function InstructorGradebookView() {
         return matrix;
     }, [allScoresArray]);
 
+    // 5. Fetch GradeBook status
+    const { data: gradeBookRows, isLoading: loadingGradeBook } = useQuery({
+        queryKey: ['gradebook-status', selectedCourseId],
+        queryFn: () => gradesService.getGradeBookStatus(selectedCourseId),
+        enabled: !!selectedCourseId,
+    });
+
+    // Derive overall GradeBook status for the course
+    const courseGradeBookStatus = useMemo((): GradeBookStatus | null => {
+        if (!gradeBookRows || gradeBookRows.length === 0) return null;
+        // LOCKED > APPROVED > PENDING_REVIEW > DRAFT
+        if (gradeBookRows.some(r => r.status === 'LOCKED')) return 'LOCKED';
+        if (gradeBookRows.some(r => r.status === 'APPROVED')) return 'APPROVED';
+        if (gradeBookRows.some(r => r.status === 'PENDING_REVIEW')) return 'PENDING_REVIEW';
+        return 'DRAFT';
+    }, [gradeBookRows]);
+
+    const isGradebookLocked = courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED';
+
+
     const isLoadingGrid = loadingEnrollments || loadingAssessments || loadingScores;
 
     // Build Rows for DataGrid
@@ -270,7 +319,7 @@ function InstructorGradebookView() {
             });
 
             row.totalScore = totalWeighted;
-            row.letterGrade = calculateGradeLetter(totalWeighted);
+            row.letterGrade = calculateGradeCategory(totalWeighted).category;
 
             return row;
         });
@@ -282,37 +331,37 @@ function InstructorGradebookView() {
         let sum = 0;
         let max = 0;
         let min = 100;
-        let countA = 0, countB = 0, countC = 0, countF = 0;
+        let countExcellent = 0, countVeryGood = 0, countSatisfactory = 0, countNeedsImprovement = 0, countFail = 0;
         
         rows.forEach(r => {
             const t = r.totalScore || 0;
             sum += t;
             if (t > max) max = t;
             if (t < min) min = t;
-            if (t >= 85) countA++;
-            else if (t >= 70) countB++;
-            else if (t >= 50) countC++;
-            else countF++;
+            if (t >= 90) countExcellent++;
+            else if (t >= 75) countVeryGood++;
+            else if (t >= 50) countSatisfactory++;
+            else if (t >= 30) countNeedsImprovement++;
+            else countFail++;
         });
 
+        // Standard deviation
+        const avg = sum / rows.length;
+        const variance = rows.reduce((acc, r) => acc + Math.pow((r.totalScore || 0) - avg, 2), 0) / rows.length;
+        const stdDev = Math.sqrt(variance);
+
         return {
-            average: parseFloat((sum / rows.length).toFixed(1)),
+            average: parseFloat(avg.toFixed(1)),
             max: parseFloat(max.toFixed(1)),
             min: rows.length > 0 ? parseFloat(min.toFixed(1)) : 0.0,
-            countA, countB, countC, countF
+            stdDev: parseFloat(stdDev.toFixed(1)),
+            countExcellent, countVeryGood, countSatisfactory, countNeedsImprovement, countFail,
         };
     }, [rows]);
 
     const filteredRows = useMemo(() => {
         if (quickFilter === 'ALL') return rows;
-        return rows.filter(r => {
-            const t = r.totalScore || 0;
-            if (quickFilter === 'A') return t >= 85;
-            if (quickFilter === 'B') return t >= 70 && t < 85;
-            if (quickFilter === 'C') return t >= 50 && t < 70;
-            if (quickFilter === 'F') return t < 50;
-            return true;
-        });
+        return rows.filter(r => r.letterGrade === quickFilter);
     }, [rows, quickFilter]);
 
     // Build Columns for DataGrid
@@ -353,16 +402,22 @@ function InstructorGradebookView() {
                 type: 'number',
                 filterOperators: customNumericOperators as any,
                 renderCell: (params: GridRenderCellParams) => (
-                    <ScoreInputCell 
-                        initialValue={params.value as any} 
-                        maxScore={a.maxScore} 
-                        onChangeCommit={(newVal) => {
-                            setScoreEdits(prev => ({ 
-                                ...prev, 
-                                [a.id]: { ...(prev[a.id] || {}), [params.id as string]: newVal === null ? null! : newVal } 
-                            }));
-                        }} 
-                    />
+                    isGradebookLocked ? (
+                        <Typography variant="body2" fontWeight={700} sx={{ width: '100%', textAlign: 'center' }}>
+                            {params.value !== '' && params.value !== undefined ? params.value : '—'}
+                        </Typography>
+                    ) : (
+                        <ScoreInputCell 
+                            initialValue={params.value as any} 
+                            maxScore={a.maxScore} 
+                            onChangeCommit={(newVal) => {
+                                setScoreEdits(prev => ({ 
+                                    ...prev, 
+                                    [a.id]: { ...(prev[a.id] || {}), [params.id as string]: newVal === null ? null! : newVal } 
+                                }));
+                            }} 
+                        />
+                    )
                 ),
                 renderHeader: () => (
                     <Box sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
@@ -392,31 +447,29 @@ function InstructorGradebookView() {
 
         cols.push({
             field: 'letterGrade',
-            headerName: 'Grade',
-            width: 80,
+            headerName: 'Category',
+            width: 150,
             align: 'center',
             headerAlign: 'center',
-            renderCell: (params: GridRenderCellParams) => (
-                <Chip 
-                    label={params.value} 
-                    size="small"
-                    sx={{
-                        fontWeight: 800,
-                        bgcolor: ['A+','A','A-'].includes(params.value) ? alpha(theme.palette.success.main, 0.1) : 
-                                 ['B+','B','B-'].includes(params.value) ? alpha(theme.palette.info.main, 0.1) :
-                                 ['C+','C'].includes(params.value) ? alpha(theme.palette.warning.main, 0.1) :
-                                 alpha(theme.palette.error.main, 0.1),
-                        color: ['A+','A','A-'].includes(params.value) ? theme.palette.success.main : 
-                               ['B+','B','B-'].includes(params.value) ? theme.palette.info.main :
-                               ['C+','C'].includes(params.value) ? theme.palette.warning.main :
-                               theme.palette.error.main,
-                    }}
-                />
-            )
+            renderCell: (params: GridRenderCellParams) => {
+                const score = params.row.totalScore || 0;
+                const color = score >= 90 ? 'success' :
+                              score >= 75 ? 'info' :
+                              score >= 50 ? 'warning' :
+                              score >= 30 ? 'default' : 'error';
+                return (
+                    <Chip 
+                        label={params.value} 
+                        size="small"
+                        color={color as any}
+                        sx={{ fontWeight: 800, fontSize: '0.7rem' }}
+                    />
+                );
+            }
         });
 
         return cols;
-    }, [assessments, theme]);
+    }, [assessments, theme, isGradebookLocked]);
 
     // No processRowUpdate needed since we use controlled TextFields in renderCell
     const processRowUpdate = (newRow: any) => newRow;
@@ -452,6 +505,38 @@ function InstructorGradebookView() {
         }
     };
 
+    // Submit grades for review
+    const handleSubmitForReview = async () => {
+        if (!window.confirm('Submit all grades for admin review? You can no longer edit them until they are rejected.')) return;
+        setSubmitting(true);
+        try {
+            await gradesService.submitForReview(selectedCourseId);
+            toast.success('Grades submitted for review!');
+            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || 'Failed to submit grades');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Approve and lock grades (Admin/Registrar)
+    const handleApproveAndLock = async () => {
+        if (!window.confirm('Approve and LOCK all grades? This action cannot be undone.')) return;
+        setApproving(true);
+        try {
+            await gradesService.approveAndLock(selectedCourseId);
+            toast.success('Grades approved and locked!');
+            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
+            queryClient.invalidateQueries({ queryKey: ['assessment-scores-all'] });
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || 'Failed to approve grades');
+        } finally {
+            setApproving(false);
+        }
+    };
+
+
     return (
         <Box className="animate-fade-in" sx={{ p: { xs: 2, md: 3 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
             {/* Header & Actions */}
@@ -465,9 +550,12 @@ function InstructorGradebookView() {
                             Professional Gradebook
                         </Typography>
                     </Box>
-                    <Typography variant="body2" color="text.secondary" fontWeight={500}>
-                        Manage assessments, record scores, and compute total grades
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                            Manage assessments, record scores, and compute total grades
+                        </Typography>
+                        {selectedCourseId && <GradeBookStatusBadge status={courseGradeBookStatus} />}
+                    </Box>
                 </Box>
                 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
@@ -496,31 +584,80 @@ function InstructorGradebookView() {
 
                     {selectedCourseId && (
                         <>
+                            {/* Instructor-only buttons */}
+                            {isInstructor && !isGradebookLocked && (
+                                <>
+                                    <Button 
+                                        variant="outlined" 
+                                        startIcon={<AddIcon />} 
+                                        onClick={() => setCreateAssessmentOpen(true)}
+                                        sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
+                                    >
+                                        New Assessment
+                                    </Button>
+                                    <Button 
+                                        variant="outlined" 
+                                        startIcon={<UploadIcon />} 
+                                        onClick={() => setCsvImportOpen(true)}
+                                        sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
+                                    >
+                                        Import CSV
+                                    </Button>
+                                    <Button 
+                                        variant="contained" 
+                                        startIcon={<SaveIcon />}
+                                        disabled={Object.keys(scoreEdits).length === 0 || saving}
+                                        onClick={handleSave}
+                                        color="success"
+                                        sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3, boxShadow: `0 8px 16px ${alpha(theme.palette.success.main, 0.25)}` }}
+                                    >
+                                        {saving ? 'Saving...' : 'Save Grades'}
+                                    </Button>
+                                    {courseGradeBookStatus !== 'PENDING_REVIEW' && (
+                                        <Button 
+                                            variant="contained" 
+                                            startIcon={<SendIcon />}
+                                            color="warning"
+                                            disabled={submitting || !rows.length}
+                                            onClick={handleSubmitForReview}
+                                            sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3 }}
+                                        >
+                                            {submitting ? 'Submitting...' : 'Submit for Review'}
+                                        </Button>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Admin/Registrar: Approve & Lock */}
+                            {isAdmin && courseGradeBookStatus === 'PENDING_REVIEW' && (
+                                <Button 
+                                    variant="contained" 
+                                    startIcon={<ApproveIcon />}
+                                    color="success"
+                                    disabled={approving}
+                                    onClick={handleApproveAndLock}
+                                    sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3, boxShadow: `0 8px 16px ${alpha(theme.palette.success.main, 0.3)}` }}
+                                >
+                                    {approving ? 'Locking...' : 'Approve & Lock'}
+                                </Button>
+                            )}
+
+                            {/* Export */}
                             <Button 
                                 variant="outlined" 
-                                startIcon={<AddIcon />} 
-                                onClick={() => setCreateAssessmentOpen(true)}
+                                startIcon={<DownloadIcon />}
+                                onClick={() => gradesService.exportExcel(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name)}
                                 sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
                             >
-                                New Assessment
+                                Export Excel
                             </Button>
                             <Button 
                                 variant="outlined" 
-                                startIcon={<UploadIcon />} 
-                                onClick={() => setCsvImportOpen(true)}
-                                sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
+                                startIcon={<PictureAsPdfIcon />}
+                                onClick={() => gradesService.exportPdf(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name)}
+                                sx={{ borderRadius: 2, height: 40, fontWeight: 700, color: 'error.main', borderColor: 'error.main', '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.05), borderColor: 'error.main' } }}
                             >
-                                Import CSV
-                            </Button>
-                            <Button 
-                                variant="contained" 
-                                startIcon={<SaveIcon />}
-                                disabled={Object.keys(scoreEdits).length === 0 || saving}
-                                onClick={handleSave}
-                                color="success"
-                                sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3, boxShadow: `0 8px 16px ${alpha(theme.palette.success.main, 0.25)}` }}
-                            >
-                                {saving ? 'Saving...' : 'Save Grades'}
+                                Export PDF
                             </Button>
                         </>
                     )}
@@ -529,6 +666,13 @@ function InstructorGradebookView() {
 
             {importSuccess && <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>{importSuccess}</Alert>}
             {importError && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{importError}</Alert>}
+
+            {/* Locked Banner */}
+            {isGradebookLocked && (
+                <Alert severity="warning" icon={<LockIcon />} sx={{ mb: 2, borderRadius: 2, fontWeight: 700 }}>
+                    This gradebook is <strong>{courseGradeBookStatus}</strong>. Grades are read-only and cannot be modified.
+                </Alert>
+            )}
 
             {/* Metrics & Quick Filters */}
             {selectedCourseId && metrics && rows.length > 0 && (
@@ -545,6 +689,10 @@ function InstructorGradebookView() {
                         <Typography variant="overline" color="text.secondary">Lowest Score</Typography>
                         <Typography variant="h4" fontWeight={800} color="error.main">{metrics.min}%</Typography>
                     </Card>
+                    <Card elevation={0} sx={{ p: 2, minWidth: 140, borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.2)}` }}>
+                        <Typography variant="overline" color="text.secondary">Std. Deviation</Typography>
+                        <Typography variant="h4" fontWeight={800} color="text.secondary">±{metrics.stdDev}%</Typography>
+                    </Card>
                     
                     <Box sx={{ flex: 1 }} />
                     
@@ -559,28 +707,34 @@ function InstructorGradebookView() {
                                 sx={{ fontWeight: 700 }}
                             />
                             <Chip 
-                                label={`A (>= 85%) • ${metrics.countA}`} 
-                                onClick={() => setQuickFilter('A')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'A' ? 'success.main' : 'transparent', color: quickFilter === 'A' ? 'white' : 'success.main', borderColor: alpha(theme.palette.success.main, 0.5) }} 
-                                variant={quickFilter === 'A' ? 'filled' : 'outlined'} 
+                                label={`Excellent • ${metrics.countExcellent} (${Math.round(metrics.countExcellent / rows.length * 100)}%)`} 
+                                onClick={() => setQuickFilter('Excellent')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Excellent' ? 'success.main' : 'transparent', color: quickFilter === 'Excellent' ? 'white' : 'success.main', borderColor: alpha(theme.palette.success.main, 0.5) }} 
+                                variant={quickFilter === 'Excellent' ? 'filled' : 'outlined'} 
                             />
                             <Chip 
-                                label={`B (70 - 84%) • ${metrics.countB}`} 
-                                onClick={() => setQuickFilter('B')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'B' ? 'info.main' : 'transparent', color: quickFilter === 'B' ? 'white' : 'info.main', borderColor: alpha(theme.palette.info.main, 0.5) }} 
-                                variant={quickFilter === 'B' ? 'filled' : 'outlined'} 
+                                label={`Very Good • ${metrics.countVeryGood} (${Math.round(metrics.countVeryGood / rows.length * 100)}%)`} 
+                                onClick={() => setQuickFilter('Very Good')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Very Good' ? 'info.main' : 'transparent', color: quickFilter === 'Very Good' ? 'white' : 'info.main', borderColor: alpha(theme.palette.info.main, 0.5) }} 
+                                variant={quickFilter === 'Very Good' ? 'filled' : 'outlined'} 
                             />
                             <Chip 
-                                label={`C (50 - 69%) • ${metrics.countC}`} 
-                                onClick={() => setQuickFilter('C')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'C' ? 'warning.main' : 'transparent', color: quickFilter === 'C' ? 'white' : 'warning.main', borderColor: alpha(theme.palette.warning.main, 0.5) }} 
-                                variant={quickFilter === 'C' ? 'filled' : 'outlined'} 
+                                label={`Satisfactory • ${metrics.countSatisfactory} (${Math.round(metrics.countSatisfactory / rows.length * 100)}%)`} 
+                                onClick={() => setQuickFilter('Satisfactory')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Satisfactory' ? 'warning.main' : 'transparent', color: quickFilter === 'Satisfactory' ? 'white' : 'warning.main', borderColor: alpha(theme.palette.warning.main, 0.5) }} 
+                                variant={quickFilter === 'Satisfactory' ? 'filled' : 'outlined'} 
                             />
                             <Chip 
-                                label={`Fail (< 50%) • ${metrics.countF}`} 
-                                onClick={() => setQuickFilter('F')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'F' ? 'error.main' : 'transparent', color: quickFilter === 'F' ? 'white' : 'error.main', borderColor: alpha(theme.palette.error.main, 0.5) }} 
-                                variant={quickFilter === 'F' ? 'filled' : 'outlined'} 
+                                label={`Needs Improvement • ${metrics.countNeedsImprovement} (${Math.round(metrics.countNeedsImprovement / rows.length * 100)}%)`} 
+                                onClick={() => setQuickFilter('Needs Improvement')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Needs Improvement' ? 'default' : 'transparent', borderColor: alpha(theme.palette.text.secondary, 0.4) }} 
+                                variant={quickFilter === 'Needs Improvement' ? 'filled' : 'outlined'} 
+                            />
+                            <Chip 
+                                label={`Fail • ${metrics.countFail} (${Math.round(metrics.countFail / rows.length * 100)}%)`} 
+                                onClick={() => setQuickFilter('Fail')} 
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Fail' ? 'error.main' : 'transparent', color: quickFilter === 'Fail' ? 'white' : 'error.main', borderColor: alpha(theme.palette.error.main, 0.5) }} 
+                                variant={quickFilter === 'Fail' ? 'filled' : 'outlined'} 
                             />
                         </Box>
                     </Card>
@@ -815,12 +969,28 @@ function CsvImportDialog({ open, onClose, assessments, enrollments, onImport }: 
 function StudentTranscriptView() {
     const theme = useTheme();
     const user = useAuthStore(state => state.user);
+    const [downloading, setDownloading] = useState(false);
 
     const { data: transcript, isLoading } = useQuery({
         queryKey: ['transcript', user?.id],
         queryFn: () => gradesService.getTranscript(user?.id || ''),
         enabled: !!user?.id,
     });
+
+    const handleDownloadPdf = async () => {
+        if (!user?.id) return;
+        setDownloading(true);
+        try {
+            await gradesService.downloadTranscriptPdf(
+                user.id,
+                `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || user.id.substring(0, 8),
+            );
+        } catch (e) {
+            console.error('Failed to download transcript:', e);
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     if (isLoading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>;
 
@@ -839,7 +1009,15 @@ function StudentTranscriptView() {
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
-                    <Button variant="outlined" sx={{ borderRadius: 2 }} startIcon={<DownloadIcon />}>Download PDF</Button>
+                    <Button
+                        variant="contained"
+                        sx={{ borderRadius: 2 }}
+                        startIcon={downloading ? <CircularProgress size={16} color="inherit" /> : <DownloadIcon />}
+                        onClick={handleDownloadPdf}
+                        disabled={downloading || !transcript}
+                    >
+                        {downloading ? 'Generating...' : 'Download PDF'}
+                    </Button>
                 </Box>
             </Box>
 
