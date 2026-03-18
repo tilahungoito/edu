@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
                             fullWidth
                             variant="contained"
                             component={NextLink}
-                            href="/auth/login"
+                            href="/login"
                         >
                             Log In Now
                         </Button>

@@ -37,7 +37,7 @@ export function middleware(request: NextRequest) {
 
     // 3. If no token, redirect to login
     if (!token) {
-        const loginUrl = new URL('/auth/login', request.url);
+        const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(loginUrl);
     }
@@ -49,7 +49,7 @@ export function middleware(request: NextRequest) {
         // Check if token is expired
         const currentTime = Math.floor(Date.now() / 1000);
         if (decoded.exp && decoded.exp < currentTime) {
-            const loginUrl = new URL('/auth/login', request.url);
+            const loginUrl = new URL('/login', request.url);
             loginUrl.searchParams.set('from', pathname);
             loginUrl.searchParams.set('expired', 'true');
             return NextResponse.redirect(loginUrl);
@@ -79,7 +79,7 @@ export function middleware(request: NextRequest) {
         return NextResponse.next();
     } catch (error) {
         // Invalid token, redirect to login
-        const loginUrl = new URL('/auth/login', request.url);
+        const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(loginUrl);
     }

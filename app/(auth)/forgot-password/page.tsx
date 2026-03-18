@@ -154,7 +154,7 @@ export default function ForgotPasswordPage() {
                                             variant="outlined"
                                             size="large"
                                             component={NextLink}
-                                            href="/auth/login"
+                                            href="/login"
                                             sx={{
                                                 py: 1.5,
                                                 borderRadius: 2,
@@ -239,7 +239,7 @@ export default function ForgotPasswordPage() {
                                     <Box textAlign="center">
                                         <Link
                                             component={NextLink}
-                                            href="/auth/login"
+                                            href="/login"
                                             underline="hover"
                                             sx={{
                                                 fontSize: '0.875rem',
