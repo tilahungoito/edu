@@ -640,6 +640,15 @@ export default function TransfersPage() {
                             id="target-institution-autocomplete"
                             options={schools}
                             getOptionLabel={(option) => option.name}
+                            isOptionEqualToValue={(option, value) => option.id === value?.id}
+                            renderOption={(props, option) => {
+                                const { key, ...optionProps } = props as any;
+                                return (
+                                    <li key={option.id} {...optionProps}>
+                                        {option.name}
+                                    </li>
+                                );
+                            }}
                             value={schools.find(s => s.id === formData.targetInstitutionId) || null}
                             onChange={(_, newValue) => {
                                 setFormData({ ...formData, targetInstitutionId: newValue?.id || '' });
