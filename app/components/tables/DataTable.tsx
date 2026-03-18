@@ -379,7 +379,7 @@ export function DataTable<T extends { id: string }>({
         ...(onView || onEdit || onDelete || onToggleStatus
             ? [
                 {
-                    field: 'actions',
+                    field: 'tableActions',
                     headerName: 'Actions',
                     width: 80,
                     sortable: false,

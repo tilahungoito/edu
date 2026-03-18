@@ -408,7 +408,7 @@ export default function TransfersPage() {
             }
         },
         {
-            field: 'actions',
+            field: 'cancelAction',
             headerName: 'Actions',
             width: 100,
             sortable: false,

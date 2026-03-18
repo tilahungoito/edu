@@ -158,7 +158,7 @@ export default function HelpRequestsPage() {
             valueFormatter: (value) => value ? new Date(value as string).toLocaleDateString() : ''
         },
         {
-            field: 'actions',
+            field: 'ticketActions',
             headerName: 'Actions',
             width: 200,
             renderCell: (params) => (
