@@ -18,7 +18,7 @@ export default function AcademicDashboard() {
 
     const kpis: KPIData[] = [
         {
-            label: isInstructor ? 'My Courses' : 'Enrolled Courses',
+            label: isInstructor ? 'Courses' : 'Enrolled Courses',
             value: 5,
             icon: 'School',
             trend: 'stable'

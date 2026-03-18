@@ -135,7 +135,7 @@ export function InstructorDashboard({ stats, loading }: any) {
     const theme = useTheme();
 
     const kpis = [
-        { label: 'My Courses', value: stats?.courses?.length || 0, icon: 'School', trend: 'stable' as const },
+        { label: 'Courses', value: stats?.courses?.length || 0, icon: 'School', trend: 'stable' as const },
         { label: 'My Students', value: stats?.totalStudents || 0, icon: 'People', trend: 'up' as const },
         { label: 'Avg Attendance', value: stats?.recentAttendance?.length > 0 ? 'Verified' : 'N/A', icon: 'Badge', trend: 'up' as const },
         { label: 'Grading Status', value: stats?.courses?.length > 0 ? 'Active' : 'N/A', icon: 'Groups', trend: 'stable' as const },

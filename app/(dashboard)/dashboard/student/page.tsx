@@ -84,7 +84,7 @@ export default function StudentDashboard() {
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Paper sx={{ p: 3, borderRadius: 2 }}>
                         <Typography variant="h6" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <CourseIcon color="primary" /> My Courses
+                            <CourseIcon color="primary" /> Courses
                         </Typography>
                         <Divider sx={{ my: 2 }} />
                         {stats?.enrollments && stats.enrollments.length > 0 ? (

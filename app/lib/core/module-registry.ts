@@ -270,15 +270,7 @@ moduleRegistry.register({
     order: 6,
     category: 'Core',
     menuItems: [
-        {
-            id: 'academic-courses',
-            label: 'My Courses',
-            labelAmharic: 'የእኔ ኮርሶች',
-            icon: 'School',
-            path: '/academic/courses',
-            permission: { module: 'courses', action: 'view' },
-            allowedRoles: ['INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'INSTITUTION_ADMIN'],
-        },
+
         {
             id: 'academic-promotions',
             label: 'Promotions',
