@@ -510,7 +510,7 @@ export default function TransfersPage() {
                             const target = selectedRequestId
                                 ? [...requests, ...pendingRequests].find(r => r.id === selectedRequestId)
                                 : requests[0] || pendingRequests[0];
-                            const isStudent = (target as any)?.requester?.role?.name === 'STUDENT';
+                            const isStudent = target ? (target as any)?.requester?.role?.name === 'STUDENT' : user?.roles?.some(r => r.name === 'STUDENT');
                             return target ? getActiveStep(target.status, isStudent) : -1;
                         })()}
                         sx={{ py: 2 }}
@@ -519,7 +519,7 @@ export default function TransfersPage() {
                             const target = selectedRequestId
                                 ? [...requests, ...pendingRequests].find(r => r.id === selectedRequestId)
                                 : requests[0] || pendingRequests[0];
-                            const isStudent = (target as any)?.requester?.role?.name === 'STUDENT';
+                            const isStudent = target ? (target as any)?.requester?.role?.name === 'STUDENT' : user?.roles?.some(r => r.name === 'STUDENT');
                             const steps = isStudent ? studentApprovalSteps : approvalSteps;
                             return steps.map((label) => (
                                 <Step key={label}>
