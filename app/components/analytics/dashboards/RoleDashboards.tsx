@@ -102,7 +102,7 @@ export function InstitutionDashboard({ stats, loading, user }: any) {
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             {[
                                 { label: 'Register Student', icon: <PeopleIcon />, color: theme.palette.primary.main, href: '/students' },
-                                { label: 'Course Catalog', icon: <SchoolIcon />, color: theme.palette.secondary.main, href: '/academics/courses' },
+                                { label: 'Course Catalog', icon: <SchoolIcon />, color: theme.palette.secondary.main, href: '/academic/courses' },
                                 { label: 'Transfers', icon: <CourseIcon />, color: theme.palette.success.main, href: '/hr/transfers' },
                             ].map((action, i) => (
                                 <Box key={i} 
