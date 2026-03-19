@@ -40,27 +40,10 @@ export default function PerformanceAnalyticsPage() {
     const { data: woredas } = useQuery({ queryKey: ['woredas', zoneId], queryFn: () => woredasService.getAll(zoneId), enabled: !!zoneId });
     const { data: kebeles } = useQuery({ queryKey: ['kebeles', woredaId], queryFn: () => kebelesService.getAll(woredaId), enabled: !!woredaId });
 
-    // Analytics Data Fetching
-    const { data: kpis, isLoading: kpisLoading } = useQuery({ 
-        queryKey: ['analytics', 'kpis', scope], 
-        queryFn: () => analyticsService.getKPIs(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
-    });
-    const { data: trends, isLoading: trendsLoading } = useQuery({ 
-        queryKey: ['analytics', 'trends', scope], 
-        queryFn: () => analyticsService.getPerformanceTrends(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
-    });
-    const { data: subjectPerformance, isLoading: subjectLoading } = useQuery({ 
-        queryKey: ['analytics', 'subject', scope], 
-        queryFn: () => analyticsService.getSubjectPerformance(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
-    });
+    // Analytics Data Fetching for Drilldown Color Mapping
     const { data: gradeDistribution, isLoading: distributionLoading } = useQuery({ 
         queryKey: ['analytics', 'distribution', scope], 
         queryFn: () => analyticsService.getGradeDistribution(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined) 
-    });
-    const { data: genderGap, isLoading: genderLoading } = useQuery({
-        queryKey: ['analytics', 'gender-gap', scope],
-        queryFn: () => analyticsService.getGenderGap(scope.type === 'SYSTEM' ? undefined : scope.type, scope.id || undefined),
-        enabled: showGenderGap
     });
 
     // Drilldown Query
@@ -170,6 +153,7 @@ export default function PerformanceAnalyticsPage() {
                     <AdvancedPerformanceDashboard 
                         scopeType={scope.type === 'SYSTEM' ? undefined : scope.type} 
                         scopeId={scope.id || undefined} 
+                        onChartClick={handleChartClick}
                     />
                 </Box>
             ) : (
@@ -198,6 +182,7 @@ export default function PerformanceAnalyticsPage() {
                             scopeType={scope.type === 'SYSTEM' ? undefined : scope.type} 
                             scopeId={scope.id || undefined}
                             title={`Analysis: ${scope.type === 'SYSTEM' ? 'System' : scope.type}`}
+                            onChartClick={handleChartClick}
                         />
                     </Grid>
                     <Grid size={{ xs: 12, lg: 6 }}>
@@ -224,6 +209,7 @@ export default function PerformanceAnalyticsPage() {
                             scopeType={compScope.type === 'SYSTEM' ? undefined : compScope.type} 
                             scopeId={compScope.id || undefined} 
                             title={`Comparison: ${compScope.type === 'SYSTEM' ? 'System' : compScope.type}`}
+                            onChartClick={handleChartClick}
                         />
                     </Grid>
                 </Grid>

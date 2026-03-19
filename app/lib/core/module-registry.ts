@@ -120,7 +120,7 @@ moduleRegistry.register({
                     label: 'Enrollment',
                     path: '/analytics/enrollment',
                     permission: { module: 'analytics', action: 'view' },
-                    allowedRoles: ['INSTITUTION_ADMIN', 'REGISTRAR'],
+                    allowedRoles: ['REGIONAL_ADMIN','ZONE_ADMIN','WOREDA_ADMIN','INSTITUTION_ADMIN', 'REGISTRAR',],
                 },
             ],
         },
@@ -402,7 +402,7 @@ moduleRegistry.register({
             labelAmharic: 'ቀመሮች',
             icon: 'ContentCopy',
             path: '/academic/curriculum-templates',
-            allowedRoles: ['INSTITUTION_ADMIN'],
+            allowedRoles: ['INSTITUTION_ADMIN', 'REGISTRAR'],
         },
     ],
 });
@@ -695,7 +695,7 @@ moduleRegistry.register({
             icon: 'ManageAccounts',
             path: '/management/users',
             permission: { module: 'system', action: 'view', resourceType: 'user' },
-            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN','REGISTRAR'],
         },
     ],
 });

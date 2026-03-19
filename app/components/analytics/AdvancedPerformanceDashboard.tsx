@@ -33,6 +33,7 @@ interface AdvancedPerformanceDashboardProps {
   scopeId?: string;
   title?: string;
   subtitle?: string;
+  onChartClick?: (data: any, index: number) => void;
 }
 
 export function AdvancedPerformanceDashboard({
@@ -40,6 +41,7 @@ export function AdvancedPerformanceDashboard({
   scopeId,
   title = "Advanced Performance Analytics",
   subtitle = "Comprehensive statistical breakdown and hierarchical comparison",
+  onChartClick,
 }: AdvancedPerformanceDashboardProps) {
   const theme = useTheme();
   
@@ -262,6 +264,7 @@ export function AdvancedPerformanceDashboard({
             height={350}
             colors={data?.distribution?.map((d: any) => d.color) || undefined}
             showLegend={false}
+            onClick={onChartClick}
           />
         </Grid>
 

@@ -82,6 +82,14 @@ export const scheduleConfigService = {
     createPeriod: async (data: any) => {
         const response = await apiClient.post('schedule-config/periods', data);
         return response.data;
+    },
+    updatePeriod: async (id: string, data: any) => {
+        const response = await apiClient.put(`schedule-config/periods/${id}`, data);
+        return response.data;
+    },
+    deletePeriod: async (id: string) => {
+        const response = await apiClient.delete(`schedule-config/periods/${id}`);
+        return response.data;
     }
 };
 

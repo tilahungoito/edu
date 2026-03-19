@@ -29,6 +29,7 @@ import { useAuthStore } from '@/app/lib/store';
 import Link from 'next/link';
 import DataTable from '@/app/components/tables/DataTable';
 import { GridColDef } from '@mui/x-data-grid';
+import { toast } from 'react-hot-toast';
 
 export default function AcademicPeriodsPage() {
     const theme = useTheme();
@@ -68,8 +69,35 @@ export default function AcademicPeriodsPage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
+            toast.success('Academic period created successfully');
             handleClose();
         },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to create academic period');
+        }
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string, data: any }) => scheduleConfigService.updatePeriod(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
+            toast.success('Academic period updated successfully');
+            handleClose();
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to update academic period');
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => scheduleConfigService.deletePeriod(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
+            toast.success('Academic period deleted successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error?.response?.data?.message || 'Failed to delete academic period');
+        }
     });
 
     const handleOpen = (period?: any) => {
@@ -99,7 +127,11 @@ export default function AcademicPeriodsPage() {
     };
 
     const handleSubmit = () => {
-        createMutation.mutate(formData);
+        if (selectedPeriod) {
+            updateMutation.mutate({ id: selectedPeriod.id, data: formData });
+        } else {
+            createMutation.mutate(formData);
+        }
     };
 
     const columns: GridColDef[] = [
@@ -191,6 +223,11 @@ export default function AcademicPeriodsPage() {
                 columns={columns}
                 loading={isLoading}
                 module="academic"
+                onAdd={() => handleOpen()}
+                onEdit={(period: any) => handleOpen(period)}
+                onDelete={(period: any) => deleteMutation.mutate(period.id)}
+                onView={(period: any) => {}}
+                onToggleStatus={(period: any) => updateMutation.mutate({ id: period.id, data: { isActive: !period.isActive } })}
             />
 
             <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -198,19 +235,6 @@ export default function AcademicPeriodsPage() {
                     {selectedPeriod ? 'Edit Academic Period' : 'New Academic Period'}
                 </DialogTitle>
                 <DialogContent>
-                    {createMutation.isError && (
-                        <Box sx={{
-                            mt: 2,
-                            p: 2,
-                            borderRadius: 2,
-                            bgcolor: alpha(theme.palette.error.main, 0.1),
-                            color: theme.palette.error.main,
-                        }}>
-                            <Typography variant="body2" fontWeight={700}>
-                                {(createMutation.error as any)?.response?.data?.message || createMutation.error.message}
-                            </Typography>
-                        </Box>
-                    )}
                     <Grid container spacing={2} sx={{ mt: 1 }}>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
@@ -248,10 +272,10 @@ export default function AcademicPeriodsPage() {
                     <Button
                         variant="contained"
                         onClick={handleSubmit}
-                        disabled={createMutation.isPending}
+                        disabled={createMutation.isPending || updateMutation.isPending}
                         sx={{ fontWeight: 700, borderRadius: 2 }}
                     >
-                        {createMutation.isPending ? 'Saving...' : 'Save Period'}
+                        {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : 'Save Period'}
                     </Button>
                 </DialogActions>
             </Dialog>
