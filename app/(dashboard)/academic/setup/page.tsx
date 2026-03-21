@@ -291,7 +291,7 @@ export default function SchoolSetupPage() {
 
                         {sections && sections.length > 0 ? (
                             <Grid container spacing={1.5}>
-                                {sections.map(section => (
+                                {sections.map((section: Section) => (
                                     <Grid size={{ xs: 6, sm: 4, md: 3 }} key={section.id}>
                                         <Box sx={{
                                             p: 2,
@@ -399,7 +399,7 @@ export default function SchoolSetupPage() {
 
                         {courses && courses.length > 0 ? (
                             <Grid container spacing={1.5}>
-                                {courses.map(course => (
+                                {courses.map((course: Course) => (
                                     <Grid size={{ xs: 12, sm: 6 }} key={course.id}>
                                         <Box sx={{
                                             p: 2,
