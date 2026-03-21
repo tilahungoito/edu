@@ -41,6 +41,11 @@ export interface CreateStudentData {
     program: string;
     year: number;
     gender: 'MALE' | 'FEMALE';
+    academicHistory?: {
+        sem1Average?: number | null;
+        sem2Average?: number | null;
+        promotionStatus?: string;
+    };
 }
 
 export interface UpdateStudentData {
@@ -49,6 +54,11 @@ export interface UpdateStudentData {
     program?: string;
     year?: number;
     gender?: 'MALE' | 'FEMALE';
+    academicHistory?: {
+        sem1Average?: number | null;
+        sem2Average?: number | null;
+        promotionStatus?: string;
+    };
 }
 
 export const studentsService = {
