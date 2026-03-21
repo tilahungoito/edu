@@ -341,6 +341,14 @@ moduleRegistry.register({
             allowedRoles: ['INSTRUCTOR', 'STUDENT'],
         },
         {
+            id: 'academic-courses',
+            label: 'Academic Courses',
+            labelAmharic: 'ኮርሶች',
+            icon: 'Assignment',
+            path: '/academic/courses',
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
+        },
+        {
             id: 'academic-sections',
             label: 'Classroom Sections',
             labelAmharic: 'ክፍሎች',

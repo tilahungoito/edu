@@ -24,7 +24,7 @@ export const sectionsService = {
     const response = await apiClient.get(`/sections/institution/${institutionId}`);
     return response.data;
   },
-  getOne: async (id: string) => {
+  getById: async (id: string) => {
     const response = await apiClient.get(`/sections/${id}`);
     return response.data;
   },

@@ -63,7 +63,7 @@ export default function SectionDetailPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const sectionData = await sectionsService.getOne(id as string);
+            const sectionData = await sectionsService.getById(id as string);
             setSection(sectionData);
             
             if (user?.tenantId) {
