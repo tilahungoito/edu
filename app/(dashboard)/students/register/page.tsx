@@ -8,51 +8,44 @@ import {
     TextField,
     Button,
     Grid,
-    Stepper,
-    Step,
-    StepLabel,
     MenuItem,
     Alert,
     CircularProgress,
-    Divider
+    Divider,
+    alpha,
+    useTheme,
+    InputAdornment
 } from '@mui/material';
 import {
     Person as PersonIcon,
     School as SchoolIcon,
     CheckCircle as CheckCircleIcon,
-    ArrowForward as ArrowForwardIcon,
-    ArrowBack as ArrowBackIcon
+    Save as SaveIcon,
+    Assignment as AssignmentIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
-import { authApi } from '@/app/lib/api/api-client';
-import { studentsService } from '@/app/lib/api/students.service';
+import studentsService from '@/app/lib/api/students.service';
 import { useRouter } from 'next/navigation';
-
-const steps = ['Account Information', 'Academic Profile', 'Confirmation'];
+import { toast } from 'react-hot-toast';
 
 export default function StudentRegistrationPage() {
+    const theme = useTheme();
     const router = useRouter();
     const { user } = useAuthStore();
-    const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
-        // Account Info
         firstName: '',
         lastName: '',
-        email: '',
-        username: '',
-        phone: '',
-        password: '',
-        confirmPassword: '',
-
-        // Academic Info
         program: '',
-        year: '',
-        gender: '' as 'MALE' | 'FEMALE' | ''
+        year: '1',
+        gender: '' as 'MALE' | 'FEMALE' | '',
+        sem1Average: '',
+        sem2Average: '',
+        promotionStatus: 'PENDING'
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,45 +55,15 @@ export default function StudentRegistrationPage() {
         });
     };
 
-    const validateStep = (step: number) => {
-        setError(null);
-        if (step === 0) {
-            if (!formData.firstName || !formData.lastName || !formData.email || !formData.username || !formData.phone || !formData.password) {
-                setError('All fields are required');
-                return false;
-            }
-            if (formData.password !== formData.confirmPassword) {
-                setError('Passwords do not match');
-                return false;
-            }
-            if (formData.password.length < 6) {
-                setError('Password must be at least 6 characters');
-                return false;
-            }
-        }
-        if (step === 1) {
-            if (!formData.program || !formData.year || !formData.gender) {
-                setError('All academic fields are required');
-                return false;
-            }
-        }
-        return true;
-    };
-
-    const handleNext = () => {
-        if (validateStep(activeStep)) {
-            setActiveStep((prev) => prev + 1);
-        }
-    };
-
-    const handleBack = () => {
-        setActiveStep((prev) => prev - 1);
-        setError(null);
-    };
-
-    const handleSubmit = async () => {
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
         if (!user?.tenantId) {
             setError('System Error: Administrator institution ID missing');
+            return;
+        }
+
+        if (!formData.firstName || !formData.lastName || !formData.program || !formData.gender) {
+            setError('Please fill in all required fields');
             return;
         }
 
@@ -108,32 +71,25 @@ export default function StudentRegistrationPage() {
         setError(null);
 
         try {
-            // 1. Create User Account
-            await authApi.register({
-                email: formData.email,
-                username: formData.username,
-                password: formData.password,
-                phone: formData.phone,
-                roleName: 'STUDENT',
-                scopeType: 'INSTITUTION',
-                scopeId: user.tenantId
-            });
-
-            // 2. Create Student Profile
-            // Note: In a real app, you might want to link the created user ID here.
-            // The backend implementation of studentsService.create uses email to connect to the user.
             await studentsService.create({
-                email: formData.email, // Used to link to user
-                username: formData.username,
-                phone: formData.phone,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
                 institutionId: user.tenantId,
                 program: formData.program,
                 year: parseInt(formData.year),
-                gender: formData.gender as 'MALE' | 'FEMALE'
+                gender: formData.gender as 'MALE' | 'FEMALE',
+                academicHistory: {
+                    sem1Average: formData.sem1Average ? Number(formData.sem1Average) : null,
+                    sem2Average: formData.sem2Average ? Number(formData.sem2Average) : null,
+                    promotionStatus: formData.promotionStatus
+                }
             });
 
             setSuccess(true);
-            setActiveStep(2);
+            toast.success('Student registered successfully!');
+            setTimeout(() => {
+                router.push('/students');
+            }, 2000);
         } catch (err: any) {
             console.error('Registration failed:', err);
             setError(err.response?.data?.message || err.message || 'Registration failed');
@@ -142,217 +98,231 @@ export default function StudentRegistrationPage() {
         }
     };
 
-    const handleReset = () => {
-        setFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            username: '',
-            phone: '',
-            password: '',
-            confirmPassword: '',
-            program: '',
-            year: '',
-            gender: ''
-        });
-        setActiveStep(0);
-        setSuccess(false);
-        setError(null);
-    };
+    if (success) {
+        return (
+            <Box sx={{ maxWidth: 600, mx: 'auto', p: { xs: 2, md: 5 }, textAlign: 'center' }}>
+                <Paper sx={{ p: 5, borderRadius: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.05)' }}>
+                    <CheckCircleIcon color="success" sx={{ fontSize: 80, mb: 2 }} />
+                    <Typography variant="h4" fontWeight={800} gutterBottom>
+                        Registration Successful!
+                    </Typography>
+                    <Typography color="text.secondary" paragraph variant="h6">
+                        {formData.firstName} {formData.lastName} has been added to the directory.
+                    </Typography>
+                    <Button 
+                        variant="contained" 
+                        color="secondary" 
+                        onClick={() => router.push('/students')}
+                        sx={{ mt: 2, borderRadius: 2.5, px: 4 }}
+                    >
+                        Go to Directory
+                    </Button>
+                </Paper>
+            </Box>
+        );
+    }
 
     return (
-        <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-            <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Typography variant="h4" fontWeight={700} gutterBottom>
-                    New Student Registration
+        <Box sx={{ maxWidth: 900, mx: 'auto', p: { xs: 2, md: 4 } }}>
+            <Box sx={{ mb: 4 }}>
+                <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1 }}>
+                    Register Student
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
-                    Register a new student and create their system access account.
+                <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                    Quickly add a new student profile. Account credentials will be generated automatically.
                 </Typography>
             </Box>
 
-            <Paper sx={{ p: 4, borderRadius: 2 }}>
-                <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
-                    {steps.map((label) => (
-                        <Step key={label}>
-                            <StepLabel>{label}</StepLabel>
-                        </Step>
-                    ))}
-                </Stepper>
+            <form onSubmit={handleSubmit}>
+                <Grid container spacing={4}>
+                    {/* Left Column: Personal & Academic */}
+                    <Grid size={{ xs: 12, md: 7 }}>
+                        <Paper sx={{ p: 4, borderRadius: 4, height: '100%' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+                                <PersonIcon color="primary" />
+                                <Typography variant="h6" fontWeight={700}>Basic Information</Typography>
+                            </Box>
+                            
+                            <Grid container spacing={2.5}>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="First Name"
+                                        name="firstName"
+                                        required
+                                        value={formData.firstName}
+                                        onChange={handleChange}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Last Name"
+                                        name="lastName"
+                                        required
+                                        value={formData.lastName}
+                                        onChange={handleChange}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        select
+                                        label="Gender"
+                                        name="gender"
+                                        required
+                                        value={formData.gender}
+                                        onChange={handleChange}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    >
+                                        <MenuItem value="MALE">Male</MenuItem>
+                                        <MenuItem value="FEMALE">Female</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Grade / Year"
+                                        name="year"
+                                        type="number"
+                                        required
+                                        value={formData.year}
+                                        onChange={handleChange}
+                                        InputProps={{ inputProps: { min: 1, max: 12 } }}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField
+                                        fullWidth
+                                        select
+                                        label="Program / Stream"
+                                        name="program"
+                                        required
+                                        value={formData.program}
+                                        onChange={handleChange}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    >
+                                        <MenuItem value="Natural Science">Natural Science</MenuItem>
+                                        <MenuItem value="Social Science">Social Science</MenuItem>
+                                        <MenuItem value="General">General</MenuItem>
+                                        <MenuItem value="Vocational">Vocational</MenuItem>
+                                    </TextField>
+                                </Grid>
+                            </Grid>
 
-                {error && (
-                    <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-                        {error}
-                    </Alert>
-                )}
+                            <Divider sx={{ my: 4 }} />
 
-                {activeStep === 0 && (
-                    <Grid container spacing={3}>
-                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+                                <SchoolIcon color="secondary" />
+                                <Typography variant="h6" fontWeight={700}>Academic Context</Typography>
+                            </Box>
+                            
                             <TextField
                                 fullWidth
-                                label="First Name"
-                                name="firstName"
-                                value={formData.firstName}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Last Name"
-                                name="lastName"
-                                value={formData.lastName}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Username"
-                                name="username"
-                                value={formData.username}
-                                onChange={handleChange}
-                                helperText="Used for system login"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Phone Number"
-                                name="phone"
-                                value={formData.phone}
-                                onChange={handleChange}
-                                placeholder="0911223344"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12 }}>
-                            <TextField
-                                fullWidth
-                                label="Email Address"
-                                name="email"
-                                type="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Password"
-                                name="password"
-                                type="password"
-                                value={formData.password}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Confirm Password"
-                                name="confirmPassword"
-                                type="password"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-                    </Grid>
-                )}
-
-                {activeStep === 1 && (
-                    <Grid container spacing={3}>
-                        <Grid size={{ xs: 12 }}>
-                            <TextField
-                                fullWidth
-                                label="Institution"
-                                value={user?.tenantName || 'Unknown Institution'}
+                                label="Assigned Institution"
+                                value={user?.tenantName || 'Detecting...'}
                                 disabled
-                                helperText="Students are automatically registered to your institution"
+                                helperText="Students are automatically linked to your administrative unit."
+                                sx={{ bgcolor: alpha(theme.palette.action.disabledBackground, 0.05), '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                             />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                select
-                                label="Program / Stream"
-                                name="program"
-                                value={formData.program}
-                                onChange={handleChange}
-                            >
-                                <MenuItem value="Natural Science">Natural Science</MenuItem>
-                                <MenuItem value="Social Science">Social Science</MenuItem>
-                                <MenuItem value="General">General</MenuItem>
-                            </TextField>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Grade / Year"
-                                name="year"
-                                type="number"
-                                value={formData.year}
-                                onChange={handleChange}
-                                InputProps={{ inputProps: { min: 1, max: 12 } }}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                fullWidth
-                                select
-                                label="Gender"
-                                name="gender"
-                                value={formData.gender}
-                                onChange={handleChange}
-                            >
-                                <MenuItem value="MALE">Male</MenuItem>
-                                <MenuItem value="FEMALE">Female</MenuItem>
-                            </TextField>
-                        </Grid>
+                        </Paper>
                     </Grid>
-                )}
 
-                {activeStep === 2 && (
-                    <Box sx={{ textAlign: 'center', py: 3 }}>
-                        <CheckCircleIcon color="success" sx={{ fontSize: 64, mb: 2 }} />
-                        <Typography variant="h5" gutterBottom>
-                            Registration Successful!
-                        </Typography>
-                        <Typography color="text.secondary" paragraph>
-                            Student account for <strong>{formData.firstName} {formData.lastName}</strong> has been created.
-                        </Typography>
-                        <Typography variant="body2" sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 1, display: 'inline-block' }}>
-                            Username: <strong>{formData.username}</strong><br />
-                            Email: {formData.email}
-                        </Typography>
-                    </Box>
-                )}
+                    {/* Right Column: Initial Performance & Actions */}
+                    <Grid size={{ xs: 12, md: 5 }}>
+                        <Paper sx={{ p: 4, borderRadius: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+                                <AssignmentIcon sx={{ color: 'secondary.main' }} />
+                                <Typography variant="h6" fontWeight={700}>Initial Grades (Optional)</Typography>
+                            </Box>
 
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4, gap: 2 }}>
-                    {activeStep === 2 ? (
-                        <Button variant="contained" onClick={handleReset}>
-                            Register Another Student
-                        </Button>
-                    ) : (
-                        <>
-                            <Button
-                                disabled={activeStep === 0 || loading}
-                                onClick={handleBack}
-                                startIcon={<ArrowBackIcon />}
-                            >
-                                Back
-                            </Button>
-                            <Button
-                                variant="contained"
-                                onClick={activeStep === steps.length - 2 ? handleSubmit : handleNext}
-                                disabled={loading}
-                                endIcon={loading ? <CircularProgress size={20} /> : <ArrowForwardIcon />}
-                            >
-                                {activeStep === steps.length - 2 ? 'Complete Registration' : 'Next'}
-                            </Button>
-                        </>
-                    )}
-                </Box>
-            </Paper>
+                            <Grid container spacing={2.5}>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Sem I Avg (%)"
+                                        name="sem1Average"
+                                        type="number"
+                                        value={formData.sem1Average}
+                                        onChange={handleChange}
+                                        InputProps={{ 
+                                            inputProps: { min: 0, max: 100 },
+                                            endAdornment: <InputAdornment position="end">%</InputAdornment>
+                                        }}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, sm: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Sem II Avg (%)"
+                                        name="sem2Average"
+                                        type="number"
+                                        value={formData.sem2Average}
+                                        onChange={handleChange}
+                                        InputProps={{ 
+                                            inputProps: { min: 0, max: 100 },
+                                            endAdornment: <InputAdornment position="end">%</InputAdornment>
+                                        }}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField
+                                        fullWidth
+                                        select
+                                        label="Initial Status"
+                                        name="promotionStatus"
+                                        value={formData.promotionStatus}
+                                        onChange={handleChange}
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                                    >
+                                        <MenuItem value="PENDING">Pending Assessment</MenuItem>
+                                        <MenuItem value="PASS">Pre-Promoted</MenuItem>
+                                    </TextField>
+                                </Grid>
+                            </Grid>
+
+                            <Box sx={{ mt: 'auto', pt: 4 }}>
+                                {error && (
+                                    <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                                        {error}
+                                    </Alert>
+                                )}
+                                
+                                <Button
+                                    fullWidth
+                                    type="submit"
+                                    variant="contained"
+                                    color="secondary"
+                                    size="large"
+                                    disabled={loading}
+                                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                                    sx={{ 
+                                        borderRadius: 3, 
+                                        py: 1.8, 
+                                        fontWeight: 800,
+                                        boxShadow: `0 8px 16px ${alpha(theme.palette.secondary.main, 0.25)}`
+                                    }}
+                                >
+                                    {loading ? 'Processing...' : 'Register Student'}
+                                </Button>
+                                <Button
+                                    fullWidth
+                                    variant="text"
+                                    onClick={() => router.push('/students')}
+                                    sx={{ mt: 1.5, fontWeight: 600, color: 'text.secondary' }}
+                                >
+                                    Cancel
+                                </Button>
+                            </Box>
+                        </Paper>
+                    </Grid>
+                </Grid>
+            </form>
         </Box>
     );
 }

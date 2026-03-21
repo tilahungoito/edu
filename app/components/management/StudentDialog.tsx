@@ -240,19 +240,6 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                             />
                         </Grid>
 
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                label="Phone Number"
-                                name="phone"
-                                fullWidth
-                                required
-                                value={formData.phone}
-                                onChange={handleChange}
-                                error={!!errors.phone}
-                                helperText={errors.phone}
-                            />
-                        </Grid>
-
                         <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
                             <Typography variant="overline" color="secondary" fontWeight={800} sx={{ letterSpacing: 1 }}>
                                 Academic Details

@@ -34,9 +34,11 @@ export interface Student {
 }
 
 export interface CreateStudentData {
-    email: string;
-    username: string;
-    phone: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    username?: string;
+    phone?: string;
     institutionId: string;
     program: string;
     year: number;
@@ -49,6 +51,8 @@ export interface CreateStudentData {
 }
 
 export interface UpdateStudentData {
+    firstName?: string;
+    lastName?: string;
     phone?: string;
     institutionId?: string;
     program?: string;

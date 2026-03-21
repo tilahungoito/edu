@@ -168,12 +168,6 @@ export default function StudentsPage() {
             )
         },
         {
-            field: 'phone',
-            headerName: 'Phone',
-            width: 130,
-            valueGetter: (value, row) => row.user?.phone || '-'
-        },
-        {
             field: 'institution_name',
             headerName: 'Institution',
             flex: 1,
