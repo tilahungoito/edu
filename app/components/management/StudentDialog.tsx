@@ -334,7 +334,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                             </Typography>
                         </Grid>
 
-                        <Grid size={{ xs: 12, sm: 3 }}>
+                        <Grid size={{ xs: 12, sm: 2.4 }}>
                             <TextField
                                 label="Semester I Avg (%)"
                                 name="sem1Average"
@@ -346,7 +346,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                             />
                         </Grid>
 
-                        <Grid size={{ xs: 12, sm: 3 }}>
+                        <Grid size={{ xs: 12, sm: 2.4 }}>
                             <TextField
                                 label="Semester II Avg (%)"
                                 name="sem2Average"
@@ -358,7 +358,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                             />
                         </Grid>
 
-                        <Grid size={{ xs: 12, sm: 3 }}>
+                        <Grid size={{ xs: 12, sm: 2.4 }}>
                             <TextField
                                 label="Overall Avg (%)"
                                 fullWidth
@@ -371,12 +371,37 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                                     if (!isNaN(s2) && formData.sem2Average !== '') return s2.toFixed(1);
                                     return '-';
                                 })()}
-                                helperText="Calculated automatically"
+                                helperText="Average"
                                 slotProps={{ input: { sx: { fontWeight: 800, color: 'secondary.main' } } }}
                             />
                         </Grid>
 
-                        <Grid size={{ xs: 12, sm: 3 }}>
+                        <Grid size={{ xs: 12, sm: 2.4 }}>
+                            <TextField
+                                label="Grade"
+                                fullWidth
+                                disabled
+                                value={(() => {
+                                    const s1 = Number(formData.sem1Average);
+                                    const s2 = Number(formData.sem2Average);
+                                    let avg = null;
+                                    if (!isNaN(s1) && !isNaN(s2) && formData.sem1Average !== '' && formData.sem2Average !== '') avg = (s1 + s2) / 2;
+                                    else if (!isNaN(s1) && formData.sem1Average !== '') avg = s1;
+                                    else if (!isNaN(s2) && formData.sem2Average !== '') avg = s2;
+                                    
+                                    if (avg == null) return '-';
+                                    if (avg >= 90) return 'A';
+                                    if (avg >= 80) return 'B';
+                                    if (avg >= 70) return 'C';
+                                    if (avg >= 50) return 'D';
+                                    return 'F';
+                                })()}
+                                helperText="Calculated"
+                                slotProps={{ input: { sx: { fontWeight: 900, color: 'primary.main', textAlign: 'center' } } }}
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 2.4 }}>
                             <TextField
                                 select
                                 label="Promotion Status"

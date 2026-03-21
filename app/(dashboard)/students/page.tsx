@@ -232,6 +232,35 @@ export default function StudentsPage() {
             }
         },
         {
+            field: 'grade',
+            headerName: 'Grade',
+            width: 70,
+            renderCell: (params) => {
+                const s1 = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester I'))?.finalAverage;
+                const s2 = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester II'))?.finalAverage;
+                
+                let avg = null;
+                if (s1 != null && s2 != null) avg = (s1 + s2) / 2;
+                else if (s1 != null) avg = s1;
+                else if (s2 != null) avg = s2;
+
+                if (avg == null) return '-';
+                
+                let grade = 'F';
+                let color = 'error.main';
+                if (avg >= 90) { grade = 'A'; color = 'success.main'; }
+                else if (avg >= 80) { grade = 'B'; color = 'info.main'; }
+                else if (avg >= 70) { grade = 'C'; color = 'warning.main'; }
+                else if (avg >= 50) { grade = 'D'; color = 'warning.dark'; }
+
+                return (
+                    <Typography variant="h6" fontWeight={900} color={color} align="center">
+                        {grade}
+                    </Typography>
+                );
+            }
+        },
+        {
             field: 'promotionStatus',
             headerName: 'Status',
             width: 140,
