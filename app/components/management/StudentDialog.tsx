@@ -45,6 +45,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
         program: '',
         year: 1,
         gender: '' as 'MALE' | 'FEMALE' | '',
+        sem1Average: '' as string | number,
+        sem2Average: '' as string | number,
+        promotionStatus: 'PENDING' as 'PASS' | 'DETAINED' | 'WITHDRAWN' | 'PENDING',
     });
 
     // Validation State
@@ -91,6 +94,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                     program: student.program,
                     year: student.year,
                     gender: student.gender || '',
+                    sem1Average: student.academicHistories?.find(h => h.academicPeriod.name.includes('Semester I'))?.finalAverage || '',
+                    sem2Average: student.academicHistories?.find(h => h.academicPeriod.name.includes('Semester II'))?.finalAverage || '',
+                    promotionStatus: student.academicHistories?.[0]?.promotionStatus || 'PENDING',
                 });
             } else {
                 setFormData({
@@ -101,6 +107,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                     program: '',
                     year: 1,
                     gender: '',
+                    sem1Average: '',
+                    sem2Average: '',
+                    promotionStatus: 'PENDING',
                 });
             }
             setErrors({});
@@ -143,19 +152,28 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
         setError(null);
 
         try {
+            const payload = {
+                phone: formData.phone,
+                institutionId: formData.institutionId,
+                program: formData.program,
+                year: Number(formData.year),
+                gender: formData.gender,
+                // Add academic performance data to payload
+                academicHistory: {
+                    sem1Average: formData.sem1Average !== '' ? Number(formData.sem1Average) : null,
+                    sem2Average: formData.sem2Average !== '' ? Number(formData.sem2Average) : null,
+                    promotionStatus: formData.promotionStatus,
+                }
+            };
+
             if (student) {
-                await studentsService.update(student.id, {
-                    phone: formData.phone,
-                    institutionId: formData.institutionId,
-                    program: formData.program,
-                    year: Number(formData.year),
-                    gender: formData.gender,
-                } as UpdateStudentData);
+                await studentsService.update(student.id, payload as any);
             } else {
                 await studentsService.create({
                     ...formData,
+                    ...payload,
                     year: Number(formData.year),
-                } as CreateStudentData);
+                } as any);
             }
             onSuccess();
             onClose();
@@ -307,6 +325,70 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                             >
                                 <MenuItem value="MALE">Male</MenuItem>
                                 <MenuItem value="FEMALE">Female</MenuItem>
+                            </TextField>
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
+                            <Typography variant="overline" color="secondary" fontWeight={800} sx={{ letterSpacing: 1 }}>
+                                Academic Performance
+                            </Typography>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 3 }}>
+                            <TextField
+                                label="Semester I Avg (%)"
+                                name="sem1Average"
+                                type="number"
+                                fullWidth
+                                value={formData.sem1Average}
+                                onChange={handleChange}
+                                InputProps={{ inputProps: { min: 0, max: 100 } }}
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 3 }}>
+                            <TextField
+                                label="Semester II Avg (%)"
+                                name="sem2Average"
+                                type="number"
+                                fullWidth
+                                value={formData.sem2Average}
+                                onChange={handleChange}
+                                InputProps={{ inputProps: { min: 0, max: 100 } }}
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 3 }}>
+                            <TextField
+                                label="Overall Avg (%)"
+                                fullWidth
+                                disabled
+                                value={(() => {
+                                    const s1 = Number(formData.sem1Average);
+                                    const s2 = Number(formData.sem2Average);
+                                    if (!isNaN(s1) && !isNaN(s2) && formData.sem1Average !== '' && formData.sem2Average !== '') return ((s1 + s2) / 2).toFixed(1);
+                                    if (!isNaN(s1) && formData.sem1Average !== '') return s1.toFixed(1);
+                                    if (!isNaN(s2) && formData.sem2Average !== '') return s2.toFixed(1);
+                                    return '-';
+                                })()}
+                                helperText="Calculated automatically"
+                                slotProps={{ input: { sx: { fontWeight: 800, color: 'secondary.main' } } }}
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 3 }}>
+                            <TextField
+                                select
+                                label="Promotion Status"
+                                name="promotionStatus"
+                                fullWidth
+                                value={formData.promotionStatus}
+                                onChange={handleChange}
+                            >
+                                <MenuItem value="PENDING">Pending</MenuItem>
+                                <MenuItem value="PASS">Promoted</MenuItem>
+                                <MenuItem value="DETAINED">Detained</MenuItem>
+                                <MenuItem value="WITHDRAWN">Withdrawn</MenuItem>
                             </TextField>
                         </Grid>
                     </Grid>

@@ -20,6 +20,17 @@ export interface Student {
         id: string;
         name: string;
     };
+    academicHistories?: {
+        id: string;
+        academicPeriodId: string;
+        academicPeriod: {
+            name: string;
+        };
+        gradeLevel: string;
+        finalAverage: number | null;
+        promotionStatus: 'PASS' | 'DETAINED' | 'WITHDRAWN' | 'PENDING';
+        remarks: string | null;
+    }[];
 }
 
 export interface CreateStudentData {

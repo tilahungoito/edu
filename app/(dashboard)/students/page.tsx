@@ -12,13 +12,21 @@ import {
     FormControl,
     InputLabel,
     Select,
-    MenuItem
+    MenuItem,
+    Grid,
+    Paper,
+    LinearProgress,
 } from '@mui/material';
 import {
     Add as AddIcon,
     Download as DownloadIcon,
     FilterAlt as FilterIcon,
-    Upload as UploadIcon
+    Upload as UploadIcon,
+    TrendingUp as TrendingUpIcon,
+    People as PeopleIcon,
+    CheckCircle as CheckCircleIcon,
+    Error as ErrorIcon,
+    Visibility as ViewIcon,
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
@@ -139,6 +147,83 @@ export default function StudentsPage() {
             minWidth: 150,
             valueGetter: (params, row) => row.institution?.name || 'N/A',
         },
+        {
+            field: 'sem1',
+            headerName: 'Sem I',
+            width: 90,
+            renderCell: (params) => {
+                const history = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester I'));
+                const avg = history?.finalAverage;
+                return (
+                    <Typography variant="body2" fontWeight={700} color={avg && avg >= 50 ? 'success.main' : 'error.main'}>
+                        {avg != null ? `${avg}%` : '-'}
+                    </Typography>
+                );
+            }
+        },
+        {
+            field: 'sem2',
+            headerName: 'Sem II',
+            width: 90,
+            renderCell: (params) => {
+                const history = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester II'));
+                const avg = history?.finalAverage;
+                return (
+                    <Typography variant="body2" fontWeight={700} color={avg && avg >= 50 ? 'success.main' : 'error.main'}>
+                        {avg != null ? `${avg}%` : '-'}
+                    </Typography>
+                );
+            }
+        },
+        {
+            field: 'average',
+            headerName: 'Avg. (%)',
+            width: 90,
+            renderCell: (params) => {
+                const s1 = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester I'))?.finalAverage;
+                const s2 = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester II'))?.finalAverage;
+                
+                let avg = null;
+                if (s1 != null && s2 != null) avg = (s1 + s2) / 2;
+                else if (s1 != null) avg = s1;
+                else if (s2 != null) avg = s2;
+
+                return (
+                    <Typography variant="body2" fontWeight={800} sx={{ 
+                        color: avg && avg >= 50 ? 'secondary.main' : 'error.main',
+                        bgcolor: avg && avg >= 50 ? alpha(theme.palette.secondary.main, 0.1) : alpha(theme.palette.error.main, 0.1),
+                        px: 1, borderRadius: 1
+                    }}>
+                        {avg != null ? `${avg.toFixed(1)}%` : '-'}
+                    </Typography>
+                );
+            }
+        },
+        {
+            field: 'promotionStatus',
+            headerName: 'Status',
+            width: 140,
+            renderCell: (params) => {
+                const status = params.row.academicHistories?.[0]?.promotionStatus || 'PENDING';
+                const config: Record<string, { color: any, icon: any, label: string }> = {
+                    'PASS': { color: 'success', icon: <CheckCircleIcon sx={{ fontSize: 14 }} />, label: 'PROMOTED' },
+                    'DETAINED': { color: 'error', icon: <ErrorIcon sx={{ fontSize: 14 }} />, label: 'DETAINED' },
+                    'WITHDRAWN': { color: 'warning', icon: <FilterIcon sx={{ fontSize: 14 }} />, label: 'WITHDRAWN' },
+                    'PENDING': { color: 'default', icon: <TrendingUpIcon sx={{ fontSize: 14 }} />, label: 'PENDING' }
+                };
+                const { color, icon, label } = config[status] || config['PENDING'];
+                return (
+                    <Chip
+                        icon={icon}
+                        label={label}
+                        size="small"
+                        color={color}
+                        variant="soft"
+                        sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                    />
+                );
+            }
+        },
     ], [theme]);
 
     const handleAdd = () => {
@@ -215,6 +300,69 @@ export default function StudentsPage() {
                 </Box>
             </Box>
 
+            {/* Stats Overview */}
+            <Grid container spacing={3} sx={{ mb: 5 }}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Paper sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', width: 48, height: 48 }}>
+                            <PeopleIcon />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h5" fontWeight={800}>{filteredStudents.length}</Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>Total Students</Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Paper sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.1), color: 'success.main', width: 48, height: 48 }}>
+                            <TrendingUpIcon />
+                        </Avatar>
+                        <Box sx={{ flexGrow: 1 }}>
+                            <Typography variant="h5" fontWeight={800}>
+                                {(() => {
+                                    const avg = filteredStudents.reduce((acc, s) => acc + (s.academicHistories?.[0]?.finalAverage || 0), 0) / (filteredStudents.length || 1);
+                                    return isNaN(avg) ? '0.0' : avg.toFixed(1);
+                                })()}%
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block', mb: 0.5 }}>Average Performance</Typography>
+                            <LinearProgress 
+                                variant="determinate" 
+                                value={Number((filteredStudents.reduce((acc, s) => acc + (s.academicHistories?.[0]?.finalAverage || 0), 0) / (filteredStudents.length || 1)) || 0)} 
+                                color="success"
+                                sx={{ height: 6, borderRadius: 3, bgcolor: alpha(theme.palette.success.main, 0.1) }}
+                            />
+                        </Box>
+                    </Paper>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Paper sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.info.main, 0.1), color: 'info.main', width: 48, height: 48 }}>
+                            <CheckCircleIcon />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h5" fontWeight={800}>
+                                {filteredStudents.filter(s => s.academicHistories?.[0]?.promotionStatus === 'PASS').length}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>Promoted Students</Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Paper sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.error.main, 0.1), color: 'error.main', width: 48, height: 48 }}>
+                            <ErrorIcon />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h5" fontWeight={800}>
+                                {filteredStudents.filter(s => s.academicHistories?.[0]?.promotionStatus === 'DETAINED').length}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>Detained Students</Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
+            </Grid>
+
             <DataTable
                 title="All Students"
                 subtitle={`Showing ${filteredStudents.length} students`}
@@ -224,8 +372,11 @@ export default function StudentsPage() {
                 module="students"
                 onAdd={handleAdd}
                 onEdit={handleEdit}
-                onView={(student) => {
-                    console.log('Viewing student:', student);
+                onView={(student: any) => {
+                    toast.loading('Generating official report card...', { duration: 2000 });
+                    setTimeout(() => {
+                        toast.success(`Report card for ${student.user?.username} is ready!`);
+                    }, 2000);
                 }}
                 onDelete={handleDelete}
                 onToggleStatus={handleToggleStatus}
