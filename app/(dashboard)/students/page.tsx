@@ -16,6 +16,8 @@ import {
     Grid,
     Paper,
     LinearProgress,
+    InputAdornment,
+    TextField,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -46,6 +48,9 @@ export default function StudentsPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
     const [selectedInstitution, setSelectedInstitution] = useState<string>('');
+    const [selectedYear, setSelectedYear] = useState<string>('all');
+    const [selectedProgram, setSelectedProgram] = useState<string>('all');
+    const [searchQuery, setSearchQuery] = useState<string>('');
     const [institutions, setInstitutions] = useState<any[]>([]);
 
     const { data: students, isLoading, refetch } = useQuery({
@@ -76,15 +81,43 @@ export default function StudentsPage() {
     });
 
     const scopedStudents = useScopedData(students || [], 'student');
-    const filteredStudents = scopedStudents;
+    const filteredStudents = useMemo(() => {
+        let result = (scopedStudents || []).map(student => ({
+            ...student,
+            display_name: student.user?.username || '',
+            display_email: student.user?.email || '',
+            institution_name: student.institution?.name || '',
+        }));
+
+        if (selectedYear !== 'all') {
+            result = result.filter(s => String(s.year) === selectedYear);
+        }
+        if (selectedProgram !== 'all') {
+            result = result.filter(s => s.program === selectedProgram);
+        }
+
+        if (searchQuery) {
+            const lowSearch = searchQuery.toLowerCase();
+            result = result.filter(s => 
+                s.display_name.toLowerCase().includes(lowSearch) || 
+                s.display_email.toLowerCase().includes(lowSearch) ||
+                s.program.toLowerCase().includes(lowSearch)
+            );
+        }
+
+        return result;
+    }, [scopedStudents, selectedYear, selectedProgram, searchQuery]);
+
+    // Extract unique values for filters
+    const years = useMemo(() => Array.from(new Set((scopedStudents || []).map(s => String(s.year)))).sort(), [scopedStudents]);
+    const programs = useMemo(() => Array.from(new Set((scopedStudents || []).map(s => s.program))).sort(), [scopedStudents]);
 
     const columns = useMemo<GridColDef[]>(() => [
         {
-            field: 'username',
+            field: 'display_name',
             headerName: 'Student',
             flex: 1.2,
             minWidth: 150,
-            valueGetter: (value, row) => row.user?.username || '-',
             renderCell: (params: GridRenderCellParams) => (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Avatar
@@ -97,14 +130,14 @@ export default function StudentsPage() {
                             fontWeight: 700
                         }}
                     >
-                        {params.row.user?.username?.charAt(0).toUpperCase()}
+                        {params.row.display_name?.charAt(0).toUpperCase()}
                     </Avatar>
                     <Box sx={{ overflow: 'hidden' }}>
                         <Typography variant="body2" fontWeight={600} noWrap>
-                            {params.row.user?.username}
+                            {params.row.display_name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: -0.5 }}>
-                            {params.row.user?.email}
+                            {params.row.display_email}
                         </Typography>
                     </Box>
                 </Box>
@@ -141,11 +174,10 @@ export default function StudentsPage() {
             valueGetter: (value, row) => row.user?.phone || '-'
         },
         {
-            field: 'institution',
+            field: 'institution_name',
             headerName: 'Institution',
             flex: 1,
             minWidth: 150,
-            valueGetter: (params, row) => row.institution?.name || 'N/A',
         },
         {
             field: 'sem1',
@@ -363,6 +395,85 @@ export default function StudentsPage() {
                 </Grid>
             </Grid>
 
+            {/* Dedicated Filter Bar */}
+            <Paper sx={{ 
+                p: { xs: 2, md: 3 }, 
+                mb: 4, 
+                borderRadius: 4, 
+                display: 'flex', 
+                flexDirection: { xs: 'column', md: 'row' },
+                alignItems: 'center', 
+                gap: 2,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
+                border: `1px solid ${alpha(theme.palette.divider, 0.5)}`
+            }}>
+                <TextField
+                    placeholder="Search by name, email or program..."
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ flexGrow: 1, '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <ViewIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+                                </InputAdornment>
+                            ),
+                        }
+                    }}
+                />
+                
+                <Box sx={{ display: 'flex', gap: 2, width: { xs: '100%', md: 'auto' }, flexWrap: 'wrap' }}>
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Year</InputLabel>
+                        <Select
+                            value={selectedYear}
+                            label="Year"
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            sx={{ borderRadius: 2.5 }}
+                        >
+                            <MenuItem value="all">All Years</MenuItem>
+                            {years.map(year => (
+                                <MenuItem key={year} value={year}>Year {year}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                        <InputLabel>Program</InputLabel>
+                        <Select
+                            value={selectedProgram}
+                            label="Program"
+                            onChange={(e) => setSelectedProgram(e.target.value)}
+                            sx={{ borderRadius: 2.5 }}
+                        >
+                            <MenuItem value="all">All Programs</MenuItem>
+                            {programs.map(prog => (
+                                <MenuItem key={prog} value={prog}>{prog}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    {user?.tenantType !== 'school' && (
+                        <FormControl size="small" sx={{ minWidth: 180 }}>
+                            <InputLabel>Institution</InputLabel>
+                            <Select
+                                value={selectedInstitution}
+                                label="Institution"
+                                onChange={(e) => setSelectedInstitution(e.target.value)}
+                                sx={{ borderRadius: 2.5 }}
+                            >
+                                <MenuItem value="">All Institutions</MenuItem>
+                                {institutions.map(inst => (
+                                    <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
+                </Box>
+            </Paper>
+
             <DataTable
                 title="All Students"
                 subtitle={`Showing ${filteredStudents.length} students`}
@@ -381,26 +492,12 @@ export default function StudentsPage() {
                 onDelete={handleDelete}
                 onToggleStatus={handleToggleStatus}
                 onRefresh={refetch}
-                showSearch={true}
+                showSearch={false}
                 statusField="isActive"
                 toolbarActions={
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                        {user?.tenantType !== 'school' && (
-                            <FormControl size="small" sx={{ minWidth: 200 }}>
-                                <InputLabel>Filter by Institution</InputLabel>
-                                <Select
-                                    value={selectedInstitution}
-                                    label="Filter by Institution"
-                                    onChange={(e) => setSelectedInstitution(e.target.value)}
-                                >
-                                    <MenuItem value="">All Institutions</MenuItem>
-                                    {institutions.map(inst => (
-                                        <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        )}
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                         <Button
+                            variant="soft"
                             size="small"
                             startIcon={<UploadIcon />}
                             sx={{ borderRadius: 2, fontWeight: 700 }}
