@@ -79,16 +79,16 @@ export default function StudentRegistrationPage() {
                 year: parseInt(formData.year),
                 gender: formData.gender as 'MALE' | 'FEMALE',
                 academicHistory: {
-                    sem1Average: formData.sem1Average ? Number(formData.sem1Average) : null,
-                    sem2Average: formData.sem2Average ? Number(formData.sem2Average) : null,
-                    promotionStatus: formData.promotionStatus
+                    sem1Average: formData.sem1Average !== '' ? Number(formData.sem1Average) : undefined,
+                    sem2Average: formData.sem2Average !== '' ? Number(formData.sem2Average) : undefined,
+                    promotionStatus: formData.promotionStatus || 'PENDING'
                 }
             });
 
             setSuccess(true);
             toast.success('Student registered successfully!');
             setTimeout(() => {
-                router.push('/students');
+                router.push('/students/register');
             }, 2000);
         } catch (err: any) {
             console.error('Registration failed:', err);

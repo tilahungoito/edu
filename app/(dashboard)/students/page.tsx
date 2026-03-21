@@ -82,12 +82,18 @@ export default function StudentsPage() {
 
     const scopedStudents = useScopedData(students || [], 'student');
     const filteredStudents = useMemo(() => {
-        let result = (scopedStudents || []).map(student => ({
-            ...student,
-            display_name: student.user?.username || '',
-            display_email: student.user?.email || '',
-            institution_name: student.institution?.name || '',
-        }));
+        let result = (scopedStudents || []).map(student => {
+            const firstName = student.user?.firstName || '';
+            const lastName = student.user?.lastName || '';
+            const fullName = `${firstName} ${lastName}`.trim() || student.user?.username || 'Unknown Student';
+            
+            return {
+                ...student,
+                full_name: fullName,
+                display_email: student.user?.email || '',
+                institution_name: student.institution?.name || '',
+            };
+        });
 
         if (selectedYear !== 'all') {
             result = result.filter(s => String(s.year) === selectedYear);
@@ -99,8 +105,7 @@ export default function StudentsPage() {
         if (searchQuery) {
             const lowSearch = searchQuery.toLowerCase();
             result = result.filter(s => 
-                s.display_name.toLowerCase().includes(lowSearch) || 
-                s.display_email.toLowerCase().includes(lowSearch) ||
+                s.full_name.toLowerCase().includes(lowSearch) || 
                 s.program.toLowerCase().includes(lowSearch)
             );
         }
@@ -114,32 +119,28 @@ export default function StudentsPage() {
 
     const columns = useMemo<GridColDef[]>(() => [
         {
-            field: 'display_name',
-            headerName: 'Student',
+            field: 'full_name',
+            headerName: 'Student Name',
             flex: 1.2,
-            minWidth: 150,
+            minWidth: 200,
             renderCell: (params: GridRenderCellParams) => (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <Avatar
                         sx={{
-                            width: 32,
-                            height: 32,
+                            width: 36,
+                            height: 36,
                             bgcolor: alpha(theme.palette.secondary.main, 0.1),
                             color: theme.palette.secondary.main,
-                            fontSize: '0.875rem',
-                            fontWeight: 700
+                            fontSize: '1rem',
+                            fontWeight: 800,
+                            boxShadow: `0 4px 12px ${alpha(theme.palette.secondary.main, 0.15)}`
                         }}
                     >
-                        {params.row.display_name?.charAt(0).toUpperCase()}
+                        {params.row.full_name?.charAt(0).toUpperCase()}
                     </Avatar>
-                    <Box sx={{ overflow: 'hidden' }}>
-                        <Typography variant="body2" fontWeight={600} noWrap>
-                            {params.row.display_name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: -0.5 }}>
-                            {params.row.display_email}
-                        </Typography>
-                    </Box>
+                    <Typography variant="body2" fontWeight={700} color="text.primary">
+                        {params.row.full_name}
+                    </Typography>
                 </Box>
             ),
         },
@@ -221,35 +222,6 @@ export default function StudentsPage() {
                         px: 1, borderRadius: 1
                     }}>
                         {avg != null ? `${avg.toFixed(1)}%` : '-'}
-                    </Typography>
-                );
-            }
-        },
-        {
-            field: 'grade',
-            headerName: 'Grade',
-            width: 70,
-            renderCell: (params) => {
-                const s1 = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester I'))?.finalAverage;
-                const s2 = params.row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester II'))?.finalAverage;
-                
-                let avg = null;
-                if (s1 != null && s2 != null) avg = (s1 + s2) / 2;
-                else if (s1 != null) avg = s1;
-                else if (s2 != null) avg = s2;
-
-                if (avg == null) return '-';
-                
-                let grade = 'F';
-                let color = 'error.main';
-                if (avg >= 90) { grade = 'A'; color = 'success.main'; }
-                else if (avg >= 80) { grade = 'B'; color = 'info.main'; }
-                else if (avg >= 70) { grade = 'C'; color = 'warning.main'; }
-                else if (avg >= 50) { grade = 'D'; color = 'warning.dark'; }
-
-                return (
-                    <Typography variant="h6" fontWeight={900} color={color} align="center">
-                        {grade}
                     </Typography>
                 );
             }
@@ -431,7 +403,7 @@ export default function StudentsPage() {
                 border: `1px solid ${alpha(theme.palette.divider, 0.5)}`
             }}>
                 <TextField
-                    placeholder="Search by name, email or program..."
+                    placeholder="Search by student name or program..."
                     size="small"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -504,12 +476,11 @@ export default function StudentsPage() {
                 rows={filteredStudents}
                 loading={isLoading}
                 module="students"
-                onAdd={handleAdd}
                 onEdit={handleEdit}
                 onView={(student: any) => {
                     toast.loading('Generating official report card...', { duration: 2000 });
                     setTimeout(() => {
-                        toast.success(`Report card for ${student.user?.username} is ready!`);
+                        toast.success(`Report card for ${student.full_name} is ready!`);
                     }, 2000);
                 }}
                 onDelete={handleDelete}

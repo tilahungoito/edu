@@ -38,9 +38,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
 
     // Form State
     const [formData, setFormData] = useState({
-        email: '',
+        firstName: '',
+        lastName: '',
         username: '',
-        phone: '',
         institutionId: '',
         program: '',
         year: 1,
@@ -87,9 +87,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
         if (open) {
             if (student) {
                 setFormData({
-                    email: student.user?.email || '',
+                    firstName: student.user?.firstName || '',
+                    lastName: student.user?.lastName || '',
                     username: student.user?.username || '',
-                    phone: student.user?.phone || '',
                     institutionId: student.institutionId,
                     program: student.program,
                     year: student.year,
@@ -100,9 +100,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                 });
             } else {
                 setFormData({
-                    email: '',
+                    firstName: '',
+                    lastName: '',
                     username: '',
-                    phone: '',
                     institutionId: user?.tenantType === 'school' ? user.tenantId : '',
                     program: '',
                     year: 1,
@@ -128,13 +128,8 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
 
-        if (!formData.username) newErrors.username = 'Student name is required';
-        if (!formData.email) {
-            newErrors.email = 'Email is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = 'Invalid email address';
-        }
-        if (!formData.phone) newErrors.phone = 'Phone number is required';
+        if (!formData.firstName) newErrors.firstName = 'First name is required';
+        if (!formData.lastName) newErrors.lastName = 'Last name is required';
         if (!formData.institutionId) newErrors.institutionId = 'Institution is required';
         if (!formData.program) newErrors.program = 'Academic program is required';
         if (!formData.year || formData.year < 1) newErrors.year = 'Valid year is required';
@@ -153,12 +148,13 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
 
         try {
             const payload = {
-                phone: formData.phone,
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                username: formData.username || undefined,
                 institutionId: formData.institutionId,
                 program: formData.program,
                 year: Number(formData.year),
                 gender: formData.gender,
-                // Add academic performance data to payload
                 academicHistory: {
                     sem1Average: formData.sem1Average !== '' ? Number(formData.sem1Average) : null,
                     sem2Average: formData.sem2Average !== '' ? Number(formData.sem2Average) : null,
@@ -169,17 +165,14 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
             if (student) {
                 await studentsService.update(student.id, payload as any);
             } else {
-                await studentsService.create({
-                    ...formData,
-                    ...payload,
-                    year: Number(formData.year),
-                } as any);
+                await studentsService.create(payload as any);
             }
             onSuccess();
             onClose();
         } catch (err: any) {
             console.error('Submission error:', err);
-            setError(err.response?.data?.message || 'Failed to save student record');
+            const message = err.response?.data?.message;
+            setError(Array.isArray(message) ? message.join(', ') : (message || 'Failed to save student record'));
         } finally {
             setLoading(false);
         }
@@ -190,9 +183,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
             <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>
-                {isEdit ? 'Update Student Record' : 'Register New Student'}
+                {isEdit ? `Update Profile: ${formData.firstName} ${formData.lastName}` : 'Register New Student'}
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {isEdit ? 'Modify student profile and academic details.' : 'Create a new student profile in the system.'}
+                    {isEdit ? 'Modify student profile and academic details.' : 'Create a new student profile. Credentials will be auto-generated.'}
                 </Typography>
             </DialogTitle>
 
@@ -211,32 +204,29 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                             </Typography>
                         </Grid>
 
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
-                                label="Full Name"
-                                name="username"
+                                label="First Name"
+                                name="firstName"
                                 fullWidth
                                 required
-                                value={formData.username}
+                                value={formData.firstName}
                                 onChange={handleChange}
-                                error={!!errors.username}
-                                helperText={errors.username}
-                                disabled={isEdit} // Username usually shouldn't change
+                                error={!!errors.firstName}
+                                helperText={errors.firstName}
                             />
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
-                                label="Email Address"
-                                name="email"
-                                type="email"
+                                label="Last Name"
+                                name="lastName"
                                 fullWidth
                                 required
-                                value={formData.email}
+                                value={formData.lastName}
                                 onChange={handleChange}
-                                error={!!errors.email}
-                                helperText={errors.email}
-                                disabled={isEdit}
+                                error={!!errors.lastName}
+                                helperText={errors.lastName}
                             />
                         </Grid>
 
@@ -271,6 +261,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
 
                         <Grid size={{ xs: 12, sm: 8 }}>
                             <TextField
+                                select
                                 label="Program / Department"
                                 name="program"
                                 fullWidth
@@ -279,8 +270,12 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                                 onChange={handleChange}
                                 error={!!errors.program}
                                 helperText={errors.program}
-                                placeholder="e.g., Computer Science, Engineering"
-                            />
+                            >
+                                <MenuItem value="Natural Science">Natural Science</MenuItem>
+                                <MenuItem value="Social Science">Social Science</MenuItem>
+                                <MenuItem value="General">General</MenuItem>
+                                <MenuItem value="Vocational">Vocational</MenuItem>
+                            </TextField>
                         </Grid>
 
                         <Grid size={{ xs: 12, sm: 4 }}>
@@ -294,7 +289,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                                 onChange={handleChange}
                                 error={!!errors.year}
                                 helperText={errors.year}
-                                InputProps={{ inputProps: { min: 1, max: 8 } }}
+                                InputProps={{ inputProps: { min: 1, max: 12 } }}
                             />
                         </Grid>
 

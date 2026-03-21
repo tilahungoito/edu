@@ -32,7 +32,7 @@ export function PermissionGate({
     if (!user) return fallback;
 
     // 1. Administrative roles have broad UI access
-    const adminRoles = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN'];
+    const adminRoles = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'];
     if (user.roles.some(r => adminRoles.includes(r.name))) {
         return children;
     }
