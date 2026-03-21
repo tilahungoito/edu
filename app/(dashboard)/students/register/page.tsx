@@ -43,9 +43,6 @@ export default function StudentRegistrationPage() {
         program: '',
         year: '1',
         gender: '' as 'MALE' | 'FEMALE' | '',
-        sem1Average: '',
-        sem2Average: '',
-        promotionStatus: 'PENDING'
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,11 +75,6 @@ export default function StudentRegistrationPage() {
                 program: formData.program,
                 year: parseInt(formData.year),
                 gender: formData.gender as 'MALE' | 'FEMALE',
-                academicHistory: {
-                    sem1Average: formData.sem1Average !== '' ? Number(formData.sem1Average) : undefined,
-                    sem2Average: formData.sem2Average !== '' ? Number(formData.sem2Average) : undefined,
-                    promotionStatus: formData.promotionStatus || 'PENDING'
-                }
             });
 
             setSuccess(true);
@@ -123,7 +115,7 @@ export default function StudentRegistrationPage() {
     }
 
     return (
-        <Box sx={{ maxWidth: 900, mx: 'auto', p: { xs: 2, md: 4 } }}>
+        <Box sx={{ maxWidth: 650, mx: 'auto', p: { xs: 2, md: 4 } }}>
             <Box sx={{ mb: 4 }}>
                 <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1 }}>
                     Register Student
@@ -134,194 +126,126 @@ export default function StudentRegistrationPage() {
             </Box>
 
             <form onSubmit={handleSubmit}>
-                <Grid container spacing={4}>
-                    {/* Left Column: Personal & Academic */}
-                    <Grid size={{ xs: 12, md: 7 }}>
-                        <Paper sx={{ p: 4, borderRadius: 4, height: '100%' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
-                                <PersonIcon color="primary" />
-                                <Typography variant="h6" fontWeight={700}>Basic Information</Typography>
-                            </Box>
-                            
-                            <Grid container spacing={2.5}>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth
-                                        label="First Name"
-                                        name="firstName"
-                                        required
-                                        value={formData.firstName}
-                                        onChange={handleChange}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth
-                                        label="Last Name"
-                                        name="lastName"
-                                        required
-                                        value={formData.lastName}
-                                        onChange={handleChange}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth
-                                        select
-                                        label="Gender"
-                                        name="gender"
-                                        required
-                                        value={formData.gender}
-                                        onChange={handleChange}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    >
-                                        <MenuItem value="MALE">Male</MenuItem>
-                                        <MenuItem value="FEMALE">Female</MenuItem>
-                                    </TextField>
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth
-                                        label="Grade / Year"
-                                        name="year"
-                                        type="number"
-                                        required
-                                        value={formData.year}
-                                        onChange={handleChange}
-                                        InputProps={{ inputProps: { min: 1, max: 12 } }}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12 }}>
-                                    <TextField
-                                        fullWidth
-                                        select
-                                        label="Program / Stream"
-                                        name="program"
-                                        required
-                                        value={formData.program}
-                                        onChange={handleChange}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    >
-                                        <MenuItem value="Natural Science">Natural Science</MenuItem>
-                                        <MenuItem value="Social Science">Social Science</MenuItem>
-                                        <MenuItem value="General">General</MenuItem>
-                                        <MenuItem value="Vocational">Vocational</MenuItem>
-                                    </TextField>
-                                </Grid>
-                            </Grid>
+                <Paper sx={{ p: 4, borderRadius: 4 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+                        <PersonIcon color="primary" />
+                        <Typography variant="h6" fontWeight={700}>Student Information</Typography>
+                    </Box>
+                    
+                    <Grid container spacing={2.5}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="First Name"
+                                name="firstName"
+                                required
+                                value={formData.firstName}
+                                onChange={handleChange}
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="Last Name"
+                                name="lastName"
+                                required
+                                value={formData.lastName}
+                                onChange={handleChange}
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField
+                                fullWidth
+                                select
+                                label="Gender"
+                                name="gender"
+                                required
+                                value={formData.gender}
+                                onChange={handleChange}
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                            >
+                                <MenuItem value="MALE">Male</MenuItem>
+                                <MenuItem value="FEMALE">Female</MenuItem>
+                            </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="Grade / Year"
+                                name="year"
+                                type="number"
+                                required
+                                value={formData.year}
+                                onChange={handleChange}
+                                InputProps={{ inputProps: { min: 1, max: 12 } }}
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <TextField
+                                fullWidth
+                                select
+                                label="Program / Stream"
+                                name="program"
+                                required
+                                value={formData.program}
+                                onChange={handleChange}
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
+                            >
+                                <MenuItem value="Natural Science">Natural Science</MenuItem>
+                                <MenuItem value="Social Science">Social Science</MenuItem>
+                                <MenuItem value="General">General</MenuItem>
+                                <MenuItem value="Vocational">Vocational</MenuItem>
+                            </TextField>
+                        </Grid>
+                        
+                        <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
+                           <Divider sx={{ mb: 3 }} />
+                        </Grid>
 
-                            <Divider sx={{ my: 4 }} />
-
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+                        <Grid size={{ xs: 12 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
                                 <SchoolIcon color="secondary" />
-                                <Typography variant="h6" fontWeight={700}>Academic Context</Typography>
+                                <Typography variant="h6" fontWeight={700}>Administrative Context</Typography>
                             </Box>
-                            
                             <TextField
                                 fullWidth
                                 label="Assigned Institution"
                                 value={user?.tenantName || 'Detecting...'}
                                 disabled
-                                helperText="Students are automatically linked to your administrative unit."
+                                helperText="Automatically linked to your school admin unit."
                                 sx={{ bgcolor: alpha(theme.palette.action.disabledBackground, 0.05), '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                             />
-                        </Paper>
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }} sx={{ mt: 2 }}>
+                            {error && (
+                                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                                    {error}
+                                </Alert>
+                            )}
+                            <Button
+                                fullWidth
+                                type="submit"
+                                variant="contained"
+                                color="secondary"
+                                size="large"
+                                disabled={loading}
+                                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                                sx={{ 
+                                    borderRadius: 3, 
+                                    py: 1.8, 
+                                    fontWeight: 800,
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.secondary.main, 0.25)}`
+                                }}
+                            >
+                                {loading ? 'Processing...' : 'Complete Registration'}
+                            </Button>
+                        </Grid>
                     </Grid>
-
-                    {/* Right Column: Initial Performance & Actions */}
-                    <Grid size={{ xs: 12, md: 5 }}>
-                        <Paper sx={{ p: 4, borderRadius: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
-                                <AssignmentIcon sx={{ color: 'secondary.main' }} />
-                                <Typography variant="h6" fontWeight={700}>Initial Grades (Optional)</Typography>
-                            </Box>
-
-                            <Grid container spacing={2.5}>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth
-                                        label="Sem I Avg (%)"
-                                        name="sem1Average"
-                                        type="number"
-                                        value={formData.sem1Average}
-                                        onChange={handleChange}
-                                        InputProps={{ 
-                                            inputProps: { min: 0, max: 100 },
-                                            endAdornment: <InputAdornment position="end">%</InputAdornment>
-                                        }}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth
-                                        label="Sem II Avg (%)"
-                                        name="sem2Average"
-                                        type="number"
-                                        value={formData.sem2Average}
-                                        onChange={handleChange}
-                                        InputProps={{ 
-                                            inputProps: { min: 0, max: 100 },
-                                            endAdornment: <InputAdornment position="end">%</InputAdornment>
-                                        }}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12 }}>
-                                    <TextField
-                                        fullWidth
-                                        select
-                                        label="Initial Status"
-                                        name="promotionStatus"
-                                        value={formData.promotionStatus}
-                                        onChange={handleChange}
-                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                                    >
-                                        <MenuItem value="PENDING">Pending Assessment</MenuItem>
-                                        <MenuItem value="PASS">Pre-Promoted</MenuItem>
-                                    </TextField>
-                                </Grid>
-                            </Grid>
-
-                            <Box sx={{ mt: 'auto', pt: 4 }}>
-                                {error && (
-                                    <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-                                        {error}
-                                    </Alert>
-                                )}
-                                
-                                <Button
-                                    fullWidth
-                                    type="submit"
-                                    variant="contained"
-                                    color="secondary"
-                                    size="large"
-                                    disabled={loading}
-                                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                                    sx={{ 
-                                        borderRadius: 3, 
-                                        py: 1.8, 
-                                        fontWeight: 800,
-                                        boxShadow: `0 8px 16px ${alpha(theme.palette.secondary.main, 0.25)}`
-                                    }}
-                                >
-                                    {loading ? 'Processing...' : 'Register Student'}
-                                </Button>
-                                <Button
-                                    fullWidth
-                                    variant="text"
-                                    onClick={() => router.push('/students')}
-                                    sx={{ mt: 1.5, fontWeight: 600, color: 'text.secondary' }}
-                                >
-                                    Cancel
-                                </Button>
-                            </Box>
-                        </Paper>
-                    </Grid>
-                </Grid>
+                </Paper>
             </form>
         </Box>
     );
