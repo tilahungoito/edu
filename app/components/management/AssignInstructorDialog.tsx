@@ -16,6 +16,9 @@ import {
     alpha,
     useTheme,
 } from '@mui/material';
+import {
+    PersonAdd as PersonAddIcon,
+} from '@mui/icons-material';
 import coursesService, { Course } from '@/app/lib/api/courses.service';
 import { staffService } from '@/app/lib/api/staff.service';
 import { useAuthStore } from '@/app/lib/store/auth-store';
@@ -39,16 +42,21 @@ export function AssignInstructorDialog({ open, onClose, onSuccess, course }: Ass
 
     useEffect(() => {
         const fetchInstructors = async () => {
-            if (!open || !course || !course.institutionId) {
+            if (!course) return;
+            
+            // We need a school scope to fetch instructors
+            const schoolId = course.institutionId || (user?.tenantType === 'school' ? user?.scopeId : null);
+            
+            if (!open || !schoolId) {
                 setInstructors([]);
                 return;
             }
             setFetchingData(true);
             try {
-                // Fetch instructors for the course's institution
-                const data = await staffService.getStaffByRole('INSTRUCTOR', course.institutionId);
+                // Fetch instructors for the determined institutional scope
+                const data = await staffService.getStaffByRole('INSTRUCTOR', schoolId);
                 setInstructors(data);
-                
+
                 // Pre-select current instructor if assigned
                 if (course.instructor) {
                     setSelectedInstructor(course.instructor.id);
@@ -96,10 +104,28 @@ export function AssignInstructorDialog({ open, onClose, onSuccess, course }: Ass
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>
-                Assign Instructor
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Assign a teacher to {course.name}
+            <DialogTitle sx={{ 
+                pb: 1, 
+                fontWeight: 800, 
+                display: 'flex', 
+                flexDirection: 'column',
+                gap: 0.5,
+                fontSize: '1.5rem',
+                color: 'primary.main'
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ 
+                        p: 1, 
+                        borderRadius: 2, 
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        display: 'flex'
+                    }}>
+                        <PersonAddIcon />
+                    </Box>
+                    Teacher Assignment
+                </Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
+                    Manage the instructor assigned to <strong>{course.name}</strong>
                 </Typography>
             </DialogTitle>
 
@@ -112,8 +138,8 @@ export function AssignInstructorDialog({ open, onClose, onSuccess, course }: Ass
                     )}
 
                     {!course.institutionId && (
-                        <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-                            Instructors cannot be explicitly assigned to Regional Curriculum courses. They must be duplicated or localized first.
+                        <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+                            This is a <strong>Regional Curriculum</strong> course. Assigning an instructor will automatically create a local copy for your school.
                         </Alert>
                     )}
 
@@ -129,16 +155,16 @@ export function AssignInstructorDialog({ open, onClose, onSuccess, course }: Ass
                             required
                             value={selectedInstructor}
                             onChange={(e) => setSelectedInstructor(e.target.value)}
-                            disabled={!course.institutionId || instructors.length === 0}
-                            helperText={instructors.length === 0 && course.institutionId ? 'No instructors found in this institution' : ''}
+                            disabled={instructors.length === 0}
+                            helperText={instructors.length === 0 ? 'No instructors found in your school' : ''}
                         >
                             <MenuItem value="">
                                 <em>Unassign</em>
                             </MenuItem>
                             {instructors.map((inst: any) => (
                                 <MenuItem key={inst.id} value={inst.id}>
-                                    {inst.firstName && inst.lastName 
-                                        ? `${inst.firstName} ${inst.lastName} (${inst.username})` 
+                                    {inst.firstName && inst.lastName
+                                        ? `${inst.firstName} ${inst.lastName} (${inst.username})`
                                         : inst.username}
                                 </MenuItem>
                             ))}
@@ -148,19 +174,24 @@ export function AssignInstructorDialog({ open, onClose, onSuccess, course }: Ass
 
                 <DialogActions sx={{ p: 3, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
                     <Button onClick={onClose} color="inherit" sx={{ fontWeight: 600 }}>Cancel</Button>
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={loading || !course.institutionId || (!selectedInstructor && !course.instructor)}
-                        sx={{
-                            borderRadius: 2.5,
-                            px: 4,
-                            fontWeight: 700,
-                            boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.3)}`
-                        }}
-                    >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Assign'}
-                    </Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={loading || (!selectedInstructor && !course.instructor)}
+                            sx={{
+                                borderRadius: 3,
+                                px: 4,
+                                py: 1.2,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+                                '&:hover': {
+                                    boxShadow: `0 12px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
+                                }
+                            }}
+                        >
+                            {loading ? <CircularProgress size={24} color="inherit" /> : 'Save Assignment'}
+                        </Button>
                 </DialogActions>
             </form>
         </Dialog>

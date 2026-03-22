@@ -22,6 +22,10 @@ import {
     Card,
     TextField,
     InputAdornment,
+    Menu,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -32,6 +36,7 @@ import {
     Search as SearchIcon,
     Refresh as RefreshIcon,
     PersonAdd as PersonAddIcon,
+    MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CourseDialog } from '@/app/components/management/CourseDialog';
@@ -51,10 +56,15 @@ export default function CoursesPage() {
     const [searchValue, setSearchValue] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
     const [assignTarget, setAssignTarget] = useState<Course | null>(null);
+    const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+    const [menuCourse, setMenuCourse] = useState<Course | null>(null);
 
     const isInstructor = user?.roles?.some(r => r.name === 'INSTRUCTOR');
     const isInstitutionUser = user?.tenantType === 'school';
-    const canManageCourses = user?.roles?.some(r => ['SYSTEM_ADMIN', 'REGION_ADMIN', 'REGIONAL_ADMIN'].includes(r.name)) ?? false;
+    
+    // Explicit permission flags
+    const canManageCurriculum = user?.roles?.some(r => ['SYSTEM_ADMIN', 'REGION_ADMIN', 'REGIONAL_ADMIN'].includes(r.name)) ?? false;
+    const canManageTeachers = user?.roles?.some(r => ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'].includes(r.name)) ?? false;
 
     const { data: courses = [], isLoading, refetch } = useQuery({
         queryKey: ['courses', user?.id],
@@ -107,10 +117,57 @@ export default function CoursesPage() {
     };
 
     const handleCollapseAll = () => setExpandedGrades({});
+    
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, course: Course) => {
+        event.stopPropagation();
+        event.preventDefault();
+        setMenuAnchor(event.currentTarget);
+        setMenuCourse(course);
+    };
+
+    const handleMenuClose = () => {
+        setMenuAnchor(null);
+        setMenuCourse(null);
+    };
 
     const handleAdd = () => {
         setSelectedCourse(null);
         setIsDialogOpen(true);
+    };
+
+    const handleEditAction = () => {
+        if (menuCourse) {
+            setSelectedCourse(menuCourse);
+            setIsDialogOpen(true);
+        }
+        handleMenuClose();
+    };
+
+    const handleAssignAction = () => {
+        if (menuCourse) {
+            setAssignTarget(menuCourse);
+        }
+        handleMenuClose();
+    };
+
+    const handleUnassignAction = async () => {
+        if (menuCourse) {
+            try {
+                await coursesService.assignInstructor(menuCourse.id, null);
+                refetch();
+                toast.success('Instructor removed successfully');
+            } catch (err: any) {
+                toast.error('Failed to remove instructor');
+            }
+        }
+        handleMenuClose();
+    };
+
+    const handleDeleteAction = () => {
+        if (menuCourse) {
+            setDeleteTarget(menuCourse);
+        }
+        handleMenuClose();
     };
 
     const handleEdit = (course: Course) => {
@@ -181,7 +238,7 @@ export default function CoursesPage() {
                             <RefreshIcon fontSize="small" />
                         </IconButton>
                     </Tooltip>
-                    {canManageCourses && (
+                    {canManageCurriculum && (
                         <Button
                             variant="contained"
                             size="small"
@@ -220,7 +277,7 @@ export default function CoursesPage() {
                         {searchValue ? 'No courses match your search' : 'No courses yet'}
                     </Typography>
                     <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
-                        {searchValue ? 'Try a different keyword' : (canManageCourses ? 'Click "Add Course" to create the first one' : 'No curriculum has been published yet')}
+                        {searchValue ? 'Try a different keyword' : (canManageCurriculum ? 'Click "Add Course" to create the first one' : 'No curriculum has been published yet')}
                     </Typography>
                 </Card>
             )}
@@ -339,27 +396,17 @@ export default function CoursesPage() {
                                                 </TableCell>
                                             )}
                                             <TableCell align="right" sx={{ pr: 2, py: 1 }}>
-                                                {isInstitutionUser && course.institutionId && (
-                                                    <Tooltip title="Assign Instructor">
-                                                        <IconButton size="small" onClick={() => setAssignTarget(course)} sx={{ color: 'success.main' }}>
-                                                            <PersonAddIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-                                                {canManageCourses && (
-                                                    <>
-                                                        <Tooltip title="Edit">
-                                                            <IconButton size="small" onClick={() => handleEdit(course)} sx={{ color: 'info.main' }}>
-                                                                <EditIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        <Tooltip title="Delete">
-                                                            <IconButton size="small" onClick={() => setDeleteTarget(course)} sx={{ color: 'error.main' }}>
-                                                                <DeleteIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </>
-                                                )}
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={(e) => handleMenuOpen(e, course)}
+                                                    sx={{ 
+                                                        color: 'text.secondary',
+                                                        bgcolor: alpha(theme.palette.action.hover, 0.05),
+                                                        '&:hover': { bgcolor: alpha(theme.palette.action.hover, 0.1) }
+                                                    }}
+                                                >
+                                                    <MoreVertIcon fontSize="small" />
+                                                </IconButton>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -392,6 +439,64 @@ export default function CoursesPage() {
                 }}
                 course={assignTarget}
             />
+
+            {/* Actions Menu */}
+            <Menu
+                anchorEl={menuAnchor}
+                open={Boolean(menuAnchor)}
+                onClose={handleMenuClose}
+                elevation={3}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            borderRadius: 2,
+                            mt: 0.5,
+                            minWidth: 180,
+                            border: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                            boxShadow: `0 8px 16px ${alpha(theme.palette.common.black, 0.1)}`,
+                        }
+                    }
+                }}
+            >
+                {/* Instructor Actions (School Roles) */}
+                {canManageTeachers && (
+                    <MenuItem onClick={handleAssignAction}>
+                        <ListItemIcon><PersonAddIcon fontSize="small" color="primary" /></ListItemIcon>
+                        <ListItemText 
+                            primary={menuCourse?.instructor ? "Edit teacher" : "Assign instructor"} 
+                            primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }}
+                        />
+                    </MenuItem>
+                )}
+                {canManageTeachers && menuCourse?.instructor && (
+                    <MenuItem onClick={handleUnassignAction}>
+                        <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+                        <ListItemText primary="Delete instructor" primaryTypographyProps={{ variant: 'body2', fontWeight: 600, color: 'error.main' }} />
+                    </MenuItem>
+                )}
+
+                {/* Curriculum Actions (Regional Roles) */}
+                {canManageCurriculum && (
+                    <MenuItem onClick={handleEditAction}>
+                        <ListItemIcon><EditIcon fontSize="small" color="info" /></ListItemIcon>
+                        <ListItemText primary="Edit Course Details" primaryTypographyProps={{ variant: 'body2', fontWeight: 600 }} />
+                    </MenuItem>
+                )}
+                {canManageCurriculum && (
+                    <MenuItem onClick={handleDeleteAction}>
+                        <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
+                        <ListItemText primary="Delete Entire Course" primaryTypographyProps={{ variant: 'body2', fontWeight: 600, color: 'error.main' }} />
+                    </MenuItem>
+                )}
+
+                {!canManageTeachers && !canManageCurriculum && (
+                    <MenuItem disabled>
+                        <ListItemText primary="No actions available" primaryTypographyProps={{ variant: 'body2', color: 'text.disabled' }} />
+                    </MenuItem>
+                )}
+            </Menu>
 
             {/* Delete Confirmation Dialog */}
             <ConfirmDialog

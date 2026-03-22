@@ -57,8 +57,8 @@ export const coursesService = {
         return response.data;
     },
 
-    assignInstructor: async (id: string, instructorId: string) => {
-        const response = await apiClient.patch<Course>(`courses/${id}/assign`, { instructorId });
+    assignInstructor: async (id: string, instructorId: string | null) => {
+        const response = await apiClient.patch<Course>(`courses/${id}/assign`, { instructorId: instructorId || null });
         return response.data;
     },
 

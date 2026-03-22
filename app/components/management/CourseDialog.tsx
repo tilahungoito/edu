@@ -45,7 +45,7 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
     const [courses, setCourses] = useState<Array<{ name: string; gradeLevel: string | number }>>([
         { name: '', gradeLevel: '' }
     ]);
-    
+
     // Single form data for editing
     const [editData, setEditData] = useState({
         name: '',
@@ -148,7 +148,7 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
 
         try {
             const isRegional = user?.roles?.some(r => r.name === 'REGIONAL_ADMIN' || r.name === 'REGION_ADMIN');
-            
+
             if (isEdit) {
                 const submitData: any = {
                     name: editData.name,
@@ -160,7 +160,7 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
                 if (editData.gradeLevel && editData.gradeLevel !== '') {
                     submitData.gradeLevel = Number(editData.gradeLevel);
                 }
-                
+
                 await coursesService.update(course.id, submitData);
             } else {
                 // Batch create with comma separation
@@ -178,7 +178,7 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
                         if (c.gradeLevel && c.gradeLevel !== '') {
                             submitData.gradeLevel = Number(c.gradeLevel);
                         }
-                        
+
                         creationPromises.push(coursesService.create(submitData));
                     });
                 });
@@ -204,8 +204,8 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
                     </Typography>
                 </Box>
                 {!isEdit && (
-                    <Button 
-                        startIcon={<AddIcon />} 
+                    <Button
+                        startIcon={<AddIcon />}
                         onClick={addCourseRow}
                         variant="soft"
                         size="small"
@@ -259,17 +259,17 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
                     ) : (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {courses.map((courseField, index) => (
-                                <Grid container spacing={2} key={index} sx={{ 
-                                    p: 2, 
-                                    borderRadius: 3, 
+                                <Grid container spacing={2} key={index} sx={{
+                                    p: 2,
+                                    borderRadius: 3,
                                     bgcolor: alpha(theme.palette.background.default, 0.4),
                                     border: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
                                     position: 'relative'
                                 }}>
                                     {courses.length > 1 && (
-                                        <IconButton 
-                                            size="small" 
-                                            color="error" 
+                                        <IconButton
+                                            size="small"
+                                            color="error"
                                             onClick={() => removeCourseRow(index)}
                                             sx={{ position: 'absolute', top: -10, right: -10, bgcolor: 'background.paper', boxShadow: 1 }}
                                         >
