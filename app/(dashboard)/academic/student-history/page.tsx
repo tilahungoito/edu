@@ -24,7 +24,18 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import promotionsService from '@/app/lib/api/promotions.service';
 import studentsService from '@/app/lib/api/students.service';
+import gradesService from '@/app/lib/api/grades.service';
 import { useAuthStore } from '@/app/lib/store';
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+} from 'recharts';
+import toast from 'react-hot-toast';
 
 export default function StudentHistoryPage() {
     const theme = useTheme();
@@ -33,10 +44,17 @@ export default function StudentHistoryPage() {
 
     const [searchId, setSearchId] = useState<string>(isStudent ? user?.id || '' : '');
     const [targetStudentId, setTargetStudentId] = useState<string>(isStudent ? user?.id || '' : '');
+    const [downloading, setDownloading] = useState(false);
 
     const { data: history, isLoading: loadingHistory } = useQuery({
         queryKey: ['student-history', targetStudentId],
         queryFn: () => promotionsService.getHistory(targetStudentId),
+        enabled: !!targetStudentId,
+    });
+
+    const { data: transcript, isLoading: loadingTranscript } = useQuery({
+        queryKey: ['student-transcript', targetStudentId],
+        queryFn: () => gradesService.getTranscript(targetStudentId),
         enabled: !!targetStudentId,
     });
 
@@ -45,6 +63,20 @@ export default function StudentHistoryPage() {
         queryFn: () => studentsService.getById(targetStudentId),
         enabled: !!targetStudentId,
     });
+
+    const handleDownloadTranscript = async () => {
+        if (!targetStudentId) return;
+        setDownloading(true);
+        try {
+            await gradesService.downloadTranscriptPdf(targetStudentId, student?.user?.username || 'Student');
+            toast.success('Transcript downloaded successfully');
+        } catch (err) {
+            console.error('Download failed:', err);
+            toast.error('Failed to generate transcript');
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     const handleSearch = () => {
         if (searchId) setTargetStudentId(searchId);
@@ -81,7 +113,27 @@ export default function StudentHistoryPage() {
                         >
                             Search
                         </Button>
+                        {targetStudentId && (
+                            <Button
+                                variant="outlined"
+                                onClick={handleDownloadTranscript}
+                                disabled={downloading}
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                            >
+                                {downloading ? <CircularProgress size={20} /> : 'Record (PDF)'}
+                            </Button>
+                        )}
                     </Box>
+                )}
+                {isStudent && targetStudentId && (
+                    <Button
+                        variant="contained"
+                        onClick={handleDownloadTranscript}
+                        disabled={downloading}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                    >
+                        {downloading ? <CircularProgress size={20} /> : 'Download Transcript'}
+                    </Button>
                 )}
             </Box>
 
@@ -120,15 +172,55 @@ export default function StudentHistoryPage() {
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Typography variant="body2" color="text.secondary">Current Status</Typography>
-                                        <Chip label={`Year ${student?.year}`} size="small" color="secondary" variant="soft" sx={{ fontWeight: 800 }} />
+                                        <Chip label={`Year ${student?.year || 'N/A'}`} size="small" color="secondary" variant="soft" sx={{ fontWeight: 800 }} />
                                     </Box>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Typography variant="body2" color="text.secondary">Total Records</Typography>
-                                        <Typography variant="body2" fontWeight={800}>{history?.length || 0}</Typography>
+                                        <Typography variant="body2" color="text.secondary">Cumulative GPA</Typography>
+                                        <Typography variant="body1" fontWeight={800} color="primary">
+                                            {loadingTranscript ? <CircularProgress size={12} /> : (transcript?.gpa?.toFixed(2) || '0.00')}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Typography variant="body2" color="text.secondary">Total Credits</Typography>
+                                        <Typography variant="body2" fontWeight={800}>
+                                            {transcript?.results?.reduce((acc: number, r: any) => acc + (r.credits || 0), 0) || 0}
+                                        </Typography>
                                     </Box>
                                 </Box>
                             </CardContent>
                         </Card>
+
+                        {/* Performance Chart */}
+                        {history && history.length > 0 && (
+                            <Card sx={{ mt: 2, borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                                <CardContent>
+                                    <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2 }}>
+                                        GPA Progress
+                                    </Typography>
+                                    <Box sx={{ height: 180, width: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={[...history].reverse()}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={alpha(theme.palette.divider, 0.1)} />
+                                                <XAxis dataKey="gradeLevel" fontSize={10} axisLine={false} tickLine={false} />
+                                                <YAxis domain={[0, 100]} hide />
+                                                <Tooltip 
+                                                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                    labelFormatter={(label) => `Grade ${label}`}
+                                                />
+                                                <Line 
+                                                    type="monotone" 
+                                                    dataKey="finalAverage" 
+                                                    stroke={theme.palette.primary.main} 
+                                                    strokeWidth={3} 
+                                                    dot={{ r: 4, fill: theme.palette.primary.main }} 
+                                                    activeDot={{ r: 6 }} 
+                                                />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        )}
                     </Grid>
 
                     <Grid size={{ xs: 12, md: 8 }}>
