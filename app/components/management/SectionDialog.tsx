@@ -118,7 +118,7 @@ export function SectionDialog({ open, onClose, onSuccess, section, institutionId
                             helperText="Where do students go after completing this section?"
                         >
                             <MenuItem value=""><em>None (End of Cycle)</em></MenuItem>
-                            {sections?.filter(s => s.id !== section?.id).map((s) => (
+                            {sections?.filter((s: Section) => s.id !== section?.id).map((s: Section) => (
                                 <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
                             ))}
                         </TextField>

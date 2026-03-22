@@ -24,18 +24,31 @@ const routePermissions: Record<string, string[]> = {
     '/dashboard/student': ['SYSTEM_ADMIN', 'STUDENT'],
 };
 
+// Public paths that don't require authentication
+const publicPaths = ['/login', '/forgot-password', '/reset-password'];
+
 export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // 1. Check if route is protected (starts with /dashboard)
-    if (!pathname.startsWith('/dashboard')) {
+    // 1. Allow public paths (login, forgot-password, reset-password)
+    if (publicPaths.some(p => pathname === p || pathname.startsWith(p + '/'))) {
         return NextResponse.next();
     }
 
-    // 2. Get token from cookie
+    // 2. Allow Next.js internals and static assets
+    if (
+        pathname.startsWith('/_next') ||
+        pathname.startsWith('/api') ||
+        pathname.startsWith('/favicon') ||
+        pathname.includes('.')
+    ) {
+        return NextResponse.next();
+    }
+
+    // 3. Get token from cookie
     const token = request.cookies.get('access_token')?.value;
 
-    // 3. If no token, redirect to login
+    // 4. If no token, redirect to login
     if (!token) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('from', pathname);
@@ -43,7 +56,7 @@ export function proxy(request: NextRequest) {
     }
 
     try {
-        // 4. Decode and validate token
+        // 5. Decode and validate token
         const decoded = jwtDecode<DecodedToken>(token);
 
         // Check if token is expired
@@ -55,7 +68,7 @@ export function proxy(request: NextRequest) {
             return NextResponse.redirect(loginUrl);
         }
 
-        // 5. Check role-based route access
+        // 6. Check role-based route access
         const userRole = decoded.role;
 
         // SYSTEM_ADMIN has access to everything
@@ -86,5 +99,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-    matcher: '/dashboard/:path*',
+    matcher: [
+        /*
+         * Match all request paths EXCEPT Next.js internals and static files.
+         * The proxy function handles public vs protected path logic internally.
+         */
+        '/((?!_next/static|_next/image|favicon.ico).*)',
+    ],
 };

@@ -18,6 +18,10 @@ import {
     CircularProgress,
     alpha,
     useTheme,
+    Menu,
+    MenuItem,
+    Paper,
+    InputAdornment,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -25,10 +29,13 @@ import {
     ArrowForward as ArrowForwardIcon,
     Delete as DeleteIcon,
     Edit as EditIcon,
+    MoreVert as MoreVertIcon,
+    Search as SearchIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store/auth-store';
 import { sectionsService } from '@/app/lib/api/sections.service';
 import { useRouter } from 'next/navigation';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 
 export default function SectionsPage() {
     const theme = useTheme();
@@ -37,7 +44,24 @@ export default function SectionsPage() {
     const [sections, setSections] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [openDialog, setOpenDialog] = useState(false);
-    const [newSection, setNewSection] = useState({ name: '', nextSectionId: '' });
+    const [newSection, setNewSection] = useState({ name: '', nextSectionId: '', gradeLevel: '', program: 'General' });
+    const [searchQuery, setSearchQuery] = useState('');
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [menuSectionId, setMenuSectionId] = useState<string | null>(null);
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, sectionId: string) => {
+        setAnchorEl(event.currentTarget);
+        setMenuSectionId(sectionId);
+    };
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+        setMenuSectionId(null);
+    };
+
+    const filteredSections = sections.filter(s => 
+        (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.program || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const fetchSections = async () => {
         if (!user?.tenantId) return;
@@ -56,18 +80,22 @@ export default function SectionsPage() {
         fetchSections();
     }, [user?.tenantId]);
 
+    useRealTime('STATS_UPDATED', fetchSections);
+
     const handleCreateSection = async () => {
         try {
             const payload: any = {
                 name: newSection.name,
-                institutionId: user?.tenantId
+                institutionId: user?.tenantId,
+                gradeLevel: newSection.gradeLevel ? Number(newSection.gradeLevel) : undefined,
+                program: newSection.program || undefined,
             };
             if (newSection.nextSectionId) {
                 payload.nextSectionId = newSection.nextSectionId;
             }
             await sectionsService.create(payload);
             setOpenDialog(false);
-            setNewSection({ name: '', nextSectionId: '' });
+            setNewSection({ name: '', nextSectionId: '', gradeLevel: '', program: 'General' });
             fetchSections();
         } catch (error) {
             console.error('Error creating section:', error);
@@ -103,8 +131,19 @@ export default function SectionsPage() {
                 </Button>
             </Box>
 
+            <Paper sx={{ p: 2, mb: 3, borderRadius: 3, display: 'flex', alignItems: 'center', border: `1px solid ${alpha(theme.palette.divider, 0.5)}` }}>
+                <TextField
+                    size="small"
+                    placeholder="Search sections by name or program..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment> } }}
+                    sx={{ width: { xs: '100%', sm: 300 }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+            </Paper>
+
             <Grid container spacing={3}>
-                {sections.map((section) => (
+                {filteredSections.map((section) => (
                     <Grid size={{ xs: 12, sm: 6, md: 4 }} key={section.id}>
                         <Card sx={{
                             borderRadius: '24px',
@@ -125,8 +164,9 @@ export default function SectionsPage() {
                                         <GroupsIcon />
                                     </Box>
                                     <Box>
-                                        <IconButton size="small"><EditIcon fontSize="small" /></IconButton>
-                                        <IconButton size="small" color="error"><DeleteIcon fontSize="small" /></IconButton>
+                                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, section.id)}>
+                                            <MoreVertIcon fontSize="small" />
+                                        </IconButton>
                                     </Box>
                                 </Box>
 
@@ -134,9 +174,21 @@ export default function SectionsPage() {
                                     {section.name}
                                 </Typography>
 
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                                    {section.gradeLevel && (
+                                        <Chip label={`Grade ${section.gradeLevel}`} size="small" color="primary" variant="outlined" sx={{ fontWeight: 700, height: 20, fontSize: '10px' }} />
+                                    )}
+                                    {section.program && (
+                                        <Chip label={section.program} size="small" color="secondary" variant="outlined" sx={{ fontWeight: 600, height: 20, fontSize: '10px' }} />
+                                    )}
+                                    {!section.gradeLevel && (
+                                        <Chip label="No Grade Tagged" size="small" color="warning" variant="outlined" sx={{ fontWeight: 600, height: 20, fontSize: '10px' }} />
+                                    )}
+                                </Box>
+
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
                                     <Chip 
-                                        label={`${section._count?.students || 0} Students`} 
+                                        label={`${section._count?.students || 0} / ${section.capacity || 50} Students`} 
                                         size="small" 
                                         sx={{ fontWeight: 600, bgcolor: alpha(theme.palette.success.main, 0.1), color: theme.palette.success.dark }} 
                                     />
@@ -180,9 +232,38 @@ export default function SectionsPage() {
                             placeholder="e.g. Grade 10-A"
                             fullWidth
                             autoFocus
+                            required
                             value={newSection.name}
                             onChange={(e) => setNewSection({ ...newSection, name: e.target.value })}
                         />
+                        <TextField
+                            select
+                            label="Target Grade Level"
+                            fullWidth
+                            required
+                            SelectProps={{ native: true }}
+                            value={newSection.gradeLevel}
+                            onChange={(e) => setNewSection({ ...newSection, gradeLevel: e.target.value })}
+                        >
+                            <option value="">Select Grade</option>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
+                                <option key={g} value={g}>Grade {g}</option>
+                            ))}
+                        </TextField>
+                        <TextField
+                            select
+                            label="Program/Stream"
+                            fullWidth
+                            required
+                            SelectProps={{ native: true }}
+                            value={newSection.program}
+                            onChange={(e) => setNewSection({ ...newSection, program: e.target.value })}
+                        >
+                            <option value="General">General</option>
+                            <option value="Natural Science">Natural Science</option>
+                            <option value="Social Science">Social Science</option>
+                            <option value="Vocational">Vocational</option>
+                        </TextField>
                         <TextField
                             select
                             label="Promotion Path (Optional)"
@@ -198,11 +279,29 @@ export default function SectionsPage() {
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
                     <Button onClick={() => setOpenDialog(false)} sx={{ fontWeight: 700 }}>Cancel</Button>
-                    <Button onClick={handleCreateSection} variant="contained" disabled={!newSection.name} sx={{ borderRadius: '10px', fontWeight: 700 }}>
+                    <Button onClick={handleCreateSection} variant="contained" disabled={!newSection.name || !newSection.gradeLevel} sx={{ borderRadius: '10px', fontWeight: 700 }}>
                         Create Section
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                PaperProps={{ sx: { borderRadius: 2, minWidth: 160, boxShadow: theme.shadows[4] } }}
+            >
+                <MenuItem onClick={() => { handleMenuClose(); /* handle open edit */ }} sx={{ py: 1.5 }}>
+                    <EditIcon sx={{ mr: 2, fontSize: 18, color: 'info.main' }} />
+                    <Typography fontWeight={600}>Edit Section</Typography>
+                </MenuItem>
+                <MenuItem onClick={() => { handleMenuClose(); /* handle open delete */ }} sx={{ py: 1.5, color: 'error.main' }}>
+                    <DeleteIcon sx={{ mr: 2, fontSize: 18 }} />
+                    <Typography fontWeight={600}>Delete Section</Typography>
+                </MenuItem>
+            </Menu>
         </Box>
     );
 }

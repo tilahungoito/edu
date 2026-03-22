@@ -14,9 +14,11 @@ import {
     Box,
     Typography,
     Alert,
+    IconButton,
     alpha,
     useTheme,
 } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
 import coursesService, { Course, CreateCourseData } from '@/app/lib/api/courses.service';
 import { staffService } from '@/app/lib/api/staff.service';
 import { institutionsService, Institution } from '@/app/lib/api/institutions.service';
@@ -39,14 +41,18 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
     const [institutions, setInstitutions] = useState<Institution[]>([]);
     const [error, setError] = useState<string | null>(null);
 
-    // Form State
-    const [formData, setFormData] = useState({
+    // Form State: Array for creation, single object for editing
+    const [courses, setCourses] = useState<Array<{ name: string; gradeLevel: string | number }>>([
+        { name: '', gradeLevel: '' }
+    ]);
+    
+    // Single form data for editing
+    const [editData, setEditData] = useState({
         name: '',
-        code: '',
-        credit: 3,
-        instructorId: '',
-        institutionId: '',
+        gradeLevel: '' as string | number,
     });
+
+    const isEdit = !!course;
 
     // Validation State
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,20 +63,8 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
             if (!open) return;
             setFetchingData(true);
             try {
-                const [insts, staffs] = await Promise.all([
-                    institutionsService.getAll(),
-                    staffService.getStaffByRole('INSTRUCTOR', user?.tenantId || undefined)
-                ]);
-
+                const insts = await institutionsService.getAll();
                 setInstitutions(insts);
-                setInstructors(staffs);
-
-                // Auto-fills
-                if (insts.length === 1 && !formData.institutionId) {
-                    setFormData(prev => ({ ...prev, institutionId: insts[0].id }));
-                } else if (user?.tenantType === 'school' && user?.tenantId) {
-                    setFormData(prev => ({ ...prev, institutionId: user.tenantId }));
-                }
             } catch (err: any) {
                 console.error('Failed to fetch support data:', err);
             } finally {
@@ -85,42 +79,61 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
     useEffect(() => {
         if (open) {
             if (course) {
-                setFormData({
+                setEditData({
                     name: course.name,
-                    code: course.code,
-                    credit: course.credit,
-                    instructorId: course.instructorId || '',
-                    institutionId: course.institutionId,
+                    gradeLevel: course.gradeLevel || '',
                 });
             } else {
-                setFormData({
-                    name: '',
-                    code: '',
-                    credit: 3,
-                    instructorId: '',
-                    institutionId: user?.tenantType === 'school' ? user.tenantId : '',
-                });
+                setCourses([{ name: '', gradeLevel: '' }]);
             }
             setErrors({});
             setError(null);
         }
     }, [open, course, user]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        if (errors[name]) {
-            setErrors(prev => ({ ...prev, [name]: '' }));
+        setEditData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    };
+
+    const handleCourseChange = (index: number, name: string, value: any) => {
+        const newCourses = [...courses];
+        newCourses[index] = { ...newCourses[index], [name]: value as any };
+        setCourses(newCourses);
+        // Clear errors for this index if any
+        if (errors[`${index}-${name}`]) {
+            setErrors(prev => {
+                const newErrs = { ...prev };
+                delete newErrs[`${index}-${name}`];
+                return newErrs;
+            });
+        }
+    };
+
+    const addCourseRow = () => {
+        setCourses([...courses, { name: '', gradeLevel: '' }]);
+    };
+
+    const removeCourseRow = (index: number) => {
+        if (courses.length > 1) {
+            setCourses(courses.filter((_, i) => i !== index));
         }
     };
 
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
+        const isRegional = user?.roles?.some(r => r.name === 'REGIONAL_ADMIN' || r.name === 'REGION_ADMIN');
 
-        if (!formData.name) newErrors.name = 'Course name is required';
-        if (!formData.code) newErrors.code = 'Course code is required';
-        if (!formData.credit || Number(formData.credit) < 0) newErrors.credit = 'Valid credit hours are required';
-        if (!formData.institutionId) newErrors.institutionId = 'Institution is required';
+        if (isEdit) {
+            if (!editData.name) newErrors.name = 'Name is required';
+            if (isRegional && !editData.gradeLevel) newErrors.gradeLevel = 'Grade level is required';
+        } else {
+            courses.forEach((c, idx) => {
+                if (!c.name) newErrors[`${idx}-name`] = 'Name is required';
+                if (isRegional && !c.gradeLevel) newErrors[`${idx}-gradeLevel`] = 'Grade level is required';
+            });
+        }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -134,41 +147,73 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
         setError(null);
 
         try {
-            if (course) {
-                setError('Course editing is currently limited to instructor transfers.');
-            } else {
-                const submitData: CreateCourseData = {
-                    name: formData.name,
-                    code: formData.code,
-                    credit: Number(formData.credit),
-                    institutionId: formData.institutionId,
+            const isRegional = user?.roles?.some(r => r.name === 'REGIONAL_ADMIN' || r.name === 'REGION_ADMIN');
+            
+            if (isEdit) {
+                const submitData: any = {
+                    name: editData.name,
                 };
-
-                if (formData.instructorId) {
-                    submitData.instructorId = formData.instructorId;
+                // Only send institutionId if we're a school and have a valid ID
+                if (!isRegional && user?.tenantId && user.tenantType === 'school') {
+                    submitData.institutionId = user.tenantId;
                 }
-
-                await coursesService.create(submitData);
-                onSuccess();
-                onClose();
+                if (editData.gradeLevel && editData.gradeLevel !== '') {
+                    submitData.gradeLevel = Number(editData.gradeLevel);
+                }
+                
+                await coursesService.update(course.id, submitData);
+            } else {
+                // Batch create with comma separation
+                const creationPromises: any[] = [];
+                courses.forEach(c => {
+                    const names = c.name.split(',').map(n => n.trim()).filter(n => n !== '');
+                    names.forEach(name => {
+                        const submitData: any = {
+                            name: name,
+                        };
+                        // Only send institutionId if we're a school and have a valid ID
+                        if (!isRegional && user?.tenantId && user.tenantType === 'school') {
+                            submitData.institutionId = user.tenantId;
+                        }
+                        if (c.gradeLevel && c.gradeLevel !== '') {
+                            submitData.gradeLevel = Number(c.gradeLevel);
+                        }
+                        
+                        creationPromises.push(coursesService.create(submitData));
+                    });
+                });
+                await Promise.all(creationPromises);
             }
+            onSuccess();
+            onClose();
         } catch (err: any) {
             console.error('Submission error:', err);
-            setError(err.response?.data?.message || 'Failed to save course');
+            setError(err.response?.data?.message || 'Failed to save course(s)');
         } finally {
             setLoading(false);
         }
     };
 
-    const isEdit = !!course;
-
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-            <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>
-                {isEdit ? 'Update Course' : 'Create New Course'}
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {isEdit ? 'Modify course parameters and assignments.' : 'Define a new course in the curriculum.'}
-                </Typography>
+        <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+            <DialogTitle sx={{ fontWeight: 800, pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                    {isEdit ? 'Update Course' : 'Add Multiple Courses'}
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {isEdit ? 'Modify course parameters and assignments.' : 'Quickly add one or more courses to the curriculum.'}
+                    </Typography>
+                </Box>
+                {!isEdit && (
+                    <Button 
+                        startIcon={<AddIcon />} 
+                        onClick={addCourseRow}
+                        variant="soft"
+                        size="small"
+                        sx={{ borderRadius: 2 }}
+                    >
+                        Add Row
+                    </Button>
+                )}
             </DialogTitle>
 
             <form onSubmit={handleSubmit}>
@@ -179,118 +224,114 @@ export function CourseDialog({ open, onClose, onSuccess, course }: CourseDialogP
                         </Alert>
                     )}
 
-                    <Grid container spacing={2.5}>
-                        <Grid size={{ xs: 12 }}>
-                            <Typography variant="overline" color="primary" fontWeight={800} sx={{ letterSpacing: 1 }}>
-                                General Information
-                            </Typography>
+                    {isEdit ? (
+                        <Grid container spacing={2.5}>
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    label="Course Name"
+                                    name="name"
+                                    fullWidth
+                                    required
+                                    value={editData.name}
+                                    onChange={handleEditChange}
+                                    error={!!errors.name}
+                                    helperText={errors.name}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <TextField
+                                    select
+                                    label="Target Grade Level"
+                                    name="gradeLevel"
+                                    fullWidth
+                                    value={editData.gradeLevel}
+                                    onChange={handleEditChange}
+                                    error={!!errors.gradeLevel}
+                                    helperText={errors.gradeLevel}
+                                >
+                                    <MenuItem value=""><em>None</em></MenuItem>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(level => (
+                                        <MenuItem key={level} value={level}>Grade {level}</MenuItem>
+                                    ))}
+                                </TextField>
+                            </Grid>
                         </Grid>
-
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField
-                                label="Course Name"
-                                name="name"
-                                fullWidth
-                                required
-                                value={formData.name}
-                                onChange={handleChange}
-                                error={!!errors.name}
-                                helperText={errors.name}
-                                placeholder="e.g. Introduction to Physics"
-                            />
-                        </Grid>
-
-                        <Grid size={{ xs: 12, sm: 3 }}>
-                            <TextField
-                                label="Course Code"
-                                name="code"
-                                fullWidth
-                                required
-                                value={formData.code}
-                                onChange={handleChange}
-                                error={!!errors.code}
-                                helperText={errors.code}
-                                placeholder="e.g. PHYS101"
-                            />
-                        </Grid>
-
-                        <Grid size={{ xs: 12, sm: 3 }}>
-                            <TextField
-                                label="Credits"
-                                name="credit"
-                                type="number"
-                                fullWidth
-                                required
-                                value={formData.credit}
-                                onChange={handleChange}
-                                error={!!errors.credit}
-                                helperText={errors.credit}
-                                InputProps={{ inputProps: { min: 0, max: 20 } }}
-                            />
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
-                            <Typography variant="overline" color="primary" fontWeight={800} sx={{ letterSpacing: 1 }}>
-                                Assignment & Scope
-                            </Typography>
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }}>
-                            <TextField
-                                select
-                                label="Institution"
-                                name="institutionId"
-                                fullWidth
-                                required
-                                value={formData.institutionId}
-                                onChange={handleChange}
-                                error={!!errors.institutionId}
-                                helperText={errors.institutionId}
-                                disabled={fetchingData || (user?.tenantType === 'school' && !isEdit)}
-                            >
-                                {institutions.map(inst => (
-                                    <MenuItem key={inst.id} value={inst.id}>{inst.name}</MenuItem>
-                                ))}
-                            </TextField>
-                        </Grid>
-
-                        <Grid size={{ xs: 12 }}>
-                            <TextField
-                                select
-                                label="Assign Instructor (Optional)"
-                                name="instructorId"
-                                fullWidth
-                                value={formData.instructorId}
-                                onChange={handleChange}
-                                error={!!errors.instructorId}
-                                helperText={errors.instructorId}
-                                disabled={fetchingData || isEdit}
-                            >
-                                <MenuItem value=""><em>None</em></MenuItem>
-                                {instructors.map(staff => (
-                                    <MenuItem key={staff.id} value={staff.id}>{staff.username} ({staff.email})</MenuItem>
-                                ))}
-                                {instructors.length === 0 && <MenuItem disabled>No instructors found</MenuItem>}
-                            </TextField>
-                        </Grid>
-                    </Grid>
+                    ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {courses.map((courseField, index) => (
+                                <Grid container spacing={2} key={index} sx={{ 
+                                    p: 2, 
+                                    borderRadius: 3, 
+                                    bgcolor: alpha(theme.palette.background.default, 0.4),
+                                    border: `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+                                    position: 'relative'
+                                }}>
+                                    {courses.length > 1 && (
+                                        <IconButton 
+                                            size="small" 
+                                            color="error" 
+                                            onClick={() => removeCourseRow(index)}
+                                            sx={{ position: 'absolute', top: -10, right: -10, bgcolor: 'background.paper', boxShadow: 1 }}
+                                        >
+                                            <Typography variant="caption" sx={{ fontSize: 10 }}>×</Typography>
+                                        </IconButton>
+                                    )}
+                                    <Grid size={{ xs: 12, md: 8 }}>
+                                        <TextField
+                                            label="Course Names (comma separated)"
+                                            fullWidth
+                                            size="small"
+                                            required
+                                            value={courseField.name}
+                                            onChange={(e) => handleCourseChange(index, 'name', e.target.value)}
+                                            error={!!errors[`${index}-name`]}
+                                            helperText={errors[`${index}-name`] || "e.g. Maths, English, Science"}
+                                            placeholder="Maths, English, Science"
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <TextField
+                                            select
+                                            label="Grade"
+                                            fullWidth
+                                            size="small"
+                                            value={courseField.gradeLevel}
+                                            onChange={(e) => handleCourseChange(index, 'gradeLevel', e.target.value)}
+                                            error={!!errors[`${index}-gradeLevel`]}
+                                            helperText={errors[`${index}-gradeLevel`]}
+                                        >
+                                            <MenuItem value=""><em>None</em></MenuItem>
+                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(level => (
+                                                <MenuItem key={level} value={level}>G{level}</MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </Grid>
+                                </Grid>
+                            ))}
+                        </Box>
+                    )}
                 </DialogContent>
 
-                <DialogActions sx={{ p: 3, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
-                    <Button onClick={onClose} color="inherit" sx={{ fontWeight: 600 }}>Cancel</Button>
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        disabled={loading || isEdit}
-                        sx={{
-                            borderRadius: 2.5,
-                            px: 4,
-                            fontWeight: 700,
-                            boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.3)}`
-                        }}
-                    >
-                        {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Course'}
-                    </Button>
+                <DialogActions sx={{ p: 3, bgcolor: alpha(theme.palette.background.default, 0.5), justifyContent: 'space-between' }}>
+                    <Typography variant="caption" color="text.secondary">
+                        {isEdit ? 'Course details are editable after creation.' : `Total courses to add: ${courses.length}`}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button onClick={onClose} color="inherit" sx={{ fontWeight: 600 }}>Cancel</Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            disabled={loading}
+                            sx={{
+                                borderRadius: 2.5,
+                                px: 4,
+                                fontWeight: 700,
+                                boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.3)}`
+                            }}
+                        >
+                            {loading ? <CircularProgress size={24} color="inherit" /> : (isEdit ? 'Update Course' : 'Create All Courses')}
+                        </Button>
+                    </Box>
                 </DialogActions>
             </form>
         </Dialog>

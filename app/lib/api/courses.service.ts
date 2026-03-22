@@ -2,11 +2,13 @@ import apiClient from './api-client';
 
 export interface Course {
     id: string;
-    code: string;
+    code?: string;
     name: string;
-    credit: number;
+    credit?: number;
     instructorId?: string;
-    institutionId: string;
+    institutionId?: string;
+    regionId?: string;
+    gradeLevel?: number;
     instructor?: {
         id: string;
         username: string;
@@ -19,10 +21,12 @@ export interface Course {
 
 export interface CreateCourseData {
     name: string;
-    code: string;
-    credit: number;
-    institutionId: string;
+    code?: string;
+    credit?: number;
+    institutionId?: string;
+    regionId?: string;
     instructorId?: string;
+    gradeLevel?: number;
 }
 
 export const coursesService = {
@@ -40,6 +44,11 @@ export const coursesService = {
 
     create: async (data: CreateCourseData) => {
         const response = await apiClient.post<Course>('courses', data);
+        return response.data;
+    },
+
+    update: async (id: string, data: Partial<CreateCourseData>) => {
+        const response = await apiClient.patch<Course>(`courses/${id}`, data);
         return response.data;
     },
 
