@@ -25,7 +25,7 @@ const routePermissions: Record<string, string[]> = {
 };
 
 // Public paths that don't require authentication
-const publicPaths = ['/login', '/forgot-password', '/reset-password'];
+const publicPaths = ['/', '/login', '/forgot-password', '/reset-password'];
 
 export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
