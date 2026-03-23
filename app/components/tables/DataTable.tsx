@@ -202,6 +202,7 @@ function TableHeader({
     allowedRoles,
 }: TableHeaderProps) {
     const theme = useTheme();
+    if (!title && !subtitle && !onAdd) return null;
     return (
         <Box sx={{
             p: { xs: 2, sm: 3 },

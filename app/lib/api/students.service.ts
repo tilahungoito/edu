@@ -22,6 +22,10 @@ export interface Student {
         id: string;
         name: string;
     };
+    section?: {
+        id: string;
+        name: string;
+    };
     academicHistories?: {
         id: string;
         academicPeriodId: string;

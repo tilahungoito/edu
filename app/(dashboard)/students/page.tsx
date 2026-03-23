@@ -246,6 +246,39 @@ export default function StudentsPage() {
             )
         },
         {
+            field: 'section',
+            headerName: 'Section',
+            width: 120,
+            valueGetter: (_, row) => row.section?.name,
+            renderCell: (params) => (
+                params.value ? (
+                    <Chip 
+                        label={params.value} 
+                        size="small" 
+                        sx={{ 
+                            bgcolor: alpha(theme.palette.success.main, 0.1), 
+                            color: theme.palette.success.main, 
+                            fontWeight: 700, 
+                            fontSize: '11px', 
+                            height: 22 
+                        }} 
+                    />
+                ) : (
+                    <Chip 
+                        label="Unassigned" 
+                        size="small" 
+                        variant="outlined"
+                        sx={{ 
+                            color: 'text.disabled', 
+                            fontWeight: 600, 
+                            fontSize: '10px', 
+                            height: 20 
+                        }} 
+                    />
+                )
+            )
+        },
+        {
             field: 'sem1',
             headerName: 'Sem I',
             width: 90,
@@ -407,13 +440,12 @@ export default function StudentsPage() {
             </Box>
 
             <DataTable
-                title="Students Directory"
-                subtitle="Manage and view student records"
                 rows={filteredStudents}
                 columns={columns}
                 loading={isLoading}
+                title=""
+                subtitle=""
                 module="academic"
-                onAdd={() => { setSelectedStudent(null); setIsDialogOpen(true); }}
                 allowedRoles={['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR']}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
