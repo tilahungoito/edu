@@ -448,7 +448,7 @@ export function UserDialog({ open, user: editingUser, onClose, onSuccess }: User
                                         fullWidth
                                         value={formData.year}
                                         onChange={handleChange}
-                                        inputProps={{ min: 1, max: 6 }}
+                                        inputProps={{ min: 1, max: 12 }}
                                     />
                                 </Grid>
                             </>
