@@ -62,7 +62,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const { token, user } = useAuthStore.getState();
         if (!token || get().socket) return;
 
-        const socket = io(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:7000'}/messaging`, {
+        const socket = io(`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:7000/api/v1'}/messaging`, {
             auth: {
                 Authorization: `Bearer ${token}`,
             },
@@ -98,11 +98,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (!token) return;
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api'}/messaging/conversations`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1'}/messaging/conversations`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await response.json();
-            set({ conversations: data });
+            set({ conversations: Array.isArray(data) ? data : [] });
         } catch (error) {
             console.error('Failed to load conversations', error);
         }
@@ -120,7 +120,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         // Load messages
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api'}/messaging/conversations/${conversationId}/messages`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1'}/messaging/conversations/${conversationId}/messages`, {
                 headers: { Authorization: `Bearer ${authStore.token}` }
             });
             const data = await response.json();
@@ -144,7 +144,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (!activeConversationId || !token) return;
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api'}/messaging/conversations/${activeConversationId}/messages`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1'}/messaging/conversations/${activeConversationId}/messages`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -169,7 +169,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         formData.append('file', file);
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api'}/files/upload`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1'}/files/upload`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -194,7 +194,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     createConversation: async (participantIds, type = 'direct', name) => {
         const { token } = useAuthStore.getState();
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api'}/messaging/conversations`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1'}/messaging/conversations`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
