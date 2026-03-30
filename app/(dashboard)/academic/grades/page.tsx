@@ -7,7 +7,6 @@ import {
     Card,
     CardContent,
     TextField,
-    MenuItem,
     Button,
     Chip,
     Avatar,
@@ -24,6 +23,10 @@ import {
     InputLabel,
     Select,
     Tooltip,
+    IconButton,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
 } from '@mui/material';
 import {
     Assessment as GradesIcon,
@@ -39,10 +42,13 @@ import {
     Send as SendIcon,
     ThumbUp as ApproveIcon,
     PictureAsPdf as PictureAsPdfIcon,
+    Edit as EditIcon,
+    Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar, getGridNumericOperators, GridFilterOperator } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar, getGridNumericOperators, GridFilterOperator, GridColumnMenu } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 
 import coursesService from '@/app/lib/api/courses.service';
@@ -79,6 +85,38 @@ function BetweenFilterInput(props: any) {
             />
         </Box>
     );
+}
+
+// --- Custom Column Menu ---
+function CustomColumnMenu(props: any) {
+    const { hideMenu, colDef, assessments, setAssessmentToEdit, setEditAssessmentOpen, isInstructor, isGradebookLocked, ...otherProps } = props;
+    
+    const assessment = assessments?.find((a: any) => a.id === colDef.field);
+
+    if (assessment && isInstructor && !isGradebookLocked) {
+        return (
+            <GridColumnMenu
+                hideMenu={hideMenu}
+                colDef={colDef}
+                {...otherProps}
+                slots={{
+                    ...otherProps.slots,
+                    columnMenuEditAssessment: (itemProps: any) => (
+                        <MenuItem onClick={(e) => { hideMenu(e); setAssessmentToEdit(assessment); setEditAssessmentOpen(true); }}>
+                            <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                            <ListItemText>Manage Assessment</ListItemText>
+                        </MenuItem>
+                    )
+                }}
+                slotProps={{
+                    ...otherProps.slotProps,
+                    columnMenuEditAssessment: { displayOrder: -1 }
+                }}
+            />
+        );
+    }
+
+    return <GridColumnMenu hideMenu={hideMenu} colDef={colDef} {...otherProps} />;
 }
 
 const customNumericOperators: GridFilterOperator<any, number, any>[] = [
@@ -199,6 +237,8 @@ function InstructorGradebookView() {
     
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
     const [createAssessmentOpen, setCreateAssessmentOpen] = useState(false);
+    const [editAssessmentOpen, setEditAssessmentOpen] = useState(false);
+    const [assessmentToEdit, setAssessmentToEdit] = useState<Assessment | null>(null);
     const [csvImportOpen, setCsvImportOpen] = useState(false);
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
@@ -292,11 +332,24 @@ function InstructorGradebookView() {
     // Build Rows for DataGrid
     const rows = useMemo(() => {
         if (!enrollments) return [];
-        return enrollments.map(e => {
+
+        // Sort enrollments alphabetically by name
+        const sorted = [...enrollments].sort((a, b) => {
+            const nameA = `${a.student?.user?.firstName || ''} ${a.student?.user?.lastName || ''}`.trim() || a.student?.user?.username || '';
+            const nameB = `${b.student?.user?.firstName || ''} ${b.student?.user?.lastName || ''}`.trim() || b.student?.user?.username || '';
+            return nameA.localeCompare(nameB);
+        });
+
+        return sorted.map((e, index) => {
+            const name = `${e.student?.user?.firstName || ''} ${e.student?.user?.lastName || ''}`.trim() || e.student?.user?.username || 'Unknown';
+            const shortId = e.student?.user?.username || String(e.studentId).substring(0, 6).toUpperCase();
+
             const row: any = {
                 id: e.id,
-                studentName: e.student?.user?.username || 'Unknown',
-                studentId: e.studentId,
+                no: index + 1,
+                studentName: name,
+                studentId: shortId,
+                rawStudentId: e.studentId, // keep for internal logic
             };
 
             let totalWeighted = 0;
@@ -367,10 +420,11 @@ function InstructorGradebookView() {
     // Build Columns for DataGrid
     const columns = useMemo<GridColDef[]>(() => {
         const cols: GridColDef[] = [
+            { field: 'no', headerName: '#', width: 60, align: 'center', headerAlign: 'center' },
             {
                 field: 'studentName',
                 headerName: 'Student Name',
-                width: 200,
+                width: 220,
                 renderCell: (params: GridRenderCellParams) => (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, height: '100%' }}>
                         <Avatar sx={{ width: 28, height: 28, fontSize: '12px', bgcolor: theme.palette.primary.main }}>
@@ -383,10 +437,10 @@ function InstructorGradebookView() {
             {
                 field: 'studentId',
                 headerName: 'Student ID',
-                width: 150,
+                width: 130,
                 renderCell: (params: GridRenderCellParams) => (
-                    <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                        {String(params.value).substring(0, 13).toUpperCase()}
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', fontWeight: 700 }}>
+                        {params.value}
                     </Typography>
                 )
             }
@@ -420,11 +474,13 @@ function InstructorGradebookView() {
                     )
                 ),
                 renderHeader: () => (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-                        <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: '13px' }}>{a.title}</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px' }}>
-                            Out of {a.maxScore} • {a.weight}%
-                        </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', pr: 1 }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                            <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: '13px' }}>{a.title}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px' }}>
+                                Out of {a.maxScore} • {a.weight}%
+                            </Typography>
+                        </Box>
                     </Box>
                 ),
             });
@@ -469,7 +525,7 @@ function InstructorGradebookView() {
         });
 
         return cols;
-    }, [assessments, theme, isGradebookLocked]);
+    }, [assessments, theme, isGradebookLocked, isInstructor]);
 
     // No processRowUpdate needed since we use controlled TextFields in renderCell
     const processRowUpdate = (newRow: any) => newRow;
@@ -755,7 +811,19 @@ function InstructorGradebookView() {
                         loading={isLoadingGrid}
                         processRowUpdate={processRowUpdate}
                         onProcessRowUpdateError={(error) => console.error(error)}
-                        slots={{ toolbar: GridToolbar }}
+                        slots={{ 
+                            toolbar: GridToolbar,
+                            columnMenu: CustomColumnMenu as any
+                        }}
+                        slotProps={{
+                            columnMenu: {
+                                assessments,
+                                setAssessmentToEdit,
+                                setEditAssessmentOpen,
+                                isInstructor,
+                                isGradebookLocked
+                            } as any
+                        }}
                         disableRowSelectionOnClick
                         density="comfortable"
                         sx={{
@@ -786,11 +854,20 @@ function InstructorGradebookView() {
                 institutionId={institutionId || ''}
             />
 
+            {assessmentToEdit && (
+                <EditAssessmentDialog
+                    open={editAssessmentOpen}
+                    onClose={() => setEditAssessmentOpen(false)}
+                    assessment={assessmentToEdit}
+                    courseId={selectedCourseId}
+                />
+            )}
+
             <CsvImportDialog 
                 open={csvImportOpen}
                 onClose={() => setCsvImportOpen(false)}
                 assessments={assessments || []}
-                enrollments={enrollments || []}
+                rows={rows || []}
                 onImport={(edits) => {
                     setScoreEdits(prev => {
                         const next = { ...prev };
@@ -847,7 +924,7 @@ function CreateAssessmentDialog({ open, onClose, courseId, institutionId }: { op
                     <Grid size={{ xs: 12, sm: 4 }}>
                         <FormControl fullWidth>
                             <InputLabel>Type</InputLabel>
-                            <Select value={type} label="Type" onChange={e => setType(e.target.value as string)}>
+                            <Select value={type} label="Type" onChange={(e: any) => setType(e.target.value)}>
                                 {ASSESSMENT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                             </Select>
                         </FormControl>
@@ -871,9 +948,108 @@ function CreateAssessmentDialog({ open, onClose, courseId, institutionId }: { op
 }
 
 // ----------------------------------------------------------------------
+// EDIT ASSESSMENT DIALOG
+// ----------------------------------------------------------------------
+function EditAssessmentDialog({ open, onClose, assessment, courseId }: { open: boolean, onClose: () => void, assessment: Assessment, courseId: string }) {
+    const queryClient = useQueryClient();
+    const [title, setTitle] = useState(assessment.title);
+    const [type, setType] = useState(assessment.type);
+    const [maxScore, setMaxScore] = useState(assessment.maxScore);
+    const [weight, setWeight] = useState(assessment.weight);
+    const [loading, setLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            setTitle(assessment.title);
+            setType(assessment.type);
+            setMaxScore(assessment.maxScore);
+            setWeight(assessment.weight);
+        }
+    }, [open, assessment]);
+
+    const handleUpdate = async () => {
+        if (!title) return;
+        setLoading(true);
+        try {
+            await assessmentsService.update(assessment.id, {
+                title, type: type as any, maxScore, weight
+            });
+            toast.success('Assessment updated successfully');
+            queryClient.invalidateQueries({ queryKey: ['assessments', courseId] });
+            onClose();
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || 'Failed to update assessment');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!window.confirm('Are you sure you want to delete this assessment? All associated scores will be lost!')) return;
+        setDeleting(true);
+        try {
+            await assessmentsService.delete(assessment.id);
+            toast.success('Assessment deleted successfully');
+            queryClient.invalidateQueries({ queryKey: ['assessments', courseId] });
+            onClose();
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || 'Failed to delete assessment');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
+            <DialogTitle sx={{ fontWeight: 800 }}>Edit Assessment</DialogTitle>
+            <DialogContent>
+                <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                    <Grid size={{ xs: 12, sm: 8 }}>
+                        <TextField fullWidth label="Assessment Title" value={title} onChange={e => setTitle(e.target.value)} />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                        <FormControl fullWidth>
+                            <InputLabel>Type</InputLabel>
+                            <Select value={type} label="Type" onChange={(e: any) => setType(e.target.value)}>
+                                {ASSESSMENT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                        <TextField fullWidth type="number" label="Max Score" value={maxScore} onChange={e => setMaxScore(Number(e.target.value))} helperText="Raw max score (e.g. 100)" />
+                    </Grid>
+                    <Grid size={{ xs: 6 }}>
+                        <TextField fullWidth type="number" label="Weight (%)" value={weight} onChange={e => setWeight(Number(e.target.value))} helperText="Contribution to final grade" />
+                    </Grid>
+                </Grid>
+            </DialogContent>
+            <DialogActions sx={{ p: 2.5, justifyContent: 'space-between' }}>
+                <Button 
+                    variant="outlined" 
+                    color="error" 
+                    onClick={handleDelete} 
+                    disabled={loading || deleting} 
+                    startIcon={<DeleteIcon />}
+                    sx={{ borderRadius: 2 }}
+                >
+                    {deleting ? 'Deleting...' : 'Delete'}
+                </Button>
+                <Box>
+                    <Button onClick={onClose} disabled={loading || deleting} sx={{ borderRadius: 2, mr: 1 }}>Cancel</Button>
+                    <Button variant="contained" onClick={handleUpdate} disabled={loading || deleting || !title} sx={{ borderRadius: 2 }}>
+                        {loading ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </Box>
+            </DialogActions>
+        </Dialog>
+    );
+}
+
+// ----------------------------------------------------------------------
 // CSV IMPORT DIALOG
 // ----------------------------------------------------------------------
-function CsvImportDialog({ open, onClose, assessments, enrollments, onImport }: { open: boolean, onClose: () => void, assessments: Assessment[], enrollments: any[], onImport: (edits: Record<string, Record<string, number>>) => void }) {
+function CsvImportDialog({ open, onClose, assessments, rows, onImport }: { open: boolean, onClose: () => void, assessments: Assessment[], rows: any[], onImport: (edits: Record<string, Record<string, number>>) => void }) {
     const theme = useTheme();
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState('');
@@ -882,74 +1058,161 @@ function CsvImportDialog({ open, onClose, assessments, enrollments, onImport }: 
         if (!file) return;
         setError('');
         
-        Papa.parse(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-                const edits: Record<string, Record<string, number>> = {};
+        const processArrayData = (data: string[][]) => {
+            if (data.length < 2) {
+                setError('The file does not contain enough data (requires headers + 1 row).');
+                return;
+            }
+
+            console.log('--- IMPORT PARSE LOGS ---');
+            
+            // 1. Clean headers on row 0
+            const headers = data[0].map(h => String(h || '').replace(/^[\uFEFF\u200B]+/, '').trim().toLowerCase());
+            console.log('Cleaned Headers:', headers);
+
+            // 2. Map Assessment Titles -> Assessment IDs
+            const titleToId = {} as Record<string, string>;
+            assessments.forEach(a => titleToId[a.title.trim().toLowerCase()] = a.id);
+            console.log('Course Assessments:', titleToId);
+
+            // 3. Find column indices
+            let noIndex = -1, idIndex = -1, nameIndex = -1;
+            const assessmentIndices: { index: number; id: string }[] = [];
+
+            headers.forEach((h, i) => {
+                const cleanH = h.replace(/[^a-z0-9#]/g, ''); // strip spaces, dots
+                if (['#', 'no', 'index', 'sn'].includes(cleanH)) noIndex = i;
+                else if (['studentid', 'id'].includes(cleanH)) idIndex = i;
+                else if (['name', 'student', 'studentname'].includes(cleanH)) nameIndex = i;
+                else if (titleToId[h]) {
+                    assessmentIndices.push({ index: i, id: titleToId[h] });
+                }
+            });
+
+            console.log(`Matched ID Columns - #: ${noIndex}, ID: ${idIndex}, Name: ${nameIndex}`);
+            console.log(`Matched Assessment Columns:`, assessmentIndices);
+
+            if (headers[0]?.startsWith('pk')) {
+                setError('You renamed an Excel file (.xlsx) to .csv by right-clicking it. This corrupts the file! Please rename it back to .xlsx, and then upload it normally. The system accepts .xlsx directly!');
+                return;
+            }
+
+            if (noIndex === -1 && idIndex === -1 && nameIndex === -1) {
+                setError(`Cannot find a student identifier column (#, ID, Name). Headers found: ${headers.join(', ')}`);
+                return;
+            }
+
+            if (assessmentIndices.length === 0) {
+                setError(`No assessment columns matched. Headers found: ${headers.join(', ')}`);
+                return;
+            }
+
+            const edits: Record<string, Record<string, number>> = {};
+            let matchedStudents = 0;
+
+            // 4. Process data rows
+            for (let i = 1; i < data.length; i++) {
+                const rowText = data[i];
+                if (!rowText || rowText.length === 0 || rowText.every(c => !String(c).trim())) continue; // Skip strictly empty rows
                 
-                // Map Assessment Titles -> Assessment IDs
-                const titleToId = {} as Record<string, string>;
-                assessments.forEach(a => titleToId[a.title.trim().toLowerCase()] = a.id);
+                const rowNo = noIndex !== -1 ? String(rowText[noIndex] || '').trim() : '';
+                const rowId = idIndex !== -1 ? String(rowText[idIndex] || '').trim() : '';
+                const rowName = nameIndex !== -1 ? String(rowText[nameIndex] || '').trim() : '';
 
-                let matchedStudents = 0;
+                let matchedRow = null;
 
-                results.data.forEach((row: any) => {
-                    // Match Student by ID
-                    const studentId = row['StudentId'] || row['student_id'] || row['StudentID'] || row['ID'];
-                    if (!studentId) return;
+                if (rowNo) matchedRow = rows.find(r => String(r.no) === String(rowNo));
+                if (!matchedRow && rowId) {
+                    matchedRow = rows.find(r => 
+                        String(r.studentId).toLowerCase() === String(rowId).toLowerCase() || 
+                        String(r.rawStudentId).toLowerCase().includes(String(rowId).toLowerCase())
+                    );
+                }
+                if (!matchedRow && rowName) {
+                    const searchName = String(rowName).toLowerCase();
+                    matchedRow = rows.find(r => String(r.studentName).toLowerCase().includes(searchName));
+                }
 
-                    // Find enrollment for student
-                    const enrollment = enrollments.find(e => String(e.studentId).toLowerCase().includes(String(studentId).toLowerCase()));
-                    if (!enrollment) return;
+                if (matchedRow) {
                     matchedStudents++;
-
-                    // Check columns against assessment titles
-                    Object.keys(row).forEach(colName => {
-                        const normalizedCol = colName.trim().toLowerCase();
-                        if (titleToId[normalizedCol]) {
-                            const aId = titleToId[normalizedCol];
-                            const score = parseFloat(row[colName]);
+                    // Map scores
+                    assessmentIndices.forEach(col => {
+                        const val = String(rowText[col.index] || '').trim();
+                        if (val) {
+                            const score = parseFloat(val);
                             if (!isNaN(score)) {
-                                if (!edits[aId]) edits[aId] = {};
-                                edits[aId][enrollment.id] = score;
+                                if (!edits[col.id]) edits[col.id] = {};
+                                edits[col.id][matchedRow.id] = score;
                             }
                         }
                     });
-                });
-
-                if (matchedStudents === 0) {
-                    setError('No students matched. Make sure your CSV has a "StudentId" column matching the IDs in the system.');
-                    return;
+                } else {
+                    console.log(`Row ${i + 1} unmatched. #=${rowNo}, ID=${rowId}, Name=${rowName}`);
                 }
-                onImport(edits);
-            },
-            error: (err) => {
-                setError('Failed to parse CSV: ' + err.message);
             }
-        });
+
+            if (matchedStudents === 0) {
+                setError('Students in file did not match any students in the class list.');
+                return;
+            }
+
+            onImport(edits);
+        };
+
+        if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const buffer = e.target?.result;
+                    const workbook = XLSX.read(buffer, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false }) as string[][];
+                    processArrayData(data);
+                } catch (err: any) {
+                    setError('Failed to parse Excel file: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            Papa.parse(file, {
+                header: false,
+                skipEmptyLines: true,
+                complete: (results) => {
+                    processArrayData(results.data as string[][]);
+                },
+                error: (err) => setError('Failed to parse CSV: ' + err.message)
+            });
+        }
     };
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '20px' } }}>
-            <DialogTitle sx={{ fontWeight: 800 }}>Import Grades via CSV</DialogTitle>
+            <DialogTitle sx={{ fontWeight: 800 }}>Import Grades</DialogTitle>
             <DialogContent>
                 <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
-                    Upload a CSV file in <strong>Wide Format</strong>.
+                    Upload a <strong>.CSV</strong> or <strong>.XLSX</strong> (Excel) file in <strong>Wide Format</strong>.
                     <br/><br/>
-                    1. Must contain a column named <strong>StudentId</strong>.<br/>
-                    2. Add columns corresponding exactly to the <strong>Assessment Titles</strong> you created.<br/>
-                    <br/>
-                    <em>Example:</em><br/>
-                    <code>StudentId, Quiz 1, Midterm Exam</code><br/>
-                    <code>STD-001, 8.5, 45</code>
+                    The system will match students using any of these columns: <strong>"#" or "No"</strong>, <strong>"StudentId" or "ID"</strong>, or <strong>"Name"</strong>.
+                    Other columns should exactly match the <strong>Assessment Titles</strong>.
                 </Alert>
 
+                <Card variant="outlined" sx={{ p: 2, mb: 3, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+                    <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={1}>
+                        Example CSV Format:
+                    </Typography>
+                    <Box component="pre" sx={{ m: 0, fontSize: '0.75rem', overflowX: 'auto', p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
+                        #, Name, ID, Quiz 1, Midterm Exam, Final Exam{'\n'}
+                        1, John Doe, STD-01, 8.5, 23, 44{'\n'}
+                        2, Jane Smith, STD-02, 9, 21, 48
+                    </Box>
+                </Card>
+
                 <Box sx={{ border: `2px dashed ${alpha(theme.palette.primary.main, 0.3)}`, borderRadius: 3, p: 3, textAlign: 'center', bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
-                    <input type="file" accept=".csv" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ display: 'none' }} id="csv-upload" />
+                    <input type="file" accept=".csv, .xlsx, .xls" onChange={(e) => setFile(e.target.files?.[0] || null)} style={{ display: 'none' }} id="csv-upload" />
                     <label htmlFor="csv-upload">
                         <Button variant="outlined" component="span" startIcon={<UploadIcon />} sx={{ borderRadius: 2 }}>
-                            {file ? file.name : 'Select CSV File'}
+                            {file ? file.name : 'Select CSV or XLSX File'}
                         </Button>
                     </label>
                 </Box>

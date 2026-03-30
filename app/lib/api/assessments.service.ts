@@ -38,6 +38,16 @@ export const assessmentsService = {
         return response.data;
     },
     
+    update: async (id: string, data: Partial<Assessment>) => {
+        const response = await apiClient.patch<Assessment>(`classroom/assessments/${id}`, data);
+        return response.data;
+    },
+
+    delete: async (id: string) => {
+        const response = await apiClient.delete(`classroom/assessments/${id}`);
+        return response.data;
+    },
+    
     // Gradebook (cumulative)
     getGradeBooksByCourse: async (courseId: string) => {
         const response = await apiClient.get<any[]>(`classroom/courses/${courseId}/gradebook`);
