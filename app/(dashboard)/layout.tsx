@@ -73,6 +73,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         {/* Header */}
                         <Header
                             sidebarCollapsed={isMobile ? true : sidebarCollapsed}
+                            onMenuClick={() => setMobileOpen(true)}
                         />
 
                         {/* Page Content */}

@@ -28,6 +28,7 @@ import {
     Language as LanguageIcon,
     DarkMode as DarkModeIcon,
     LightMode as LightModeIcon,
+    Menu as MenuIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store';
 import { useThemeStore } from '@/app/lib/store/theme-store';
@@ -38,9 +39,10 @@ import { searchService, SearchResult } from '@/app/lib/api/search.service';
 
 interface HeaderProps {
     sidebarCollapsed: boolean;
+    onMenuClick?: () => void;
 }
 
-export function Header({ sidebarCollapsed }: HeaderProps) {
+export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
     const theme = useTheme();
     const router = useRouter();
     const user = useAuthStore(state => state.user);
@@ -144,6 +146,17 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
             }}
         >
             <Toolbar sx={{ justifyContent: 'space-between', px: 3 }}>
+                {/* Mobile Menu Icon */}
+                <IconButton
+                    color="inherit"
+                    aria-label="open drawer"
+                    edge="start"
+                    onClick={onMenuClick}
+                    sx={{ mr: 2, display: { md: 'none' }, color: theme.palette.text.primary }}
+                >
+                    <MenuIcon />
+                </IconButton>
+
                 {/* Search Bar */}
                 <Box
                     className="glass-effect"

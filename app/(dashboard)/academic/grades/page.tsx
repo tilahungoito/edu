@@ -68,20 +68,20 @@ function BetweenFilterInput(props: any) {
 
     return (
         <Box sx={{ display: 'flex', gap: 1, p: 1, minWidth: 200 }}>
-            <TextField 
-                size="small" 
-                placeholder="Min" 
-                type="number" 
-                value={min} 
-                onChange={(e) => applyValue({ ...item, value: [e.target.value, max] })} 
-                inputRef={focusElementRef} 
+            <TextField
+                size="small"
+                placeholder="Min"
+                type="number"
+                value={min}
+                onChange={(e) => applyValue({ ...item, value: [e.target.value, max] })}
+                inputRef={focusElementRef}
             />
-            <TextField 
-                size="small" 
-                placeholder="Max" 
-                type="number" 
-                value={max} 
-                onChange={(e) => applyValue({ ...item, value: [min, e.target.value] })} 
+            <TextField
+                size="small"
+                placeholder="Max"
+                type="number"
+                value={max}
+                onChange={(e) => applyValue({ ...item, value: [min, e.target.value] })}
             />
         </Box>
     );
@@ -90,7 +90,7 @@ function BetweenFilterInput(props: any) {
 // --- Custom Column Menu ---
 function CustomColumnMenu(props: any) {
     const { hideMenu, colDef, assessments, setAssessmentToEdit, setEditAssessmentOpen, isInstructor, isGradebookLocked, ...otherProps } = props;
-    
+
     const assessment = assessments?.find((a: any) => a.id === colDef.field);
 
     if (assessment && isInstructor && !isGradebookLocked) {
@@ -147,10 +147,10 @@ const customNumericOperators: GridFilterOperator<any, number, any>[] = [
 // --- Grade categorisation matching Ethiopian spec ---
 const calculateGradeCategory = (score: number): { letter: string; category: string; } => {
     if (score >= 90) return { letter: 'A+', category: 'Excellent' };
-    if (score >= 75) return { letter: 'A',  category: 'Very Good' };
-    if (score >= 50) return { letter: 'B',  category: 'Satisfactory' };
-    if (score >= 30) return { letter: 'C',  category: 'Needs Improvement' };
-    return                  { letter: 'F',  category: 'Fail' };
+    if (score >= 75) return { letter: 'A', category: 'Very Good' };
+    if (score >= 50) return { letter: 'B', category: 'Satisfactory' };
+    if (score >= 30) return { letter: 'C', category: 'Needs Improvement' };
+    return { letter: 'F', category: 'Fail' };
 };
 
 // legacy helper alias used in existing code
@@ -234,7 +234,7 @@ function InstructorGradebookView() {
     const theme = useTheme();
     const queryClient = useQueryClient();
     const user = useAuthStore(state => state.user);
-    
+
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
     const [createAssessmentOpen, setCreateAssessmentOpen] = useState(false);
     const [editAssessmentOpen, setEditAssessmentOpen] = useState(false);
@@ -243,7 +243,7 @@ function InstructorGradebookView() {
     const [importError, setImportError] = useState('');
     const [importSuccess, setImportSuccess] = useState('');
     const [quickFilter, setQuickFilter] = useState<'ALL' | 'Excellent' | 'Very Good' | 'Satisfactory' | 'Needs Improvement' | 'Fail'>('ALL');
-    
+
     const [scoreEdits, setScoreEdits] = useState<Record<string, Record<string, number>>>({}); // [assessmentId][enrollmentId] = score
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -359,7 +359,7 @@ function InstructorGradebookView() {
                 const origScore = originalScores[a.id]?.[e.id];
                 const editedScore = scoreEdits[a.id]?.[e.id];
                 const finalScore = editedScore !== undefined ? editedScore : origScore;
-                
+
                 row[a.id] = finalScore ?? '';
 
                 if (finalScore !== undefined && typeof finalScore === 'number') {
@@ -385,7 +385,7 @@ function InstructorGradebookView() {
         let max = 0;
         let min = 100;
         let countExcellent = 0, countVeryGood = 0, countSatisfactory = 0, countNeedsImprovement = 0, countFail = 0;
-        
+
         rows.forEach(r => {
             const t = r.totalScore || 0;
             sum += t;
@@ -461,15 +461,15 @@ function InstructorGradebookView() {
                             {params.value !== '' && params.value !== undefined ? params.value : '—'}
                         </Typography>
                     ) : (
-                        <ScoreInputCell 
-                            initialValue={params.value as any} 
-                            maxScore={a.maxScore} 
+                        <ScoreInputCell
+                            initialValue={params.value as any}
+                            maxScore={a.maxScore}
                             onChangeCommit={(newVal) => {
-                                setScoreEdits(prev => ({ 
-                                    ...prev, 
-                                    [a.id]: { ...(prev[a.id] || {}), [params.id as string]: newVal === null ? null! : newVal } 
+                                setScoreEdits(prev => ({
+                                    ...prev,
+                                    [a.id]: { ...(prev[a.id] || {}), [params.id as string]: newVal === null ? null! : newVal }
                                 }));
-                            }} 
+                            }}
                         />
                     )
                 ),
@@ -510,12 +510,12 @@ function InstructorGradebookView() {
             renderCell: (params: GridRenderCellParams) => {
                 const score = params.row.totalScore || 0;
                 const color = score >= 90 ? 'success' :
-                              score >= 75 ? 'info' :
-                              score >= 50 ? 'warning' :
-                              score >= 30 ? 'default' : 'error';
+                    score >= 75 ? 'info' :
+                        score >= 50 ? 'warning' :
+                            score >= 30 ? 'default' : 'error';
                 return (
-                    <Chip 
-                        label={params.value} 
+                    <Chip
+                        label={params.value}
                         size="small"
                         color={color as any}
                         sx={{ fontWeight: 800, fontSize: '0.7rem' }}
@@ -535,7 +535,7 @@ function InstructorGradebookView() {
         setSaving(true);
         try {
             const promises: Promise<any>[] = [];
-            
+
             for (const [assessmentId, enrollmentScores] of Object.entries(scoreEdits)) {
                 const bulkData = [] as any[];
                 for (const [enrollmentId, score] of Object.entries(enrollmentScores)) {
@@ -543,12 +543,12 @@ function InstructorGradebookView() {
                         bulkData.push({ enrollmentId, score: Number(score) });
                     }
                 }
-                
+
                 if (bulkData.length > 0) {
                     promises.push(assessmentsService.bulkRecordScores(assessmentId, { scores: bulkData }));
                 }
             }
-            
+
             await Promise.all(promises);
             setScoreEdits({});
             queryClient.invalidateQueries({ queryKey: ['assessment-scores-all'] });
@@ -613,7 +613,7 @@ function InstructorGradebookView() {
                         {selectedCourseId && <GradeBookStatusBadge status={courseGradeBookStatus} />}
                     </Box>
                 </Box>
-                
+
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
                     <TextField
                         select
@@ -643,24 +643,24 @@ function InstructorGradebookView() {
                             {/* Instructor-only buttons */}
                             {isInstructor && !isGradebookLocked && (
                                 <>
-                                    <Button 
-                                        variant="outlined" 
-                                        startIcon={<AddIcon />} 
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<AddIcon />}
                                         onClick={() => setCreateAssessmentOpen(true)}
                                         sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
                                     >
                                         New Assessment
                                     </Button>
-                                    <Button 
-                                        variant="outlined" 
-                                        startIcon={<UploadIcon />} 
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<UploadIcon />}
                                         onClick={() => setCsvImportOpen(true)}
                                         sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
                                     >
-                                        Import CSV
+                                        Import Assesment
                                     </Button>
-                                    <Button 
-                                        variant="contained" 
+                                    <Button
+                                        variant="contained"
                                         startIcon={<SaveIcon />}
                                         disabled={Object.keys(scoreEdits).length === 0 || saving}
                                         onClick={handleSave}
@@ -670,8 +670,8 @@ function InstructorGradebookView() {
                                         {saving ? 'Saving...' : 'Save Grades'}
                                     </Button>
                                     {courseGradeBookStatus !== 'PENDING_REVIEW' && (
-                                        <Button 
-                                            variant="contained" 
+                                        <Button
+                                            variant="contained"
                                             startIcon={<SendIcon />}
                                             color="warning"
                                             disabled={submitting || !rows.length}
@@ -686,8 +686,8 @@ function InstructorGradebookView() {
 
                             {/* Admin/Registrar: Approve & Lock */}
                             {isAdmin && courseGradeBookStatus === 'PENDING_REVIEW' && (
-                                <Button 
-                                    variant="contained" 
+                                <Button
+                                    variant="contained"
                                     startIcon={<ApproveIcon />}
                                     color="success"
                                     disabled={approving}
@@ -699,16 +699,16 @@ function InstructorGradebookView() {
                             )}
 
                             {/* Export */}
-                            <Button 
-                                variant="outlined" 
+                            <Button
+                                variant="outlined"
                                 startIcon={<DownloadIcon />}
                                 onClick={() => gradesService.exportExcel(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name)}
                                 sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
                             >
                                 Export Excel
                             </Button>
-                            <Button 
-                                variant="outlined" 
+                            <Button
+                                variant="outlined"
                                 startIcon={<PictureAsPdfIcon />}
                                 onClick={() => gradesService.exportPdf(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name)}
                                 sx={{ borderRadius: 2, height: 40, fontWeight: 700, color: 'error.main', borderColor: 'error.main', '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.05), borderColor: 'error.main' } }}
@@ -749,48 +749,48 @@ function InstructorGradebookView() {
                         <Typography variant="overline" color="text.secondary">Std. Deviation</Typography>
                         <Typography variant="h4" fontWeight={800} color="text.secondary">±{metrics.stdDev}%</Typography>
                     </Card>
-                    
+
                     <Box sx={{ flex: 1 }} />
-                    
+
                     <Card elevation={0} sx={{ p: 2, borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.2)}` }}>
                         <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1, lineHeight: 1 }}>Grade Distribution Filter</Typography>
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            <Chip 
-                                label={`All (${rows.length})`} 
-                                onClick={() => setQuickFilter('ALL')} 
-                                color={quickFilter === 'ALL' ? 'primary' : 'default'} 
-                                variant={quickFilter === 'ALL' ? 'filled' : 'outlined'} 
+                            <Chip
+                                label={`All (${rows.length})`}
+                                onClick={() => setQuickFilter('ALL')}
+                                color={quickFilter === 'ALL' ? 'primary' : 'default'}
+                                variant={quickFilter === 'ALL' ? 'filled' : 'outlined'}
                                 sx={{ fontWeight: 700 }}
                             />
-                            <Chip 
-                                label={`Excellent • ${metrics.countExcellent} (${Math.round(metrics.countExcellent / rows.length * 100)}%)`} 
-                                onClick={() => setQuickFilter('Excellent')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Excellent' ? 'success.main' : 'transparent', color: quickFilter === 'Excellent' ? 'white' : 'success.main', borderColor: alpha(theme.palette.success.main, 0.5) }} 
-                                variant={quickFilter === 'Excellent' ? 'filled' : 'outlined'} 
+                            <Chip
+                                label={`Excellent • ${metrics.countExcellent} (${Math.round(metrics.countExcellent / rows.length * 100)}%)`}
+                                onClick={() => setQuickFilter('Excellent')}
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Excellent' ? 'success.main' : 'transparent', color: quickFilter === 'Excellent' ? 'white' : 'success.main', borderColor: alpha(theme.palette.success.main, 0.5) }}
+                                variant={quickFilter === 'Excellent' ? 'filled' : 'outlined'}
                             />
-                            <Chip 
-                                label={`Very Good • ${metrics.countVeryGood} (${Math.round(metrics.countVeryGood / rows.length * 100)}%)`} 
-                                onClick={() => setQuickFilter('Very Good')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Very Good' ? 'info.main' : 'transparent', color: quickFilter === 'Very Good' ? 'white' : 'info.main', borderColor: alpha(theme.palette.info.main, 0.5) }} 
-                                variant={quickFilter === 'Very Good' ? 'filled' : 'outlined'} 
+                            <Chip
+                                label={`Very Good • ${metrics.countVeryGood} (${Math.round(metrics.countVeryGood / rows.length * 100)}%)`}
+                                onClick={() => setQuickFilter('Very Good')}
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Very Good' ? 'info.main' : 'transparent', color: quickFilter === 'Very Good' ? 'white' : 'info.main', borderColor: alpha(theme.palette.info.main, 0.5) }}
+                                variant={quickFilter === 'Very Good' ? 'filled' : 'outlined'}
                             />
-                            <Chip 
-                                label={`Satisfactory • ${metrics.countSatisfactory} (${Math.round(metrics.countSatisfactory / rows.length * 100)}%)`} 
-                                onClick={() => setQuickFilter('Satisfactory')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Satisfactory' ? 'warning.main' : 'transparent', color: quickFilter === 'Satisfactory' ? 'white' : 'warning.main', borderColor: alpha(theme.palette.warning.main, 0.5) }} 
-                                variant={quickFilter === 'Satisfactory' ? 'filled' : 'outlined'} 
+                            <Chip
+                                label={`Satisfactory • ${metrics.countSatisfactory} (${Math.round(metrics.countSatisfactory / rows.length * 100)}%)`}
+                                onClick={() => setQuickFilter('Satisfactory')}
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Satisfactory' ? 'warning.main' : 'transparent', color: quickFilter === 'Satisfactory' ? 'white' : 'warning.main', borderColor: alpha(theme.palette.warning.main, 0.5) }}
+                                variant={quickFilter === 'Satisfactory' ? 'filled' : 'outlined'}
                             />
-                            <Chip 
-                                label={`Needs Improvement • ${metrics.countNeedsImprovement} (${Math.round(metrics.countNeedsImprovement / rows.length * 100)}%)`} 
-                                onClick={() => setQuickFilter('Needs Improvement')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Needs Improvement' ? 'default' : 'transparent', borderColor: alpha(theme.palette.text.secondary, 0.4) }} 
-                                variant={quickFilter === 'Needs Improvement' ? 'filled' : 'outlined'} 
+                            <Chip
+                                label={`Needs Improvement • ${metrics.countNeedsImprovement} (${Math.round(metrics.countNeedsImprovement / rows.length * 100)}%)`}
+                                onClick={() => setQuickFilter('Needs Improvement')}
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Needs Improvement' ? 'default' : 'transparent', borderColor: alpha(theme.palette.text.secondary, 0.4) }}
+                                variant={quickFilter === 'Needs Improvement' ? 'filled' : 'outlined'}
                             />
-                            <Chip 
-                                label={`Fail • ${metrics.countFail} (${Math.round(metrics.countFail / rows.length * 100)}%)`} 
-                                onClick={() => setQuickFilter('Fail')} 
-                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Fail' ? 'error.main' : 'transparent', color: quickFilter === 'Fail' ? 'white' : 'error.main', borderColor: alpha(theme.palette.error.main, 0.5) }} 
-                                variant={quickFilter === 'Fail' ? 'filled' : 'outlined'} 
+                            <Chip
+                                label={`Fail • ${metrics.countFail} (${Math.round(metrics.countFail / rows.length * 100)}%)`}
+                                onClick={() => setQuickFilter('Fail')}
+                                sx={{ fontWeight: 700, bgcolor: quickFilter === 'Fail' ? 'error.main' : 'transparent', color: quickFilter === 'Fail' ? 'white' : 'error.main', borderColor: alpha(theme.palette.error.main, 0.5) }}
+                                variant={quickFilter === 'Fail' ? 'filled' : 'outlined'}
                             />
                         </Box>
                     </Card>
@@ -811,7 +811,7 @@ function InstructorGradebookView() {
                         loading={isLoadingGrid}
                         processRowUpdate={processRowUpdate}
                         onProcessRowUpdateError={(error) => console.error(error)}
-                        slots={{ 
+                        slots={{
                             toolbar: GridToolbar,
                             columnMenu: CustomColumnMenu as any
                         }}
@@ -847,9 +847,9 @@ function InstructorGradebookView() {
             </Card>
 
             {/* Dialogs */}
-            <CreateAssessmentDialog 
-                open={createAssessmentOpen} 
-                onClose={() => setCreateAssessmentOpen(false)} 
+            <CreateAssessmentDialog
+                open={createAssessmentOpen}
+                onClose={() => setCreateAssessmentOpen(false)}
                 courseId={selectedCourseId}
                 institutionId={institutionId || ''}
             />
@@ -863,7 +863,7 @@ function InstructorGradebookView() {
                 />
             )}
 
-            <CsvImportDialog 
+            <CsvImportDialog
                 open={csvImportOpen}
                 onClose={() => setCsvImportOpen(false)}
                 assessments={assessments || []}
@@ -1025,11 +1025,11 @@ function EditAssessmentDialog({ open, onClose, assessment, courseId }: { open: b
                 </Grid>
             </DialogContent>
             <DialogActions sx={{ p: 2.5, justifyContent: 'space-between' }}>
-                <Button 
-                    variant="outlined" 
-                    color="error" 
-                    onClick={handleDelete} 
-                    disabled={loading || deleting} 
+                <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={handleDelete}
+                    disabled={loading || deleting}
                     startIcon={<DeleteIcon />}
                     sx={{ borderRadius: 2 }}
                 >
@@ -1057,7 +1057,7 @@ function CsvImportDialog({ open, onClose, assessments, rows, onImport }: { open:
     const handleImport = () => {
         if (!file) return;
         setError('');
-        
+
         const processArrayData = (data: string[][]) => {
             if (data.length < 2) {
                 setError('The file does not contain enough data (requires headers + 1 row).');
@@ -1065,7 +1065,7 @@ function CsvImportDialog({ open, onClose, assessments, rows, onImport }: { open:
             }
 
             console.log('--- IMPORT PARSE LOGS ---');
-            
+
             // 1. Clean headers on row 0
             const headers = data[0].map(h => String(h || '').replace(/^[\uFEFF\u200B]+/, '').trim().toLowerCase());
             console.log('Cleaned Headers:', headers);
@@ -1114,7 +1114,7 @@ function CsvImportDialog({ open, onClose, assessments, rows, onImport }: { open:
             for (let i = 1; i < data.length; i++) {
                 const rowText = data[i];
                 if (!rowText || rowText.length === 0 || rowText.every(c => !String(c).trim())) continue; // Skip strictly empty rows
-                
+
                 const rowNo = noIndex !== -1 ? String(rowText[noIndex] || '').trim() : '';
                 const rowId = idIndex !== -1 ? String(rowText[idIndex] || '').trim() : '';
                 const rowName = nameIndex !== -1 ? String(rowText[nameIndex] || '').trim() : '';
@@ -1123,8 +1123,8 @@ function CsvImportDialog({ open, onClose, assessments, rows, onImport }: { open:
 
                 if (rowNo) matchedRow = rows.find(r => String(r.no) === String(rowNo));
                 if (!matchedRow && rowId) {
-                    matchedRow = rows.find(r => 
-                        String(r.studentId).toLowerCase() === String(rowId).toLowerCase() || 
+                    matchedRow = rows.find(r =>
+                        String(r.studentId).toLowerCase() === String(rowId).toLowerCase() ||
                         String(r.rawStudentId).toLowerCase().includes(String(rowId).toLowerCase())
                     );
                 }
@@ -1192,7 +1192,7 @@ function CsvImportDialog({ open, onClose, assessments, rows, onImport }: { open:
             <DialogContent>
                 <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
                     Upload a <strong>.CSV</strong> or <strong>.XLSX</strong> (Excel) file in <strong>Wide Format</strong>.
-                    <br/><br/>
+                    <br /><br />
                     The system will match students using any of these columns: <strong>"#" or "No"</strong>, <strong>"StudentId" or "ID"</strong>, or <strong>"Name"</strong>.
                     Other columns should exactly match the <strong>Assessment Titles</strong>.
                 </Alert>
