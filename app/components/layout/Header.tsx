@@ -35,7 +35,18 @@ import { useThemeStore } from '@/app/lib/store/theme-store';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import announcementsService, { Announcement } from '@/app/lib/api/announcements.service';
+import { notificationsService } from '@/app/lib/api/notifications.service';
 import { searchService, SearchResult } from '@/app/lib/api/search.service';
+
+interface Notification {
+    id: string;
+    title: string;
+    content: string;
+    type: string;
+    link?: string;
+    isRead: boolean;
+    createdAt: string;
+}
 
 interface HeaderProps {
     sidebarCollapsed: boolean;
@@ -58,18 +69,34 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
     const [searchAnchor, setSearchAnchor] = useState<null | HTMLElement>(null);
     const [mounted, setMounted] = useState(false);
 
-    const { data: unreadData } = useQuery({
+    const { data: unreadAnnouncements } = useQuery({
         queryKey: ['announcements', 'unread-count'],
         queryFn: () => announcementsService.getUnreadCount(),
-        refetchInterval: 30000, // Poll every 30s
+        refetchInterval: 30000, 
         enabled: !!user,
     });
+
+    const { data: unreadNotifications } = useQuery({
+        queryKey: ['notifications', 'unread-count'],
+        queryFn: () => notificationsService.getUnreadCount(),
+        refetchInterval: 30000,
+        enabled: !!user,
+    });
+
+    const totalUnreadCount = (unreadAnnouncements?.unreadCount || 0) + (unreadNotifications?.unreadCount || 0);
 
     const { data: announcements = [] } = useQuery({
         queryKey: ['announcements'],
         queryFn: () => announcementsService.getAll(),
         refetchInterval: 60000, 
-        enabled: Boolean(notificationAnchor), // Fetch when menu opens
+        enabled: Boolean(notificationAnchor), 
+    });
+
+    const { data: notifications = [] } = useQuery({
+        queryKey: ['notifications'],
+        queryFn: () => notificationsService.getAll(),
+        refetchInterval: 60000,
+        enabled: Boolean(notificationAnchor),
     });
 
     const markAsReadMutation = useMutation({
@@ -77,6 +104,14 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['announcements'] });
             queryClient.invalidateQueries({ queryKey: ['announcements', 'unread-count'] });
+        }
+    });
+
+    const markNotificationAsReadMutation = useMutation({
+        mutationFn: (id: string) => notificationsService.markAsRead(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
         }
     });
 
@@ -125,7 +160,16 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
         if (!announcement.isRead) {
             markAsReadMutation.mutate(announcement.id);
         }
-        // Could navigate or open a dialog here depending on the priority/target
+    };
+
+    const handleNotificationClick = (notif: Notification) => {
+        if (!notif.isRead) {
+            markNotificationAsReadMutation.mutate(notif.id);
+        }
+        if (notif.link) {
+            router.push(notif.link);
+        }
+        handleNotificationClose();
     };
 
     const drawerWidth = sidebarCollapsed ? 80 : 280;
@@ -294,7 +338,7 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
                                 },
                             }}
                         >
-                            <Badge badgeContent={unreadData?.unreadCount || 0} color="error">
+                            <Badge badgeContent={totalUnreadCount} color="error">
                                 <NotificationsIcon sx={{ color: theme.palette.text.secondary }} />
                             </Badge>
                         </IconButton>
@@ -397,7 +441,6 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
                     </MenuItem>
                 </Menu>
 
-                {/* Notifications Menu */}
                 <Menu
                     anchorEl={notificationAnchor}
                     open={Boolean(notificationAnchor)}
@@ -405,23 +448,68 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
                     PaperProps={{
                         elevation: 3,
                         sx: {
-                            width: 360,
-                            maxHeight: 400,
+                            width: 380,
+                            maxHeight: 500,
                             mt: 1.5,
                             borderRadius: 2,
+                            display: 'flex',
+                            flexDirection: 'column',
                         },
                     }}
                     transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                     anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                 >
-                    <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                            System Announcements
+                    <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle1" fontWeight={700}>
+                            System Inbox
                         </Typography>
+                        {totalUnreadCount > 0 && (
+                             <Typography variant="caption" sx={{ bgcolor: 'error.main', color: 'white', px: 1, borderRadius: 1, fontWeight: 700 }}>
+                                 {totalUnreadCount} NEW
+                             </Typography>
+                        )}
                     </Box>
-                    <Box sx={{ p: 2 }}>
+
+                    <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
+                        {/* PERSONAL NOTIFICATIONS (HIGHER PRIORITY) */}
+                        {notifications.length > 0 && (
+                             <Box sx={{ mb: 2 }}>
+                                 <Typography variant="overline" color="text.secondary" sx={{ px: 1, fontWeight: 800 }}>Recent Alerts</Typography>
+                                 {notifications.slice(0, 5).map((notif: Notification) => (
+                                     <Box
+                                         key={notif.id}
+                                         onClick={() => handleNotificationClick(notif)}
+                                         sx={{
+                                             p: 1.5,
+                                             borderRadius: 2,
+                                             backgroundColor: notif.isRead ? 'transparent' : alpha(theme.palette.primary.main, 0.06),
+                                             mb: 0.5,
+                                             cursor: 'pointer',
+                                             transition: 'all 0.2s',
+                                             borderLeft: notif.isRead ? '3px solid transparent' : `3px solid ${theme.palette.primary.main}`,
+                                             '&:hover': {
+                                                 backgroundColor: alpha(theme.palette.action.hover, 0.1),
+                                             }
+                                         }}
+                                     >
+                                         <Typography variant="subtitle2" fontWeight={notif.isRead ? 600 : 800} color={notif.isRead ? 'text.secondary' : 'text.primary'}>
+                                             {notif.title}
+                                         </Typography>
+                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                             {notif.content}
+                                         </Typography>
+                                         <Typography variant="caption" color="primary" fontWeight={700} sx={{ fontSize: '0.65rem' }}>
+                                             {new Date(notif.createdAt).toLocaleDateString()}
+                                         </Typography>
+                                     </Box>
+                                 ))}
+                             </Box>
+                        )}
+
+                        {/* SYSTEM ANNOUNCEMENTS */}
+                        <Typography variant="overline" color="text.secondary" sx={{ px: 1, fontWeight: 800 }}>Announcements</Typography>
                         {announcements.length > 0 ? (
-                            announcements.slice(0, 5).map((announcement) => (
+                            announcements.slice(0, 3).map((announcement) => (
                                 <Box
                                     key={announcement.id}
                                     onClick={() => handleAnnouncementClick(announcement)}
@@ -429,45 +517,37 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
                                         p: 1.5,
                                         borderRadius: 2,
                                         backgroundColor: announcement.isRead
-                                            ? alpha(theme.palette.action.hover, 0.05)
-                                            : alpha(theme.palette.primary.main, 0.08),
-                                        mb: 1,
+                                            ? 'transparent'
+                                            : alpha(theme.palette.secondary.main, 0.06),
+                                        mb: 0.5,
                                         cursor: 'pointer',
-                                        transition: 'background-color 0.2s',
+                                        transition: 'all 0.2s',
+                                        borderLeft: announcement.isRead ? '3px solid transparent' : `3px solid ${theme.palette.secondary.main}`,
                                         '&:hover': {
-                                            backgroundColor: announcement.isRead
-                                              ? alpha(theme.palette.action.hover, 0.1)
-                                              : alpha(theme.palette.primary.main, 0.12),
+                                            backgroundColor: alpha(theme.palette.action.hover, 0.1),
                                         }
                                     }}
                                 >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                                        <Typography variant="body2" fontWeight={announcement.isRead ? 500 : 700}>
-                                            {announcement.title}
-                                        </Typography>
-                                        {!announcement.isRead && (
-                                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />
-                                        )}
-                                    </Box>
-                                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                        {announcement.content}
+                                    <Typography variant="subtitle2" fontWeight={announcement.isRead ? 600 : 800}>
+                                        {announcement.title}
                                     </Typography>
-                                    <Typography variant="caption" color="primary" fontWeight={600} sx={{ fontSize: '0.65rem' }}>
-                                        {new Date(announcement.createdAt).toLocaleDateString()} • {announcement.createdBy.firstName}
+                                    <Typography variant="caption" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
+                                        {announcement.content}
                                     </Typography>
                                 </Box>
                             ))
                         ) : (
                             <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 2 }}>
-                                No recent announcements.
+                                No announcements.
                             </Typography>
                         )}
-                        
-                        {announcements.length > 5 && (
-                             <Typography variant="body2" color="primary" textAlign="center" sx={{ mt: 1, cursor: 'pointer', fontWeight: 600 }}>
-                                 View All Announcements
-                             </Typography>
-                        )}
+                    </Box>
+
+                    {/* Footer Actions */}
+                    <Box sx={{ p: 1.5, textAlign: 'center', borderTop: `1px solid ${theme.palette.divider}` }}>
+                        <Typography variant="caption" sx={{ cursor: 'pointer', color: 'primary.main', fontWeight: 800 }}>
+                            VIEW ALL NOTIFICATIONS
+                        </Typography>
                     </Box>
                 </Menu>
             </Toolbar>

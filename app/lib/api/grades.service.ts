@@ -80,6 +80,16 @@ export const gradesService = {
         return response.data;
     },
 
+    requestUnlock: async (courseId: string, reason: string) => {
+        const response = await apiClient.post(`grades/course/${courseId}/unlock-request`, { reason });
+        return response.data;
+    },
+
+    unlockGradebook: async (courseId: string, reason: string) => {
+        const response = await apiClient.post(`grades/course/${courseId}/unlock`, { reason });
+        return response.data;
+    },
+
     exportExcel: async (courseId: string, courseName?: string) => {
         const response = await apiClient.get(`grades/course/${courseId}/export/excel`, {
             responseType: 'blob',

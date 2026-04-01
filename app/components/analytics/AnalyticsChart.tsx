@@ -1,19 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    Typography,
-    Box,
-    IconButton,
-    Menu,
-    MenuItem,
-    useTheme,
-    alpha,
-    Skeleton,
-} from '@mui/material';
+import { Card, CardContent, CardHeader, Typography, Box, IconButton, Menu, MenuItem, useTheme, alpha, Skeleton, Stack } from '@mui/material';
 import {
     MoreVert as MoreIcon,
     Download as DownloadIcon,
@@ -65,6 +53,7 @@ interface AnalyticsChartProps {
     onExport?: () => void;
     onRefresh?: () => void;
     onClick?: (data: any, index: number) => void;
+    extraActions?: React.ReactNode;
 }
 
 const DEFAULT_COLORS = [
@@ -90,6 +79,7 @@ export function AnalyticsChart({
     onExport,
     onRefresh,
     onClick,
+    extraActions,
 }: AnalyticsChartProps) {
     const theme = useTheme();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -355,28 +345,31 @@ export function AnalyticsChart({
                 }
                 subheader={subtitle}
                 action={
-                    <Box>
-                        <IconButton size="small" onClick={onRefresh}>
-                            <RefreshIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={handleMenuOpen}>
-                            <MoreIcon fontSize="small" />
-                        </IconButton>
-                        <Menu
-                            anchorEl={anchorEl}
-                            open={Boolean(anchorEl)}
-                            onClose={handleMenuClose}
-                        >
-                            <MenuItem onClick={() => { handleMenuClose(); onExport?.(); }}>
-                                <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
-                                Export
-                            </MenuItem>
-                            <MenuItem onClick={handleMenuClose}>
-                                <FullscreenIcon fontSize="small" sx={{ mr: 1 }} />
-                                Fullscreen
-                            </MenuItem>
-                        </Menu>
-                    </Box>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        {extraActions}
+                        <Box>
+                            <IconButton size="small" onClick={onRefresh}>
+                                <RefreshIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={handleMenuOpen}>
+                                <MoreIcon fontSize="small" />
+                            </IconButton>
+                            <Menu
+                                anchorEl={anchorEl}
+                                open={Boolean(anchorEl)}
+                                onClose={handleMenuClose}
+                            >
+                                <MenuItem onClick={() => { handleMenuClose(); onExport?.(); }}>
+                                    <DownloadIcon fontSize="small" sx={{ mr: 1 }} />
+                                    Export
+                                </MenuItem>
+                                <MenuItem onClick={handleMenuClose}>
+                                    <FullscreenIcon fontSize="small" sx={{ mr: 1 }} />
+                                    Fullscreen
+                                </MenuItem>
+                            </Menu>
+                        </Box>
+                    </Stack>
                 }
                 sx={{ pb: 0 }}
             />

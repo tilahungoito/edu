@@ -44,6 +44,7 @@ import {
     PictureAsPdf as PictureAsPdfIcon,
     Edit as EditIcon,
     Delete as DeleteIcon,
+    LockOpen as LockOpenIcon,
 } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRenderCellParams, GridToolbar, getGridNumericOperators, GridFilterOperator, GridColumnMenu } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -249,6 +250,16 @@ function InstructorGradebookView() {
     const [submitting, setSubmitting] = useState(false);
     const [approving, setApproving] = useState(false);
 
+    // Unlock Dialogs State
+    const [unlockRequestOpen, setUnlockRequestOpen] = useState(false);
+    const [isRequesting, setIsRequesting] = useState(false);
+    const [tempReason, setTempReason] = useState('');
+
+    const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
+    const [isUnlocking, setIsUnlocking] = useState(false);
+
+    const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
+
     const isInstructor = user?.roles?.some(r => r.name === 'INSTRUCTOR');
     const isAdmin = user?.roles?.some(r => ['INSTITUTION_ADMIN', 'REGISTRAR', 'SYSTEM_ADMIN'].includes(r.name));
     const institutionId = user?.tenantType === 'school' ? user?.tenantId : undefined;
@@ -324,7 +335,7 @@ function InstructorGradebookView() {
         return 'DRAFT';
     }, [gradeBookRows]);
 
-    const isGradebookLocked = courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED';
+    const isGradebookLocked = courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED' || courseGradeBookStatus === 'PENDING_REVIEW';
 
 
     const isLoadingGrid = loadingEnrollments || loadingAssessments || loadingScores;
@@ -563,7 +574,13 @@ function InstructorGradebookView() {
 
     // Submit grades for review
     const handleSubmitForReview = async () => {
-        if (!window.confirm('Submit all grades for admin review? You can no longer edit them until they are rejected.')) return;
+        const totalWeight = assessments?.reduce((sum, a) => sum + a.weight, 0) || 0;
+        if (totalWeight !== 100) {
+            toast.error(`Cannot submit! Total assessment weight must be exactly 100% (Currently ${totalWeight}%). Fix your assessment weights.`);
+            return;
+        }
+
+        if (!window.confirm('Submit all grades for admin review? You can no longer edit them once submitted.')) return;
         setSubmitting(true);
         try {
             await gradesService.submitForReview(selectedCourseId);
@@ -576,15 +593,63 @@ function InstructorGradebookView() {
         }
     };
 
+    // Request Modification (Unlock Request)
+    const handleRequestModification = async () => {
+        setUnlockRequestOpen(true);
+    };
+
+    const submitUnlockRequest = async () => {
+        if (!tempReason.trim()) {
+            toast.error("Please provide a reason for the request.");
+            return;
+        }
+        setIsRequesting(true);
+        try {
+            await gradesService.requestUnlock(selectedCourseId, tempReason);
+            toast.success("Modification request sent to Administrators successfully!");
+            setUnlockRequestOpen(false);
+            setTempReason('');
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || 'Failed to send request');
+        } finally {
+            setIsRequesting(false);
+        }
+    };
+
+    // Admin/Registrar: Unlock the gradebook
+    const handleUnlock = async () => {
+        setUnlockConfirmOpen(true);
+    };
+
+    const confirmUnlock = async () => {
+        setIsUnlocking(true);
+        try {
+            await gradesService.unlockGradebook(selectedCourseId, tempReason);
+            toast.success("Gradebook unlocked! The instructor can now edit grades.");
+            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
+            queryClient.invalidateQueries({ queryKey: ['assessment-scores-all'] });
+            setUnlockConfirmOpen(false);
+            setTempReason('');
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || 'Failed to unlock gradebook');
+        } finally {
+            setIsUnlocking(false);
+        }
+    };
+
     // Approve and lock grades (Admin/Registrar)
     const handleApproveAndLock = async () => {
-        if (!window.confirm('Approve and LOCK all grades? This action cannot be undone.')) return;
+        setApproveConfirmOpen(true);
+    };
+
+    const confirmApproveAndLock = async () => {
         setApproving(true);
         try {
             await gradesService.approveAndLock(selectedCourseId);
             toast.success('Grades approved and locked!');
             queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
             queryClient.invalidateQueries({ queryKey: ['assessment-scores-all'] });
+            setApproveConfirmOpen(false);
         } catch (e: any) {
             toast.error(e?.response?.data?.message || 'Failed to approve grades');
         } finally {
@@ -684,7 +749,19 @@ function InstructorGradebookView() {
                                 </>
                             )}
 
-                            {/* Admin/Registrar: Approve & Lock */}
+                            {/* Instructor: Request Modification when locked */}
+                            {isInstructor && isGradebookLocked && (
+                                <Button
+                                    variant="outlined"
+                                    color="secondary"
+                                    onClick={handleRequestModification}
+                                    sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
+                                >
+                                    Request Modification Access
+                                </Button>
+                            )}
+
+                            {/* Admin/Registrar: Approve & Lock or Unlock */}
                             {isAdmin && courseGradeBookStatus === 'PENDING_REVIEW' && (
                                 <Button
                                     variant="contained"
@@ -695,6 +772,18 @@ function InstructorGradebookView() {
                                     sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3, boxShadow: `0 8px 16px ${alpha(theme.palette.success.main, 0.3)}` }}
                                 >
                                     {approving ? 'Locking...' : 'Approve & Lock'}
+                                </Button>
+                            )}
+
+                            {isAdmin && (courseGradeBookStatus === 'PENDING_REVIEW' || courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED') && (
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<LockOpenIcon />}
+                                    color="error"
+                                    onClick={handleUnlock}
+                                    sx={{ borderRadius: 2, height: 40, fontWeight: 700, px: 3, ml: 1 }}
+                                >
+                                    Unlock
                                 </Button>
                             )}
 
@@ -857,7 +946,7 @@ function InstructorGradebookView() {
             {assessmentToEdit && (
                 <EditAssessmentDialog
                     open={editAssessmentOpen}
-                    onClose={() => setEditAssessmentOpen(false)}
+                    onClose={() => { setEditAssessmentOpen(false); setAssessmentToEdit(null); }}
                     assessment={assessmentToEdit}
                     courseId={selectedCourseId}
                 />
@@ -881,6 +970,105 @@ function InstructorGradebookView() {
                     setCsvImportOpen(false);
                 }}
             />
+
+            {/* Unlock Request Dialog (Instructor) */}
+            <Dialog 
+                open={unlockRequestOpen} 
+                onClose={() => { setUnlockRequestOpen(false); setTempReason(''); }}
+                PaperProps={{ sx: { borderRadius: 4, backgroundImage: 'none' } }}
+                fullWidth
+                maxWidth="xs"
+            >
+                <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Request Unlock</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        State clearly why you need the Admin/Registrar to unlock this gradebook for modification.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        placeholder="e.g., Incorrect midterm scope calculation, missed 5 student scores..."
+                        value={tempReason}
+                        onChange={(e) => setTempReason(e.target.value)}
+                        autoFocus
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={() => setUnlockRequestOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        color="secondary" 
+                        onClick={submitUnlockRequest}
+                        disabled={isRequesting}
+                        sx={{ borderRadius: 2, fontWeight: 700 }}
+                    >
+                        {isRequesting ? 'Sending...' : 'Send Request'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Admin Confirm Unlock Dialog */}
+            <Dialog 
+                open={unlockConfirmOpen} 
+                onClose={() => { setUnlockConfirmOpen(false); setTempReason(''); }}
+                PaperProps={{ sx: { borderRadius: 4, backgroundImage: 'none' } }}
+                fullWidth
+                maxWidth="xs"
+            >
+                <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Confirm Unlock</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        You are about to unlock this gradebook. This action will be logged in the audit trail.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Audit reason (optional)"
+                        value={tempReason}
+                        onChange={(e) => setTempReason(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={() => setUnlockConfirmOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        color="error" 
+                        onClick={confirmUnlock}
+                        disabled={isUnlocking}
+                        sx={{ borderRadius: 2, fontWeight: 700 }}
+                    >
+                        {isUnlocking ? 'Unlocking...' : 'Unlock Now'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            {/* Admin Approve and Lock Dialog */}
+            <Dialog 
+                open={approveConfirmOpen} 
+                onClose={() => setApproveConfirmOpen(false)}
+                PaperProps={{ sx: { borderRadius: 4, backgroundImage: 'none' } }}
+                fullWidth
+                maxWidth="xs"
+            >
+                <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Confirm Approval & Lock</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary">
+                        Approve and <strong>LOCK</strong> all grades? This action is permanent and will make grades immutable for students.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 1 }}>
+                    <Button onClick={() => setApproveConfirmOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        color="success" 
+                        onClick={confirmApproveAndLock}
+                        disabled={approving}
+                        sx={{ borderRadius: 2, fontWeight: 700 }}
+                    >
+                        {approving ? 'Locking...' : 'Approve & Lock'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

@@ -13,4 +13,8 @@ export const notificationsService = {
     const response = await apiClient.post('/notifications/read-all');
     return response.data;
   },
+  getUnreadCount: async () => {
+    const response = await apiClient.get<{ unreadCount: number }>('/notifications/unread-count');
+    return response.data;
+  },
 };
