@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, alpha, useTheme, Card, CardContent, Avatar } from '@mui/material';
+import { 
+    Box, Typography, alpha, useTheme, Card, CardHeader, CardContent, Avatar, Divider, Stack, 
+    Grid, Paper, FormControl, InputLabel, Select, MenuItem, Button, Chip, Tooltip, LinearProgress 
+} from '@mui/material';
 import {
     School as SchoolIcon,
     Groups as PeopleIcon,
@@ -9,29 +12,18 @@ import {
     MoneyOff as MoneyOffIcon,
     Receipt as ReceiptIcon,
     Pending as PendingIcon,
+    Timeline as TimelineIcon,
+    Warning as WarningIcon,
+    EmojiEvents as AwardsIcon,
+    EventAvailable as ScheduleIcon,
+    AutoGraph as InsightIcon,
+    Favorite as WellnessIcon,
     TrendingUp as TrendingUpIcon,
     FilterList as FilterListIcon,
     Download as DownloadIcon,
-    Timeline as TimelineIcon,
-    Warning as WarningIcon,
-    EmojiEvents as AwardsIcon
 } from '@mui/icons-material';
 import { KPIGrid, AnalyticsChart } from '../';
 import { DataTable } from '../../tables';
-import {
-    Grid,
-    Paper,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Button,
-    Chip,
-    Tooltip,
-    LinearProgress,
-    Stack,
-    Divider
-} from '@mui/material';
 
 export function BureauDashboard({ stats, loading, zones, columns, tableTitle, onAdd, resourceType }: any) {
     const theme = useTheme();
@@ -156,9 +148,14 @@ export function InstructorDashboard({ stats, loading, user }: any) {
     const [selectedSemester, setSelectedSemester] = React.useState('1');
     const [timeRange, setTimeRange] = React.useState('month');
     const [attendanceView, setAttendanceView] = React.useState<'day' | 'week'>('week');
+    const [currentDay, setCurrentDay] = React.useState('');
 
     // Filtered data states
     const [filteredStats, setFilteredStats] = React.useState<any>(null);
+
+    React.useEffect(() => {
+        setCurrentDay(new Date().toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase());
+    }, []);
 
     // Apply filters locally for instant responsiveness
     React.useEffect(() => {
@@ -235,6 +232,13 @@ export function InstructorDashboard({ stats, loading, user }: any) {
             icon: 'Badge',
         },
         {
+            label: 'At-Risk Detection',
+            value: (displayStats?.atRiskCount || 0).toString(),
+            change: displayStats?.atRiskCount > 0 ? 1 : 0,
+            trend: (displayStats?.atRiskCount > 0 ? 'down' : 'stable') as any,
+            icon: 'Warning',
+        },
+        {
             label: 'Selection Avg Score',
             value: filteredStudents.length > 0 
                 ? `${Math.round(filteredStudents.reduce((a: any, b: any) => a + b.total, 0) / filteredStudents.length)}%`
@@ -247,12 +251,31 @@ export function InstructorDashboard({ stats, loading, user }: any) {
 
     const attendanceData = attendanceView === 'week' ? displayStats?.attendanceTrends : displayStats?.attendanceByDay;
     const gradeDistribution = displayStats?.gradeDistribution || [];
+    const behaviorData = displayStats?.behaviorSummary || [];
     
+    // New: Teaching schedule with 'current session' highlights (depends on hydrated currentDay)
+    const todaySchedule = currentDay ? (displayStats?.schedule?.filter((s: any) => s.day === currentDay) || []) : [];
+
     const milestones = displayStats?.milestones || [];
 
-    // Student performance columns
+    // Columns with 'At-Risk' badges
     const studentColumns = [
-        { field: 'name', headerName: 'Student Name', flex: 1, minWidth: 200 },
+        { 
+            field: 'name', 
+            headerName: 'Student Name', 
+            flex: 1, 
+            minWidth: 200,
+            renderCell: (params: any) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" fontWeight={700}>{params.value}</Typography>
+                    {(params.row.attendance < 75 || params.row.total < 50) && (
+                        <Tooltip title="At-Risk: Low attendance or falling behind in score">
+                            <Box component="span" sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />
+                        </Tooltip>
+                    )}
+                </Box>
+            )
+        },
         { field: 'id', headerName: 'ID', width: 120 },
         {
             field: 'attendance',
@@ -331,7 +354,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                     >
                         <MenuItem value="all">All Assigned Courses</MenuItem>
                         {stats?.courses?.map((c: any) => (
-                            <MenuItem key={c.code} value={c.code}>{c.name} ({c.code})</MenuItem>
+                            <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>
                         ))}
                     </Select>
                 </FormControl>
@@ -445,44 +468,125 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                                 <Box>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                         <Typography variant="body2" fontWeight={700}>Syllabus Completion</Typography>
-                                        <Typography variant="body2" color="primary.main" fontWeight={800}>65%</Typography>
+                                        <Typography variant="body2" color="primary.main" fontWeight={800}>{displayStats?.syllabusCompletion || 65}%</Typography>
                                     </Box>
-                                    <LinearProgress variant="determinate" value={65} sx={{ height: 8, borderRadius: 4 }} />
-                                </Box>
-
-                                <Box>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                        <Typography variant="body2" fontWeight={700}>Assessment Progress</Typography>
-                                        <Typography variant="body2" color="success.main" fontWeight={800}>4/6 Done</Typography>
-                                    </Box>
-                                    <LinearProgress variant="determinate" value={66} color="success" sx={{ height: 8, borderRadius: 4 }} />
+                                    <LinearProgress variant="determinate" value={displayStats?.syllabusCompletion || 65} sx={{ height: 8, borderRadius: 4 }} />
                                 </Box>
 
                                 <Divider />
 
                                 <Box>
-                                    <Typography variant="subtitle2" fontWeight={800} gutterBottom>Upcoming Milestones</Typography>
-                                    {stats?.milestones?.length > 0 ? stats.milestones.map((item: any, i: number) => (
-                                        <Box key={i} sx={{ display: 'flex', gap: 1.5, mt: 1.5 }}>
-                                            <Box sx={{ mt: 0.5, color: 'info.main' }}>
-                                                {item.type?.includes('EXAM') ? <WarningIcon sx={{ fontSize: 14, color: 'error.main' }} /> : <TimelineIcon sx={{ fontSize: 14 }} />}
+                                    <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <ScheduleIcon sx={{ color: 'primary.main', fontSize: 18 }} />
+                                        Today&apos;s Sessions
+                                    </Typography>
+                                    <Stack spacing={1}>
+                                        {todaySchedule.length > 0 ? todaySchedule.map((session: any, idx: number) => (
+                                            <Box key={idx} sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.action.hover, 0.05), border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                                                <Typography variant="caption" color="text.secondary" fontWeight={800}>{session.time}</Typography>
+                                                <Typography variant="body2" fontWeight={800}>{session.course}</Typography>
+                                                <Typography variant="caption" color="text.secondary">Room: {session.room}</Typography>
                                             </Box>
-                                            <Box>
-                                                <Typography variant="body2" fontWeight={700}>{item.label}</Typography>
-                                                <Typography variant="caption" color="text.secondary">{item.date}</Typography>
-                                            </Box>
-                                        </Box>
-                                    )) : (
-                                        <Typography variant="caption" color="text.secondary">No upcoming milestones found.</Typography>
-                                    )}
+                                        )) : (
+                                            <Typography variant="caption" color="text.secondary">No scheduled sessions for today.</Typography>
+                                        )}
+                                    </Stack>
                                 </Box>
                             </Stack>
                         </CardContent>
                     </Card>
                 </Grid>
+            </Grid>
 
+            {/* Smart Insights & Classroom Wellness */}
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+                <Grid item xs={12} md={5}>
+                    <AnalyticsChart
+                        title="Classroom Wellness"
+                        subtitle="Engagement trends by behavioral records"
+                        data={behaviorData || []}
+                        type="pie"
+                        loading={loading}
+                        height={320}
+                    />
+                </Grid>
+
+                <Grid item xs={12} md={7}>
+                    <Card sx={{ borderRadius: 4, bgcolor: alpha(theme.palette.primary.main, 0.02), border: `2px dashed ${alpha(theme.palette.primary.main, 0.1)}`, minHeight: 320 }}>
+                        <CardContent>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                                <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' }}>
+                                    <InsightIcon />
+                                </Avatar>
+                                <Typography variant="h6" fontWeight={800}>AI Instruction Insights</Typography>
+                            </Box>
+                            
+                            <Stack spacing={2}>
+                                {[
+                                    { title: "Class Performance Benchmark", text: `Your ${selectedCourse === 'all' ? 'active selection' : 'current class'} is performing ${(displayStats?.peerAvgScore - 65).toFixed(1)}% above the school benchmark of ${displayStats?.peerAvgScore}%.`, type: 'success' },
+                                    { title: "At-Risk Alert", text: displayStats?.atRiskCount > 0 ? `${displayStats?.atRiskCount} student(s) show signs of disengagement. One-on-one intervention recommended.` : "All students are current on their coursework. Keep up the high engagement!", type: displayStats?.atRiskCount > 0 ? 'warning' : 'success' }
+                                ].map((note, i) => (
+                                    <Box key={i} sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette[note.type as any].main, 0.05), borderLeft: `4px solid ${theme.palette[note.type as any].main}` }}>
+                                        <Typography variant="subtitle2" fontWeight={800} color={`${note.type}.main`}>{note.title}</Typography>
+                                        <Typography variant="body2" color="text.secondary">{note.text}</Typography>
+                                    </Box>
+                                ))}
+                            </Stack>
+                            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                                <Button size="small" sx={{ fontWeight: 800 }}>Deeper Student Analysis →</Button>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+
+            {/* Course Comparison & Activity Stream */}
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+                <Grid item xs={12} md={7}>
+                    <AnalyticsChart
+                        title="Subject Comparison"
+                        subtitle="Benchmarking performance across all assigned subjects"
+                        data={displayStats?.comparisonRadar || []}
+                        type="radar"
+                        dataKeys={['Academic', 'Attendance', 'Engagement']}
+                        colors={[theme.palette.primary.main, theme.palette.secondary.main, theme.palette.warning.main]}
+                        loading={loading}
+                        height={350}
+                    />
+                </Grid>
+
+                <Grid item xs={12} md={5}>
+                    <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                        <CardHeader 
+                            title={<Typography variant="subtitle1" fontWeight={800}>Activity Stream</Typography>}
+                            avatar={<Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 1), width: 32, height: 32 }}><InsightIcon sx={{ fontSize: 16, color: '#fff' }} /></Avatar>}
+                        />
+                        <CardContent sx={{ pt: 0 }}>
+                            <Stack spacing={2}>
+                                {displayStats?.activityFeed?.length > 0 ? displayStats.activityFeed.map((item: any) => (
+                                    <Box key={item.id} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                                        <Box sx={{ mt: 0.5, width: 8, height: 8, borderRadius: '50%', bgcolor: item.type === 'attendance' ? 'error.main' : 'primary.main', flexShrink: 0 }} />
+                                        <Box>
+                                            <Typography variant="body2" fontWeight={600}>{item.text}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{item.time}</Typography>
+                                        </Box>
+                                    </Box>
+                                )) : (
+                                    <Typography variant="caption" color="text.secondary">No recent activities recorded.</Typography>
+                                )}
+                            </Stack>
+                            <Button fullWidth variant="outlined" sx={{ mt: 3, borderRadius: 2, borderStyle: 'dashed', textTransform: 'none', fontWeight: 700 }}>
+                                View Full Audit Log
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            </Grid>
+
+            {/* Final Analytics Row: Grade Distribution, Quick Actions, and Assessments */}
+            <Grid container spacing={3} sx={{ mt: 1 }}>
                 {/* Grade Distribution */}
-                <Grid item xs={12} md={selectedCourse !== 'all' ? 4 : 4}>
+                <Grid item xs={12} md={4}>
                     <AnalyticsChart
                         title="Grade Distribution"
                         subtitle="Performance breakdown for the selected cohort"
