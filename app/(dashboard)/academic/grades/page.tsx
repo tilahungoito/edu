@@ -249,6 +249,7 @@ function InstructorGradebookView() {
     const [scoreEdits, setScoreEdits] = useState<Record<string, Record<string, number>>>({}); // [assessmentId][enrollmentId] = score
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [submitReviewConfirmOpen, setSubmitReviewConfirmOpen] = useState(false);
     const [approving, setApproving] = useState(false);
 
     // Unlock Dialogs State
@@ -608,19 +609,22 @@ function InstructorGradebookView() {
     };
 
     // Submit grades for review
-    const handleSubmitForReview = async () => {
+    const handleSubmitForReview = () => {
         const totalWeight = assessments?.reduce((sum, a) => sum + a.weight, 0) || 0;
         if (totalWeight !== 100) {
             toast.error(`Cannot submit! Total assessment weight must be exactly 100% (Currently ${totalWeight}%). Fix your assessment weights.`);
             return;
         }
+        setSubmitReviewConfirmOpen(true);
+    };
 
-        if (!window.confirm('Submit all grades for admin review? You can no longer edit them once submitted.')) return;
+    const confirmSubmission = async () => {
         setSubmitting(true);
         try {
             await gradesService.submitForReview(selectedCourseId);
             toast.success('Grades submitted for review!');
             queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
+            setSubmitReviewConfirmOpen(false);
         } catch (e: any) {
             toast.error(e?.response?.data?.message || 'Failed to submit grades');
         } finally {
@@ -783,18 +787,17 @@ function InstructorGradebookView() {
                                     >
                                         {saving ? 'Saving...' : 'Save Grades'}
                                     </Button>
-                                    {courseGradeBookStatus !== 'PENDING_REVIEW' && (
-                                        <Button
-                                            variant="contained"
-                                            startIcon={<SendIcon />}
-                                            color="warning"
-                                            disabled={submitting || !rows.length}
-                                            onClick={handleSubmitForReview}
-                                            sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3 }}
-                                        >
-                                            {submitting ? 'Submitting...' : 'Submit for Review'}
-                                        </Button>
-                                    )}
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<SendIcon />}
+                                        color="warning"
+                                        disabled={submitting || !rows.length}
+                                        onClick={handleSubmitForReview}
+                                        sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3 }}
+                                    >
+                                        {submitting ? 'Submitting...' : 'Submit for Review'}
+                                    </Button>
+
                                 </>
                             )}
 
@@ -1115,6 +1118,37 @@ function InstructorGradebookView() {
                         sx={{ borderRadius: 2, fontWeight: 700 }}
                     >
                         {approving ? 'Locking...' : 'Approve & Lock'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Instructor Submit for Review Dialog */}
+            <Dialog 
+                open={submitReviewConfirmOpen} 
+                onClose={() => setSubmitReviewConfirmOpen(false)}
+                PaperProps={{ sx: { borderRadius: 4, backgroundImage: 'none' } }}
+                fullWidth
+                maxWidth="xs"
+            >
+                <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>Submit grades for review</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Are you sure you want to submit all grades for admin review? 
+                    </Typography>
+                    <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                        Once submitted, the gradebook will become <strong>Read-Only</strong> for you. You will need an Administrator to unlock it if you need to make further changes.
+                    </Alert>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 1 }}>
+                    <Button onClick={() => setSubmitReviewConfirmOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        color="warning" 
+                        onClick={confirmSubmission}
+                        disabled={submitting}
+                        sx={{ borderRadius: 2, fontWeight: 800 }}
+                    >
+                        {submitting ? 'Submitting...' : 'Finalize & Submit'}
                     </Button>
                 </DialogActions>
             </Dialog>

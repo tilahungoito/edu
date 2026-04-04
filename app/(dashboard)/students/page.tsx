@@ -21,6 +21,8 @@ import {
     IconButton,
     Tooltip,
     Skeleton,
+    Divider,
+    CircularProgress,
 } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import { DataTable } from '@/app/components/tables/DataTable';
@@ -52,6 +54,15 @@ import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { institutionsService } from '@/app/lib/api/institutions.service';
 import { toast } from 'react-hot-toast';
+
+// Flexible matcher for semester results
+const findHistoryBySemester = (histories: any[], semesterNum: 1 | 2) => {
+    if (!histories) return null;
+    const roman = semesterNum === 1 ? 'I' : 'II';
+    const digit = semesterNum.toString();
+    const regex = new RegExp(`(Semester|Sem|S)\\s*(${roman}|${digit})($|\\s|[\\d/])`, 'i');
+    return histories.find(h => regex.test(h.academicPeriod?.name || ''));
+};
 
 export default function StudentsPage() {
     const theme = useTheme();
@@ -282,12 +293,12 @@ export default function StudentsPage() {
             field: 'sem1',
             headerName: 'Sem I',
             width: 90,
-            valueGetter: (_, row) => row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester I'))?.finalAverage,
+            valueGetter: (_, row) => findHistoryBySemester(row.academicHistories, 1)?.finalAverage,
             renderCell: (params) => {
                 const s1 = params.value;
                 return (
-                    <Typography variant="body2" fontWeight={700} color={s1 != null ? (s1 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
-                        {s1 != null ? `${s1}%` : '-'}
+                    <Typography variant="body2" fontWeight={800} color={s1 != null ? (s1 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
+                        {s1 != null ? `${Math.round(s1)}%` : '-'}
                     </Typography>
                 );
             }
@@ -296,23 +307,23 @@ export default function StudentsPage() {
             field: 'sem2',
             headerName: 'Sem II',
             width: 90,
-            valueGetter: (_, row) => row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester II'))?.finalAverage,
+            valueGetter: (_, row) => findHistoryBySemester(row.academicHistories, 2)?.finalAverage,
             renderCell: (params) => {
                 const s2 = params.value;
                 return (
-                    <Typography variant="body2" fontWeight={700} color={s2 != null ? (s2 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
-                        {s2 != null ? `${s2}%` : '-'}
+                    <Typography variant="body2" fontWeight={800} color={s2 != null ? (s2 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
+                        {s2 != null ? `${Math.round(s2)}%` : '-'}
                     </Typography>
                 );
             }
         },
         {
             field: 'average',
-            headerName: 'Average',
-            width: 100,
+            headerName: 'AVG',
+            width: 95,
             valueGetter: (_, row) => {
-                const s1 = row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester I'))?.finalAverage;
-                const s2 = row.academicHistories?.find((h: any) => h.academicPeriod?.name.includes('Semester II'))?.finalAverage;
+                const s1 = findHistoryBySemester(row.academicHistories, 1)?.finalAverage;
+                const s2 = findHistoryBySemester(row.academicHistories, 2)?.finalAverage;
                 if (s1 != null && s2 != null) return (s1 + s2) / 2;
                 return s1 ?? s2 ?? null;
             },
@@ -320,8 +331,18 @@ export default function StudentsPage() {
                 const avg = params.value;
                 if (avg == null) return <Typography variant="body2" color="text.disabled">-</Typography>;
                 return (
-                    <Chip label={`${avg.toFixed(1)}%`} size="small"
-                        sx={{ bgcolor: alpha(avg >= 50 ? theme.palette.success.main : theme.palette.error.main, 0.1), color: avg >= 50 ? 'success.main' : 'error.main', fontWeight: 800, fontSize: '11px', height: 22 }} />
+                    <Chip 
+                        label={`${avg.toFixed(1)}%`} 
+                        size="small"
+                        sx={{ 
+                            bgcolor: alpha(avg >= 50 ? theme.palette.success.main : theme.palette.error.main, 0.1), 
+                            color: avg >= 50 ? 'success.main' : 'error.main', 
+                            fontWeight: 900, 
+                            fontSize: '11px', 
+                            height: 22,
+                            border: `1px solid ${alpha(avg >= 50 ? theme.palette.success.main : theme.palette.error.main, 0.2)}`
+                        }} 
+                    />
                 );
             }
         },
@@ -333,8 +354,20 @@ export default function StudentsPage() {
             renderCell: (params) => {
                 const promoConf = promotionConfig[params.value as string] || promotionConfig['PENDING'];
                 return (
-                    <Chip label={promoConf.label} size="small"
-                        sx={{ bgcolor: alpha(promoConf.color, 0.1), color: promoConf.color, fontWeight: 700, fontSize: '10px', height: 20 }} />
+                    <Tooltip title={`Academic standing for the current period: ${promoConf.label}`} arrow>
+                        <Chip 
+                            label={promoConf.label} 
+                            size="small"
+                            sx={{ 
+                                bgcolor: alpha(promoConf.color, 0.1), 
+                                color: promoConf.color, 
+                                fontWeight: 800, 
+                                fontSize: '10px', 
+                                height: 20, 
+                                textTransform: 'uppercase'
+                            }} 
+                        />
+                    </Tooltip>
                 );
             }
         }
@@ -376,15 +409,30 @@ export default function StudentsPage() {
                     { label: 'Detained', value: filteredStudents.filter(s => s.academicHistories?.[0]?.promotionStatus === 'DETAINED').length, color: 'error', icon: <ErrorIcon /> },
                 ].map(({ label, value, color, icon, progress }: any) => (
                     <Grid key={label} size={{ xs: 12, sm: 6, md: 3 }}>
-                        <Paper sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Avatar sx={{ bgcolor: alpha((theme.palette as any)[color]?.main || theme.palette.primary.main, 0.1), color: `${color}.main`, width: 48, height: 48 }}>
-                                {icon}
+                        <Paper 
+                            elevation={0}
+                            sx={{ 
+                                p: 2.5, 
+                                borderRadius: 4, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 2,
+                                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    boxShadow: `0 12px 24px ${alpha(theme.palette.common.black, 0.05)}`,
+                                    transform: 'translateY(-4px)'
+                                }
+                            }}
+                        >
+                            <Avatar sx={{ bgcolor: alpha((theme.palette as any)[color]?.main || theme.palette.primary.main, 0.1), color: `${color}.main`, width: 52, height: 52 }}>
+                                {React.cloneElement(icon as React.ReactElement<any>, { sx: { fontSize: 28 } })}
                             </Avatar>
                             <Box sx={{ flexGrow: 1 }}>
-                                <Typography variant="h5" fontWeight={800}>{value}</Typography>
-                                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block' }}>{label}</Typography>
+                                <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: -1 }}>{value}</Typography>
+                                <Typography variant="caption" color="text.secondary" fontWeight={800} sx={{ display: 'block', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</Typography>
                                 {progress !== undefined && (
-                                    <LinearProgress variant="determinate" value={progress} color={color} sx={{ height: 5, borderRadius: 3, mt: 0.5 }} />
+                                    <LinearProgress variant="determinate" value={progress} color={color} sx={{ height: 6, borderRadius: 3, mt: 1, bgcolor: alpha(theme.palette.divider, 0.1) }} />
                                 )}
                             </Box>
                         </Paper>
@@ -393,43 +441,108 @@ export default function StudentsPage() {
             </Grid>
 
             {/* Filter & Toolbar Bar */}
-            <Paper sx={{ p: 2, mb: 3, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', border: `1px solid ${alpha(theme.palette.divider, 0.5)}` }}>
-                <TextField
-                    placeholder="Search by name or program..."
-                    size="small"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment> } }}
-                    sx={{ width: { xs: '100%', sm: 240 }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                />
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                    <InputLabel>Grade</InputLabel>
-                    <Select value={selectedGrade} label="Grade" onChange={e => setSelectedGrade(e.target.value)} sx={{ borderRadius: 2 }}>
-                        <MenuItem value="all">All Grades</MenuItem>
-                        {grades.map(g => <MenuItem key={String(g)} value={String(g)}>Grade {g}</MenuItem>)}
-                    </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                    <InputLabel>Program</InputLabel>
-                    <Select value={selectedProgram} label="Program" onChange={e => setSelectedProgram(e.target.value)} sx={{ borderRadius: 2 }}>
-                        <MenuItem value="all">All Programs</MenuItem>
-                        {programs.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-                    </Select>
-                </FormControl>
-                {user?.tenantType !== 'school' && (
-                    <FormControl size="small" sx={{ minWidth: 180 }}>
-                        <InputLabel>Institution</InputLabel>
-                        <Select value={selectedInstitution} label="Institution" onChange={e => setSelectedInstitution(e.target.value)} sx={{ borderRadius: 2 }}>
-                            <MenuItem value="">All Institutions</MenuItem>
-                            {institutions.map(i => <MenuItem key={i.id} value={i.id}>{i.name}</MenuItem>)}
+            <Box sx={{ mb: 3 }}>
+                <Paper 
+                    elevation={0}
+                    sx={{ 
+                        p: 2, 
+                        borderRadius: 3, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 2, 
+                        flexWrap: 'wrap', 
+                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                        bgcolor: alpha(theme.palette.background.default, 0.5)
+                    }}
+                >
+                    <TextField
+                        placeholder="Search students..."
+                        size="small"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        slotProps={{ 
+                            input: { 
+                                startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment>,
+                                sx: { borderRadius: 2.5, bgcolor: 'background.paper' }
+                            } 
+                        }}
+                        sx={{ width: { xs: '100%', sm: 300 } }}
+                    />
+                    
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1, display: { xs: 'none', sm: 'block' } }} />
+
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                        <InputLabel>Grade</InputLabel>
+                        <Select value={selectedGrade} label="Grade" onChange={e => setSelectedGrade(e.target.value)} sx={{ borderRadius: 2.5, bgcolor: 'background.paper' }}>
+                            <MenuItem value="all">All Grades</MenuItem>
+                            {grades.map(g => <MenuItem key={String(g)} value={String(g)}>Grade {g}</MenuItem>)}
                         </Select>
                     </FormControl>
-                )}
-                <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
-                    <Tooltip title="Refresh"><IconButton size="small" onClick={() => refetch()}><RefreshIcon fontSize="small" /></IconButton></Tooltip>
-                    <Button size="small" variant="outlined" startIcon={<UploadIcon />} sx={{ borderRadius: 2, fontWeight: 600 }}>Import CSV</Button>
+
+                    <FormControl size="small" sx={{ minWidth: 140 }}>
+                        <InputLabel>Program</InputLabel>
+                        <Select value={selectedProgram} label="Program" onChange={e => setSelectedProgram(e.target.value)} sx={{ borderRadius: 2.5, bgcolor: 'background.paper' }}>
+                            <MenuItem value="all">All Programs</MenuItem>
+                            {programs.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+
+                    {user?.tenantType !== 'school' && (
+                        <FormControl size="small" sx={{ minWidth: 180 }}>
+                            <InputLabel>Institution</InputLabel>
+                            <Select value={selectedInstitution} label="Institution" onChange={e => setSelectedInstitution(e.target.value)} sx={{ borderRadius: 2.5, bgcolor: 'background.paper' }}>
+                                <MenuItem value="">All Institutions</MenuItem>
+                                {institutions.map(i => <MenuItem key={i.id} value={i.id}>{i.name}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                    )}
+
+                    <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
+                        <Tooltip title="Refresh Data">
+                            <IconButton 
+                                size="small" 
+                                onClick={() => refetch()}
+                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main' }}
+                            >
+                                <RefreshIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Button 
+                            variant="contained" 
+                            startIcon={<UploadIcon />} 
+                            sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, boxShadow: 'none' }}
+                        >
+                            Import
+                        </Button>
+                    </Box>
+                </Paper>
+
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                    <Typography variant="caption" fontWeight={800} color="text.secondary" sx={{ textTransform: 'uppercase', mr: 1 }}>
+                        Quick Filters:
+                    </Typography>
+                    <Chip 
+                        label="All" 
+                        size="small" 
+                        onClick={() => setSelectedGrade('all')}
+                        variant={selectedGrade === 'all' ? 'filled' : 'outlined'}
+                        color={selectedGrade === 'all' ? 'primary' : 'default'}
+                        sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                    />
+                    {grades.slice(0, 6).map(g => (
+                        <Chip 
+                            key={String(g)}
+                            label={`G${g}`} 
+                            size="small" 
+                            onClick={() => setSelectedGrade(String(g))}
+                            variant={selectedGrade === String(g) ? 'filled' : 'outlined'}
+                            color={selectedGrade === String(g) ? 'primary' : 'default'}
+                            sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                        />
+                    ))}
+                    {isLoading && <CircularProgress size={16} sx={{ ml: 1 }} />}
                 </Box>
-            </Paper>
+            </Box>
 
             {/* Grade count info */}
             <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
