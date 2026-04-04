@@ -27,6 +27,7 @@ import {
     MenuItem,
     ListItemIcon,
     ListItemText,
+    ListSubheader,
 } from '@mui/material';
 import {
     Assessment as GradesIcon,
@@ -337,6 +338,40 @@ function InstructorGradebookView() {
 
     const isGradebookLocked = courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED' || courseGradeBookStatus === 'PENDING_REVIEW';
 
+
+    // Derived state for the currently selected course
+    const selectedCourseItem = useMemo(() => {
+        if (!courses || !selectedCourseId) return null;
+        return courses.find((c: any) => c.id === selectedCourseId);
+    }, [courses, selectedCourseId]);
+
+    // Group courses by gradeLevel for the dropdown
+    const groupedCourses = useMemo(() => {
+        if (!courses) return {};
+        const groups: Record<string, any[]> = {};
+        courses.forEach((c: any) => {
+            const level = c.gradeLevel ? `Grade ${c.gradeLevel}` : 'Unassigned Grade';
+            if (!groups[level]) groups[level] = [];
+            groups[level].push(c);
+        });
+        
+        // Sort keys logically (Grade X before Grade Y, Unassigned at the end)
+        const sortedKeys = Object.keys(groups).sort((a, b) => {
+            if (a === 'Unassigned Grade') return 1;
+            if (b === 'Unassigned Grade') return -1;
+            
+            const numA = parseInt(a.replace('Grade ', ''));
+            const numB = parseInt(b.replace('Grade ', ''));
+            return numA - numB;
+        });
+
+        const sortedGroups: Record<string, any[]> = {};
+        for (const key of sortedKeys) {
+            sortedGroups[key] = groups[key];
+        }
+
+        return sortedGroups;
+    }, [courses]);
 
     const isLoadingGrid = loadingEnrollments || loadingAssessments || loadingScores;
 
@@ -675,6 +710,15 @@ function InstructorGradebookView() {
                         <Typography variant="body2" color="text.secondary" fontWeight={500}>
                             Manage assessments, record scores, and compute total grades
                         </Typography>
+                        {selectedCourseItem?.gradeLevel && (
+                            <Chip 
+                                label={`Grade ${selectedCourseItem.gradeLevel}`}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={{ fontWeight: 700 }}
+                            />
+                        )}
                         {selectedCourseId && <GradeBookStatusBadge status={courseGradeBookStatus} />}
                     </Box>
                 </Box>
@@ -694,12 +738,17 @@ function InstructorGradebookView() {
                         {!courses || courses.length === 0 ? (
                             <MenuItem value="" disabled><em>No courses assigned</em></MenuItem>
                         ) : (
-                            courses.map((c: any) => (
-                                <MenuItem key={c.id} value={c.id}>
-                                    <Typography variant="body2" fontWeight={600}>{c.name}</Typography>
-                                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>({c.code})</Typography>
-                                </MenuItem>
-                            ))
+                            Object.entries(groupedCourses).map(([gradeLevel, courseList]) => [
+                                <ListSubheader key={`header-${gradeLevel}`} sx={{ fontWeight: 800, bgcolor: 'background.paper', color: 'primary.main', lineHeight: '36px' }}>
+                                    {gradeLevel.toUpperCase()}
+                                </ListSubheader>,
+                                ...courseList.map((c: any) => (
+                                    <MenuItem key={c.id} value={c.id}>
+                                        <Typography variant="body2" fontWeight={600}>{c.name}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>({c.code})</Typography>
+                                    </MenuItem>
+                                ))
+                            ])
                         )}
                     </TextField>
 

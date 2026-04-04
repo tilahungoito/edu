@@ -349,15 +349,6 @@ moduleRegistry.register({
             allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
         },
         {
-            id: 'academic-sections',
-            label: 'Classroom Sections',
-            labelAmharic: 'ክፍሎች',
-            icon: 'Groups',
-            path: '/academic/sections',
-            permission: { module: 'academic', action: 'view' },
-            allowedRoles: ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
-        },
-        {
             id: 'academic-curriculum-templates',
             label: 'Curriculum Templates',
             labelAmharic: 'የስርዓተ ትምህርት ቀመሮች',

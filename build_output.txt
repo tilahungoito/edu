@@ -1,0 +1,23 @@
+
+> tigray-edu@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 21.9s
+  Running TypeScript ...
+Failed to compile.
+
+./app/(dashboard)/academic/grades/page.tsx:786:38
+Type error: This comparison appears to be unintentional because the types '"DRAFT" | null' and '"PENDING_REVIEW"' have no overlap.
+
+[0m [90m 784 |[39m                                         {saving [33m?[39m [32m'Saving...'[39m [33m:[39m [32m'Save Grades'[39m}
+ [90m 785 |[39m                                     [33m<[39m[33m/[39m[33mButton[39m[33m>[39m
+[31m[1m>[22m[39m[90m 786 |[39m                                     {courseGradeBookStatus [33m!==[39m [32m'PENDING_REVIEW'[39m [33m&&[39m (
+ [90m     |[39m                                      [31m[1m^[22m[39m
+ [90m 787 |[39m                                         [33m<[39m[33mButton[39m
+ [90m 788 |[39m                                             variant[33m=[39m[32m"contained"[39m
+ [90m 789 |[39m                                             startIcon[33m=[39m{[33m<[39m[33mSendIcon[39m [33m/[39m[33m>[39m}[0m
+Next.js build worker exited with code: 1 and signal: null

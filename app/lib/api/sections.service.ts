@@ -4,6 +4,9 @@ export interface Section {
     id: string;
     name: string;
     institutionId: string;
+    gradeLevel?: number;
+    program?: string;
+    capacity?: number;
     nextSectionId?: string;
     students?: any[];
     _count?: {
@@ -45,11 +48,22 @@ export const sectionsService = {
     return response.data;
   },
   unassignStudent: async (sectionId: string, studentId: string) => {
-    const response = await apiClient.delete(`sections/${sectionId}/students/${studentId}`);
+    const response = await apiClient.delete(`/sections/${sectionId}/students/${studentId}`);
     return response.data;
   },
-  getUnassignedStudents: async (institutionId: string) => {
-    const response = await apiClient.get(`/sections/institution/${institutionId}/unassigned`);
+  getUnassignedStudents: async (institutionId: string, filters?: { year?: number; program?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.year) params.append('year', filters.year.toString());
+    if (filters?.program) params.append('program', filters.program);
+    
+    const queryString = params.toString();
+    const url = `/sections/institution/${institutionId}/unassigned${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await apiClient.get(url);
+    return response.data;
+  },
+  autoEnroll: async (sectionId: string) => {
+    const response = await apiClient.post('/enrollments/auto-enroll', { sectionId });
     return response.data;
   },
 };

@@ -35,6 +35,7 @@ export default function StudentRegistrationPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const [registeredStudent, setRegisteredStudent] = useState<any>(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -68,7 +69,7 @@ export default function StudentRegistrationPage() {
         setError(null);
 
         try {
-            await studentsService.create({
+            const result = await studentsService.create({
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 institutionId: user.tenantId,
@@ -77,11 +78,9 @@ export default function StudentRegistrationPage() {
                 gender: formData.gender as 'MALE' | 'FEMALE',
             });
 
+            setRegisteredStudent(result);
             setSuccess(true);
-            toast.success('Student registered successfully!');
-            setTimeout(() => {
-                router.push('/students/register');
-            }, 2000);
+            toast.success(`${formData.firstName} registered${result?.section ? ` → ${result.section.name}` : ''}!`);
         } catch (err: any) {
             console.error('Registration failed:', err);
             setError(err.response?.data?.message || err.message || 'Registration failed');
@@ -98,17 +97,69 @@ export default function StudentRegistrationPage() {
                     <Typography variant="h4" fontWeight={800} gutterBottom>
                         Registration Successful!
                     </Typography>
-                    <Typography color="text.secondary" paragraph variant="h6">
-                        {formData.firstName} {formData.lastName} has been added to the directory.
+                    <Typography color="text.secondary" paragraph>
+                        <b>{formData.firstName} {formData.lastName}</b> has been added to the student directory.
                     </Typography>
-                    <Button 
-                        variant="contained" 
-                        color="secondary" 
-                        onClick={() => router.push('/students')}
-                        sx={{ mt: 2, borderRadius: 2.5, px: 4 }}
-                    >
-                        Go to Directory
-                    </Button>
+                    
+                    {registeredStudent?.section ? (
+                        <Paper variant="outlined" sx={{ 
+                            p: 2.5, 
+                            mb: 3, 
+                            borderRadius: 3, 
+                            bgcolor: alpha(theme.palette.success.main, 0.05),
+                            borderColor: theme.palette.success.main,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5
+                        }}>
+                            <SchoolIcon color="success" />
+                            <Box sx={{ textAlign: 'left' }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600}>AUTO-ASSIGNED TO</Typography>
+                                <Typography variant="body1" fontWeight={800} color="success.dark">
+                                    {registeredStudent.section.name}
+                                </Typography>
+                            </Box>
+                        </Paper>
+                    ) : (
+                        <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3, borderColor: 'warning.main', bgcolor: alpha(theme.palette.warning.main, 0.05) }}>
+                            <Typography variant="body2" color="warning.dark" fontWeight={600}>
+                                ⚠️ No section was assigned — no section with matching grade level found.
+                            </Typography>
+                        </Paper>
+                    )}
+
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+                        <Button 
+                            variant="outlined"
+                            onClick={() => {
+                                setSuccess(false);
+                                setRegisteredStudent(null);
+                                setFormData({ firstName: '', lastName: '', program: '', year: '1', gender: '' });
+                            }}
+                            sx={{ borderRadius: 2.5, px: 3 }}
+                        >
+                            Register Another
+                        </Button>
+                        {registeredStudent?.section && (
+                            <Button
+                                variant="outlined"
+                                color="success"
+                                onClick={() => router.push(`/academic/sections/${registeredStudent.section.id}`)}
+                                sx={{ borderRadius: 2.5, px: 3 }}
+                                startIcon={<SchoolIcon />}
+                            >
+                                View Section
+                            </Button>
+                        )}
+                        <Button 
+                            variant="contained" 
+                            color="secondary" 
+                            onClick={() => router.push('/students')}
+                            sx={{ borderRadius: 2.5, px: 4 }}
+                        >
+                            Go to Directory
+                        </Button>
+                    </Box>
                 </Paper>
             </Box>
         );
@@ -173,15 +224,18 @@ export default function StudentRegistrationPage() {
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 fullWidth
+                                select
                                 label="Grade / Year"
                                 name="year"
-                                type="number"
                                 required
                                 value={formData.year}
                                 onChange={handleChange}
-                                InputProps={{ inputProps: { min: 1, max: 12 } }}
                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
-                            />
+                            >
+                                {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
+                                    <MenuItem key={g} value={String(g)}>Grade {g}</MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                             <TextField

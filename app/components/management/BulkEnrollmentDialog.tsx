@@ -19,7 +19,8 @@ import {
     Box,
     TextField,
     Divider,
-    MenuItem
+    MenuItem,
+    Chip
 } from '@mui/material';
 import enrollmentsService from '@/app/lib/api/enrollments.service';
 import coursesService from '@/app/lib/api/courses.service';
@@ -42,6 +43,7 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
     const [semester, setSemester] = useState('');
     const [periods, setPeriods] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -49,7 +51,7 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
             setFetching(true);
             try {
                 const [allCourses, allPeriods] = await Promise.all([
-                    coursesService.getAll({ institutionId: section.institutionId }),
+                    coursesService.getAll(),
                     scheduleConfigService.getPeriods(section.institutionId)
                 ]);
                 setCourses(allCourses);
@@ -73,10 +75,24 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
         fetchInitialData();
     }, [open, section]);
 
+    const filteredCourses = courses.filter(c => 
+        (c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.code?.toLowerCase().includes(searchQuery.toLowerCase())) &&
+        c.gradeLevel === section.gradeLevel
+    );
+
     const handleToggle = (id: string) => {
         setSelectedCourseIds(prev =>
             prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
         );
+    };
+
+    const handleSelectAll = () => {
+        if (selectedCourseIds.length === filteredCourses.length) {
+            setSelectedCourseIds([]);
+        } else {
+            setSelectedCourseIds(filteredCourses.map(c => c.id));
+        }
     };
 
     const handleSubmit = async () => {
@@ -142,8 +158,43 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
                 </TextField>
 
                 <Typography variant="subtitle2" fontWeight={700} gutterBottom color="primary">
-                    Select Courses
+                    Available Grade {section.gradeLevel} Courses
                 </Typography>
+                
+                <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <TextField
+                        size="small"
+                        placeholder="Search courses..."
+                        fullWidth
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        variant="outlined"
+                        slotProps={{
+                            input: {
+                                sx: { borderRadius: '8px' }
+                            }
+                        } as any}
+                    />
+                    <Button 
+                        size="small" 
+                        onClick={handleSelectAll}
+                        sx={{ minWidth: '100px', fontWeight: 700 }}
+                        variant="outlined"
+                    >
+                        {selectedCourseIds.length === filteredCourses.length && filteredCourses.length > 0 
+                            ? 'Deselect All' 
+                            : 'Select All'}
+                    </Button>
+                </Box>
+
+                <Box sx={{ px: 1, mb: 1, display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="caption" color="text.secondary">
+                        {filteredCourses.length} courses found
+                    </Typography>
+                    <Typography variant="caption" color="primary.main" fontWeight={700}>
+                        {selectedCourseIds.length} selected
+                    </Typography>
+                </Box>
                 <Divider sx={{ mb: 1 }} />
 
                 {fetching ? (
@@ -152,7 +203,7 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
                     </Box>
                 ) : (
                     <List sx={{ maxHeight: 350, overflow: 'auto' }}>
-                        {courses.map((course) => (
+                        {filteredCourses.map((course) => (
                             <ListItem
                                 key={course.id}
                                 disablePadding
@@ -171,12 +222,22 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
                                     onClick={() => handleToggle(course.id)}
                                 />
                                 <ListItemText
-                                    primary={course.name}
-                                    secondary={`${course.code} | ${course.credits} Credits`}
+                                    primary={
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="body2" fontWeight={700}>
+                                                {course.name}
+                                            </Typography>
+                                        </Box>
+                                    }
+                                    secondary={`${course.code || 'No Code'} | ${course.credit || 0} Credits`}
                                 />
                             </ListItem>
                         ))}
-                        {courses.length === 0 && <Typography variant="body2" sx={{ p: 2 }}>No courses available.</Typography>}
+                        {filteredCourses.length === 0 && (
+                            <Typography variant="body2" sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+                                No courses matching your search.
+                            </Typography>
+                        )}
                     </List>
                 )}
             </DialogContent>
