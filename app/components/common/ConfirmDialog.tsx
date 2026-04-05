@@ -24,7 +24,7 @@ import {
 interface ConfirmDialogProps {
     open: boolean;
     title: string;
-    message: string;
+    message: React.ReactNode;
     confirmLabel?: string;
     cancelLabel?: string;
     confirmColor?: 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
@@ -104,7 +104,7 @@ export function ConfirmDialog({
                 </IconButton>
             </DialogTitle>
             <DialogContent sx={{ px: 3, py: 2 }}>
-                <Typography color="text.secondary" variant="body1" lineHeight={1.6}>
+                <Typography color="text.secondary" variant="body1" component="div" lineHeight={1.6}>
                     {message}
                 </Typography>
             </DialogContent>

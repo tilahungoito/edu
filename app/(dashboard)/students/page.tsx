@@ -54,15 +54,87 @@ import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { institutionsService } from '@/app/lib/api/institutions.service';
 import { toast } from 'react-hot-toast';
+import { promotionsService } from '@/app/lib/api/promotions.service';
 
-// Flexible matcher for semester results
+// Flexible matcher for semester results — always check II before I
+// because 'Semester II' contains 'Semester I' as a substring.
 const findHistoryBySemester = (histories: any[], semesterNum: 1 | 2) => {
-    if (!histories) return null;
+    if (!histories || !Array.isArray(histories)) return null;
     const roman = semesterNum === 1 ? 'I' : 'II';
     const digit = semesterNum.toString();
-    const regex = new RegExp(`(Semester|Sem|S)\\s*(${roman}|${digit})($|\\s|[\\d/])`, 'i');
-    return histories.find(h => regex.test(h.academicPeriod?.name || ''));
+    
+    // Hardened regex: Matches Semester, Sem, S, Term, T, or even standalone I/II or 1/2
+    // Negative lookahead (?![A-Za-z\d]) prevents partial matches (e.g. 'I' matching inside 'II')
+    const regex = new RegExp(`(Semester|Sem|S|Term|T)?[.\\s-]*(${roman}|${digit})(?![A-Za-z\\d])`, 'i');
+    
+    // Sort by most recent first to ensure we get the latest academic history
+    return [...histories]
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+        .find(h => regex.test(h.academicPeriod?.name || ''));
 };
+
+const SyncResultsDialog = ({ open, onClose, institutionId, onSynced }: any) => {
+    const [selectedPeriod, setSelectedPeriod] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
+    const { data: periods } = useQuery({
+        queryKey: ['academic-periods', institutionId],
+        queryFn: () => institutionsService.getAcademicPeriods(institutionId),
+        enabled: !!institutionId && open
+    });
+
+    const handleSync = async () => {
+        if (!selectedPeriod) return toast.error('Please select an academic period');
+        setIsSyncing(true);
+        try {
+            await promotionsService.syncResults(institutionId, selectedPeriod);
+            toast.success('Directory synchronized with latest grades');
+            onSynced();
+            onClose();
+        } catch (error: any) {
+            toast.error(error.message || 'Sync failed');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    return (
+        <ConfirmDialog
+            open={open}
+            title="Sync Semester Results"
+            confirmLabel={isSyncing ? "Syncing..." : "Sync Now"}
+            confirmColor="primary"
+            onConfirm={handleSync}
+            onClose={onClose}
+            message={
+                <Box sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        This will recalculate the semester averages for all students based on their 
+                        <strong> Approved & Locked</strong> gradebooks in the selected period.
+                    </Typography>
+                    <FormControl fullWidth size="small">
+                        <InputLabel>Target Academic Period</InputLabel>
+                        <Select 
+                            value={selectedPeriod} 
+                            label="Target Academic Period" 
+                            onChange={e => setSelectedPeriod(e.target.value)}
+                        >
+                            {(periods || []).map((p: any) => (
+                                <MenuItem key={p.id} value={p.id}>{p.name} {p.isActive ? '(Active)' : ''}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Box>
+            }
+        />
+    );
+};
+
+type EnrichedStudent = Student & {
+    full_name: string;
+    display_email: string;
+    institution_name: string;
+};
+
 
 export default function StudentsPage() {
     const theme = useTheme();
@@ -77,6 +149,7 @@ export default function StudentsPage() {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [institutions, setInstitutions] = useState<any[]>([]);
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+    const [syncDialogOpen, setSyncDialogOpen] = useState(false);
 
     const handleEdit = (u: any) => {
         setSelectedStudent(u);
@@ -192,7 +265,7 @@ export default function StudentsPage() {
         'PENDING':   { color: theme.palette.text.secondary, label: 'Pending' },
     };
 
-    const columns: GridColDef[] = [
+    const columns: GridColDef<EnrichedStudent>[] = [
         {
             field: 'index',
             headerName: '#',
@@ -293,13 +366,15 @@ export default function StudentsPage() {
             field: 'sem1',
             headerName: 'Sem I',
             width: 90,
-            valueGetter: (_, row) => findHistoryBySemester(row.academicHistories, 1)?.finalAverage,
+            valueGetter: (_, row) => findHistoryBySemester(row.academicHistories || [], 1)?.finalAverage,
             renderCell: (params) => {
                 const s1 = params.value;
                 return (
-                    <Typography variant="body2" fontWeight={800} color={s1 != null ? (s1 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
-                        {s1 != null ? `${Math.round(s1)}%` : '-'}
-                    </Typography>
+                    <Tooltip title={s1 != null ? `Total verified average for Semester I: ${Math.round(s1)}%` : 'No finalized results for Sem I'} arrow>
+                        <Typography variant="body2" fontWeight={800} color={s1 != null ? (s1 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
+                            {s1 != null ? `${Math.round(s1)}%` : '-'}
+                        </Typography>
+                    </Tooltip>
                 );
             }
         },
@@ -307,23 +382,26 @@ export default function StudentsPage() {
             field: 'sem2',
             headerName: 'Sem II',
             width: 90,
-            valueGetter: (_, row) => findHistoryBySemester(row.academicHistories, 2)?.finalAverage,
+            valueGetter: (_, row) => findHistoryBySemester(row.academicHistories || [], 2)?.finalAverage,
             renderCell: (params) => {
                 const s2 = params.value;
                 return (
-                    <Typography variant="body2" fontWeight={800} color={s2 != null ? (s2 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
-                        {s2 != null ? `${Math.round(s2)}%` : '-'}
-                    </Typography>
+                    <Tooltip title={s2 != null ? `Total verified average for Semester II: ${Math.round(s2)}%` : 'No finalized results for Sem II'} arrow>
+                        <Typography variant="body2" fontWeight={800} color={s2 != null ? (s2 >= 50 ? 'success.main' : 'error.main') : 'text.disabled'}>
+                            {s2 != null ? `${Math.round(s2)}%` : '-'}
+                        </Typography>
+                    </Tooltip>
                 );
             }
         },
+
         {
             field: 'average',
             headerName: 'AVG',
             width: 95,
             valueGetter: (_, row) => {
-                const s1 = findHistoryBySemester(row.academicHistories, 1)?.finalAverage;
-                const s2 = findHistoryBySemester(row.academicHistories, 2)?.finalAverage;
+                const s1 = findHistoryBySemester(row.academicHistories || [], 1)?.finalAverage;
+                const s2 = findHistoryBySemester(row.academicHistories || [], 2)?.finalAverage;
                 if (s1 != null && s2 != null) return (s1 + s2) / 2;
                 return s1 ?? s2 ?? null;
             },
@@ -498,15 +576,25 @@ export default function StudentsPage() {
                     )}
 
                     <Box sx={{ display: 'flex', gap: 1, ml: 'auto', alignItems: 'center' }}>
+                        <Tooltip title="Sync Results">
+                            <IconButton 
+                                size="small" 
+                                onClick={() => setSyncDialogOpen(true)}
+                                sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.05), color: 'secondary.main', ml: 1 }}
+                            >
+                                <TrendingUpIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
                         <Tooltip title="Refresh Data">
                             <IconButton 
                                 size="small" 
                                 onClick={() => refetch()}
-                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main' }}
+                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main', ml: 1 }}
                             >
                                 <RefreshIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
+
                         <Button 
                             variant="contained" 
                             startIcon={<UploadIcon />} 
@@ -586,6 +674,14 @@ export default function StudentsPage() {
                 onConfirm={() => handleDelete(deleteTarget)}
                 onClose={() => setDeleteTarget(null)}
             />
+
+            <SyncResultsDialog
+                open={syncDialogOpen}
+                onClose={() => setSyncDialogOpen(false)}
+                institutionId={selectedInstitution || user?.tenantId}
+                onSynced={() => refetch()}
+            />
         </Box>
+
     );
 }

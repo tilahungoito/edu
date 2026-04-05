@@ -35,6 +35,15 @@ export const promotionsService = {
         const response = await apiClient.get<any[]>(`promotions/stats/${institutionId}`);
         return response.data;
     },
+
+    syncResults: async (institutionId: string, academicPeriodId: string) => {
+        const response = await apiClient.post<{ message: string; syncedCount: number }>('promotions/sync-institution', {
+            institutionId,
+            academicPeriodId,
+        });
+        return response.data;
+    },
 };
+
 
 export default promotionsService;

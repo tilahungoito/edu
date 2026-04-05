@@ -45,6 +45,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
         program: '',
         year: 1,
         gender: '' as 'MALE' | 'FEMALE' | '',
+        sem1Average: '' as string | number,
+        sem2Average: '' as string | number,
+        promotionStatus: '' as 'PASS' | 'DETAINED' | 'WITHDRAWN' | 'PENDING' | '',
     });
 
     // Validation State
@@ -83,6 +86,15 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
     useEffect(() => {
         if (open) {
             if (student) {
+                // Pull existing semester results from academicHistories
+                const getSem = (num: 1 | 2) => {
+                    const roman = num === 1 ? 'I' : 'II';
+                    const digit = num.toString();
+                    const re = new RegExp(`(Semester|Sem|S)[.\\s-]*(${roman}|${digit})(?![A-Za-z\\d])`, 'i');
+                    return student.academicHistories?.find(h => re.test(h.academicPeriod?.name || ''));
+                };
+                const h1 = getSem(1);
+                const h2 = getSem(2);
                 setFormData({
                     firstName: student.user?.firstName || '',
                     lastName: student.user?.lastName || '',
@@ -91,6 +103,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                     program: student.program,
                     year: student.year,
                     gender: student.gender || '',
+                    sem1Average: h1?.finalAverage != null ? h1.finalAverage : '',
+                    sem2Average: h2?.finalAverage != null ? h2.finalAverage : '',
+                    promotionStatus: (h1 || h2)?.promotionStatus || '',
                 });
             } else {
                 setFormData({
@@ -101,6 +116,9 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                     program: '',
                     year: 1,
                     gender: '',
+                    sem1Average: '',
+                    sem2Average: '',
+                    promotionStatus: '',
                 });
             }
             setErrors({});
@@ -146,6 +164,14 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                 program: formData.program,
                 year: Number(formData.year),
                 gender: formData.gender,
+                // Only include academicHistory if at least one semester average is provided
+                ...(formData.sem1Average !== '' || formData.sem2Average !== '' ? {
+                    academicHistory: {
+                        sem1Average: formData.sem1Average !== '' ? Number(formData.sem1Average) : null,
+                        sem2Average: formData.sem2Average !== '' ? Number(formData.sem2Average) : null,
+                        promotionStatus: formData.promotionStatus || undefined,
+                    }
+                } : {}),
             };
 
             if (student) {
@@ -293,6 +319,60 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
                             >
                                 <MenuItem value="MALE">Male</MenuItem>
                                 <MenuItem value="FEMALE">Female</MenuItem>
+                            </TextField>
+                        </Grid>
+
+                        {/* ── Semester Results ─────────────────────────────── */}
+                        <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
+                            <Typography variant="overline" color="secondary" fontWeight={800} sx={{ letterSpacing: 1 }}>
+                                Semester Results{' '}
+                                <Typography component="span" variant="caption" color="text.secondary">
+                                    (optional — leave blank if not yet available)
+                                </Typography>
+                            </Typography>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 4 }}>
+                            <TextField
+                                label="Semester I Average (%)"
+                                name="sem1Average"
+                                type="number"
+                                fullWidth
+                                value={formData.sem1Average}
+                                onChange={handleChange}
+                                inputProps={{ min: 0, max: 100, step: 0.1 }}
+                                helperText="e.g. 78.5"
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 4 }}>
+                            <TextField
+                                label="Semester II Average (%)"
+                                name="sem2Average"
+                                type="number"
+                                fullWidth
+                                value={formData.sem2Average}
+                                onChange={handleChange}
+                                inputProps={{ min: 0, max: 100, step: 0.1 }}
+                                helperText="e.g. 82.0"
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12, sm: 4 }}>
+                            <TextField
+                                select
+                                label="Academic Standing"
+                                name="promotionStatus"
+                                fullWidth
+                                value={formData.promotionStatus}
+                                onChange={handleChange}
+                                helperText="Set manually or leave for auto-calculation"
+                            >
+                                <MenuItem value="">Auto / Not Set</MenuItem>
+                                <MenuItem value="PENDING">Pending</MenuItem>
+                                <MenuItem value="PASS">Promoted (Pass)</MenuItem>
+                                <MenuItem value="DETAINED">Detained</MenuItem>
+                                <MenuItem value="WITHDRAWN">Withdrawn</MenuItem>
                             </TextField>
                         </Grid>
 

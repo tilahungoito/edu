@@ -50,5 +50,11 @@ export const institutionsService = {
 
     delete: async (id: string): Promise<void> => {
         await apiClient.delete(`institutions/${id}`);
+    },
+
+    getAcademicPeriods: async (institutionId: string): Promise<any[]> => {
+        const response = await apiClient.get<any[]>(`schedule-config/periods/${institutionId}`);
+        return response.data;
     }
 };
+
