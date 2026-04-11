@@ -140,8 +140,8 @@ function LoginForm() {
             return;
         }
 
-        // Call backend API via auth store
-        const result = await login(emailOrUsername, password);
+        // Call backend API via auth store — pass rememberMe to choose localStorage vs sessionStorage
+        const result = await login(emailOrUsername, password, rememberMe);
 
         if (result.success) {
             // Show success state

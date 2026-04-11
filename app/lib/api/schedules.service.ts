@@ -61,6 +61,11 @@ export const schedulesService = {
         return response.data;
     },
 
+    update: async (id: string, data: Partial<CreateScheduleData>) => {
+        const response = await apiClient.patch<Schedule>(`schedules/${id}`, data);
+        return response.data;
+    },
+
     delete: async (id: string) => {
         await apiClient.delete(`schedules/${id}`);
     }

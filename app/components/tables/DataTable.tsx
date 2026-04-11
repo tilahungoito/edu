@@ -486,8 +486,8 @@ export function DataTable<T extends { id: string }>({
                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                 PaperProps={{
-                    sx: { 
-                        borderRadius: 3, 
+                    sx: {
+                        borderRadius: 3,
                         minWidth: 180,
                         boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
                         mt: 1,
@@ -521,7 +521,7 @@ export function DataTable<T extends { id: string }>({
                         </MenuItem>
                     </PermissionGate>
                 )}
-                
+
                 {onToggleStatus && actionMenuAnchor && (
                     <PermissionGate permission={{ module, action: 'edit' }}>
                         <MenuItem

@@ -51,7 +51,7 @@ export function CourseTransferDialog({ open, onClose, onSuccess, course }: Cours
                 // Fetch instructors in the same institution as the course
                 const data = await staffService.getStaffByRole('INSTRUCTOR', course.institutionId);
                 // Filter out current instructor
-                setInstructors(data.filter(i => i.id !== course.instructorId));
+                setInstructors(data.filter((i: User) => i.id !== course.instructorId));
             } catch (err: any) {
                 console.error('Failed to fetch instructors:', err);
             } finally {

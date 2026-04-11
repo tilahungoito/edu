@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Box,
     Typography,
@@ -15,106 +15,68 @@ import { DataTable } from '@/app/components/tables';
 import { KPIGrid } from '@/app/components/analytics';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
-import { inventoryService, Asset } from '@/app/lib/api/inventory.service';
+import { inventoryService, Asset, CreateAssetDto } from '@/app/lib/api/inventory.service';
+import { AssetDialog } from '@/app/components/management/AssetDialog';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import type { KPIData } from '@/app/lib/types';
 
-const assetColumns: GridColDef[] = [
-    { field: 'assetCode', headerName: 'Code', width: 110 },
-    { field: 'name', headerName: 'Asset Name', flex: 1.2, minWidth: 160 },
-    {
-        field: 'category',
-        headerName: 'Category',
-        width: 100,
-        renderCell: (params) => {
-            const categoryColors: Record<string, 'primary' | 'secondary' | 'warning' | 'success'> = {
-                electronics: 'primary',
-                furniture: 'secondary',
-                equipment: 'warning',
-                vehicles: 'success',
-                books: 'info' as any,
-                science: 'secondary',
-            };
-            return (
-                <Chip
-                    label={params.value?.charAt(0).toUpperCase() + params.value?.slice(1)}
-                    size="small"
-                    color={(categoryColors[params.value?.toLowerCase() as string] || 'default') as any}
-                    variant="outlined"
-                    sx={{ height: 20, fontSize: '0.65rem' }}
-                />
-            );
-        }
-    },
-    { field: 'quantity', headerName: 'Qty', width: 60, type: 'number' },
-    {
-        field: 'unitValue',
-        headerName: 'Value (Unit)',
-        width: 100,
-        type: 'number',
-        valueFormatter: (value) => (typeof value === 'number' ? `${(value as number).toLocaleString()}` : ''),
-    },
-    {
-        field: 'condition',
-        headerName: 'Cond.',
-        width: 80,
-        renderCell: (params) => {
-            const conditionColors: Record<string, 'success' | 'warning' | 'error' | 'primary'> = {
-                new: 'primary',
-                good: 'success',
-                fair: 'warning',
-                poor: 'error',
-            };
-            return (
-                <Chip
-                    label={params.value?.charAt(0).toUpperCase() + params.value?.slice(1)}
-                    size="small"
-                    color={conditionColors[params.value?.toLowerCase() as string] || 'default'}
-                    sx={{ height: 20, fontSize: '0.65rem' }}
-                />
-            );
-        }
-    },
-    { field: 'location', headerName: 'Location', flex: 1, minWidth: 150 },
-    { field: 'status', headerName: 'Status', width: 90 },
-];
-
 export default function InventoryPage() {
-    const [assets, setAssets] = useState<Asset[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
     const [categoryFilter, setCategoryFilter] = useState<string>('');
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
-    // Scoped data hook (if applicable for filtering frontend-side)
-    const scopedAssets = useScopedData(assets, 'inventory');
+    // Queries
+    const { data: assets = [], isLoading } = useQuery({
+        queryKey: ['inventory'],
+        queryFn: () => inventoryService.getAll(),
+    });
 
-    const fetchAssets = async () => {
-        try {
-            setLoading(true);
-            const data = await inventoryService.getAll();
-            setAssets(data);
-        } catch (error) {
-            console.error('Failed to fetch assets:', error);
-        } finally {
-            setLoading(false);
+    // Real-time synchronization
+    useRealTime('inventory_created', () => queryClient.invalidateQueries({ queryKey: ['inventory'] }));
+    useRealTime('inventory_updated', () => queryClient.invalidateQueries({ queryKey: ['inventory'] }));
+    useRealTime('inventory_deleted', () => queryClient.invalidateQueries({ queryKey: ['inventory'] }));
+
+    // Mutations
+    const createMutation = useMutation({
+        mutationFn: (data: CreateAssetDto) => inventoryService.create(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory'] });
+            toast.success('Asset registered successfully');
+            setDialogOpen(false);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to register asset');
         }
-    };
-
-    useEffect(() => {
-        fetchAssets();
-    }, []);
-
-    // Real-time updates
-    useRealTime('asset_created', (newAsset: Asset) => {
-        setAssets(prev => [newAsset, ...prev]);
     });
 
-    useRealTime('asset_updated', (updatedAsset: Asset) => {
-        setAssets(prev => prev.map(a => a.id === updatedAsset.id ? updatedAsset : a));
+    const updateMutation = useMutation({
+        mutationFn: (params: { id: string; data: Partial<CreateAssetDto> }) => inventoryService.update(params),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory'] });
+            toast.success('Asset updated successfully');
+            setDialogOpen(false);
+            setSelectedAsset(null);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to update asset');
+        }
     });
 
-    useRealTime('asset_deleted', ({ id }: { id: string }) => {
-        setAssets(prev => prev.filter(a => a.id !== id));
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => inventoryService.delete(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['inventory'] });
+            toast.success('Asset removed successfully');
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to delete asset');
+        }
     });
 
+    // Data Processing
+    const scopedAssets = useScopedData(assets, 'inventory');
     const filteredAssets = useMemo(() => {
         if (!categoryFilter) return scopedAssets;
         return scopedAssets.filter((a) => a.category.toLowerCase() === categoryFilter.toLowerCase());
@@ -134,6 +96,76 @@ export default function InventoryPage() {
         ];
     }, [assets]);
 
+    const handleSaveAsset = async (data: any, id?: string) => {
+        if (id) {
+            updateMutation.mutate({ id, data });
+        } else {
+            createMutation.mutate(data);
+        }
+    };
+
+    const assetColumns: GridColDef[] = [
+        { field: 'assetCode', headerName: 'Code', width: 110 },
+        { field: 'name', headerName: 'Asset Name', flex: 1.2, minWidth: 160 },
+        {
+            field: 'category',
+            headerName: 'Category',
+            width: 120,
+            renderCell: (params) => {
+                const colors: Record<string, 'primary' | 'secondary' | 'warning' | 'success' | 'info'> = {
+                    electronics: 'primary',
+                    furniture: 'secondary',
+                    equipment: 'warning',
+                    vehicles: 'success',
+                    books: 'info',
+                    science: 'secondary',
+                };
+                const val = params.value?.toLowerCase() || '';
+                return (
+                    <Chip
+                        label={params.value || 'None'}
+                        size="small"
+                        color={(colors[val] || 'default') as any}
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.65rem' }}
+                    />
+                );
+            }
+        },
+        { field: 'quantity', headerName: 'Qty', width: 60, type: 'number' },
+        {
+            field: 'unitValue',
+            headerName: 'Value (Unit)',
+            width: 100,
+            type: 'number',
+            valueFormatter: (value) => (typeof value === 'number' ? `${(value as number).toLocaleString()}` : ''),
+        },
+        {
+            field: 'condition',
+            headerName: 'Cond.',
+            width: 80,
+            renderCell: (params) => {
+                const conditionColors: Record<string, 'success' | 'warning' | 'error' | 'primary'> = {
+                    new: 'primary',
+                    good: 'success',
+                    fair: 'warning',
+                    poor: 'error',
+                    broken: 'error',
+                };
+                return (
+                    <Chip
+                        label={params.value?.toString().toUpperCase()}
+                        size="small"
+                        color={conditionColors[params.value?.toLowerCase() as string] || 'default'}
+                        sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700 }}
+                    />
+                );
+            }
+        },
+        { field: 'location', headerName: 'Location', flex: 1, minWidth: 150 },
+        { field: 'status', headerName: 'Status', width: 110 },
+    ];
+
     return (
         <Box className="animate-fade-in" sx={{ p: { xs: 2.5, md: 3, lg: 5 }, maxWidth: '100%', overflow: 'hidden' }}>
             <Box sx={{ mb: 5 }}>
@@ -145,26 +177,28 @@ export default function InventoryPage() {
                 </Typography>
             </Box>
 
-            {/* KPIs */}
-            <Box {... (loading ? {} : { sx: { mb: 4 } })}>
-                <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            <Box {... (isLoading ? {} : { sx: { mb: 4 } })}>
+                <KPIGrid kpis={kpis} loading={isLoading} columns={4} />
             </Box>
 
-            {/* Assets Table */}
             <DataTable
                 title="Assets Inventory"
-                subtitle={`${filteredAssets.length} assets`}
+                subtitle={`${filteredAssets.length} assets registered`}
                 columns={assetColumns}
                 rows={filteredAssets}
-                loading={loading}
+                loading={isLoading}
                 module="inventory"
-                onAdd={() => { }}
-                onEdit={() => { }}
-                onView={() => { }}
-                onDelete={async (asset) => {
-                    await inventoryService.delete(asset.id);
-                    fetchAssets(); // Refresh after delete
+                resourceType="asset"
+                onAdd={() => {
+                    setSelectedAsset(null);
+                    setDialogOpen(true);
                 }}
+                onEdit={(asset) => {
+                    setSelectedAsset(asset);
+                    setDialogOpen(true);
+                }}
+                onDelete={(asset) => deleteMutation.mutate(asset.id)}
+                onRefresh={() => queryClient.invalidateQueries({ queryKey: ['inventory'] })}
                 statusField="status"
                 statusColors={{
                     active: 'success',
@@ -177,10 +211,10 @@ export default function InventoryPage() {
                 checkboxSelection
                 toolbarActions={
                     <FormControl size="small" sx={{ minWidth: 150 }}>
-                        <InputLabel>Category</InputLabel>
+                        <InputLabel>Category Filter</InputLabel>
                         <Select
                             value={categoryFilter}
-                            label="Category"
+                            label="Category Filter"
                             onChange={(e) => setCategoryFilter(e.target.value)}
                         >
                             <MenuItem value="">All Categories</MenuItem>
@@ -190,6 +224,16 @@ export default function InventoryPage() {
                         </Select>
                     </FormControl>
                 }
+            />
+
+            <AssetDialog
+                open={dialogOpen}
+                onClose={() => {
+                    setDialogOpen(false);
+                    setSelectedAsset(null);
+                }}
+                onSubmit={handleSaveAsset}
+                editData={selectedAsset}
             />
         </Box>
     );

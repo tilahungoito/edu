@@ -282,6 +282,22 @@ moduleRegistry.register({
             allowedRoles: ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
         },
         {
+            id: 'academic-behavior',
+            label: 'Student Behavior',
+            labelAmharic: 'የተማሪ ባህሪ',
+            icon: 'HealthAndSafety',
+            path: '/academic/behavior',
+            allowedRoles: ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR', 'INSTRUCTOR'],
+        },
+        {
+            id: 'academic-sections',
+            label: 'Sections',
+            labelAmharic: 'ክፍሎች',
+            icon: 'Groups',
+            path: '/academic/sections',
+            allowedRoles: ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'],
+        },
+        {
             id: 'academic-history',
             label: 'Academic Timeline',
             labelAmharic: 'የትምህርት ታሪክ',
@@ -715,7 +731,7 @@ moduleRegistry.register({
             id: 'settings-general',
             label: 'Profile Settings',
             icon: 'Tune',
-            path: '/settings',
+            path: '/profile',
             permission: { module: 'settings', action: 'view' },
         },
         {
@@ -747,14 +763,14 @@ moduleRegistry.register({
             label: 'Messages',
             icon: 'Chat',
             path: '/messages',
-            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_LEADER', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'ACCOUNTANT'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'ACCOUNTANT'],
         },
         {
             id: 'messaging-support',
             label: 'Support Tickets',
             icon: 'SupportAgent',
             path: '/communication/support',
-            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_LEADER', 'TEACHER', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'ACCOUNTANT'],
+            allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'ACCOUNTANT'],
         },
     ],
 });

@@ -26,6 +26,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { scheduleConfigService } from '@/app/lib/api/schedules.service';
 import { institutionsService } from '@/app/lib/api/institutions.service';
 import { useAuthStore } from '@/app/lib/store';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import Link from 'next/link';
 import DataTable from '@/app/components/tables/DataTable';
 import { GridColDef } from '@mui/x-data-grid';
@@ -58,6 +59,17 @@ export default function AcademicPeriodsPage() {
         queryKey: ['institution', overrideId],
         queryFn: () => institutionsService.getById(overrideId!),
         enabled: !!overrideId,
+    });
+
+    // --- Real-time Updates ---
+    useRealTime('period_updated', () => {
+        queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
+    });
+    useRealTime('period_created', () => {
+        queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
+    });
+    useRealTime('period_deleted', () => {
+        queryClient.invalidateQueries({ queryKey: ['academic-periods'] });
     });
 
     const createMutation = useMutation({

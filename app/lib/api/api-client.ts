@@ -46,11 +46,15 @@ apiClient.interceptors.response.use(
 
             switch (status) {
                 case 401:
-                    // Unauthorized - clear any stored auth data
+                    // Unauthorized - clear stored auth data and redirect to login
                     sessionStorage.removeItem('access_token');
-                    throw new Error(data.message || 'Authentication failed. Please login again.');
+                    document.cookie = 'access_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+                    if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+                        window.location.href = '/login?expired=true';
+                    }
+                    throw new Error(data.message || 'Session expired. Please login again.');
                 case 403:
-                    throw new Error('Access denied. You do not have permission.');
+                    throw new Error(data.message || 'Access denied. You do not have permission to perform this action.');
                 case 404:
                     throw new Error('Resource not found.');
                 case 500:

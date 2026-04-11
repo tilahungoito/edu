@@ -19,7 +19,7 @@ const columns: GridColDef[] = [
         headerName: 'Requested Amount',
         width: 150,
         type: 'number',
-        valueFormatter: (params: any) => typeof params.value === 'number' ? (params.value as number).toLocaleString() + ' ETB' : '-'
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() + ' ETB' : '-'
     },
     {
         field: 'status',

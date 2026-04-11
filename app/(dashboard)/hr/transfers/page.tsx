@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Box,
     Typography,
@@ -25,9 +25,9 @@ import {
     Tabs,
     Tab,
     IconButton,
-    Menu,
-    Divider,
     Autocomplete,
+    CircularProgress,
+    Tooltip,
 } from '@mui/material';
 import { GridColDef } from '@mui/x-data-grid';
 import {
@@ -35,121 +35,21 @@ import {
     SwapHoriz as TransferIcon,
     CheckCircle as ApproveIcon,
     Cancel as RejectIcon,
-    MoreVert as MoreIcon,
     CloudUpload as CloudUploadIcon,
     AttachFile as AttachFileIcon,
     History as HistoryIcon,
+    Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { DataTable } from '@/app/components/tables';
-import { PermissionGate } from '@/app/lib/core';
 import { transfersService, CreateTransferRequestDto } from '@/app/lib/api/transfers.service';
 import { institutionsService, Institution } from '@/app/lib/api/institutions.service';
 import { useAuthStore } from '@/app/lib/store/auth-store';
 import { HRTransfer, TransferStatus } from '@/app/lib/types/entities';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { toast } from 'react-hot-toast';
 
-// Columns defined below
-const transferColumns: GridColDef<HRTransfer>[] = [
-    {
-        field: 'staffName',
-        headerName: 'Staff Member',
-        flex: 1.2,
-        minWidth: 160,
-        valueGetter: (_, row) => {
-            const r = (row as any).requester;
-            return r ? `${r.firstName} ${r.lastName}` : '-';
-        }
-    },
-    {
-        field: 'toSchoolName',
-        headerName: 'Target Institution',
-        width: 160,
-        valueGetter: (_, row) => {
-            return (row as any).targetInstitution?.name || '-';
-        }
-    },
-    {
-        field: 'type',
-        headerName: 'Type',
-        width: 100,
-        renderCell: (params) => {
-            const typeColors: Record<string, 'primary' | 'secondary' | 'warning' | 'error'> = {
-                permanent: 'primary',
-                temporary: 'secondary',
-                promotion: 'success' as any,
-                disciplinary: 'error',
-            };
-            return (
-                <Chip
-                    label={params.value?.charAt(0).toUpperCase() + params.value?.slice(1)}
-                    size="small"
-                    color={typeColors[params.value as string] || 'default'}
-                    variant="outlined"
-                    sx={{ height: 20, fontSize: '0.65rem' }}
-                />
-            );
-        }
-    },
-    {
-        field: 'status',
-        headerName: 'Status',
-        width: 140,
-        renderCell: (params) => {
-            const statusLabels: Record<string, string> = {
-                DRAFT: 'Draft',
-                PENDING_SCHOOL: 'Pending School',
-                PENDING_WOREDA: 'Pending Woreda',
-                PENDING_ZONE: 'Pending Zone',
-                PENDING_BUREAU: 'Pending Bureau',
-                PENDING_TARGET_SCHOOL: 'Pending Target',
-                APPROVED: 'Approved',
-                REJECTED: 'Rejected',
-                CANCELLED: 'Cancelled',
-            };
-            const statusColors: Record<string, 'default' | 'primary' | 'warning' | 'success' | 'error'> = {
-                DRAFT: 'default',
-                PENDING_SCHOOL: 'warning',
-                PENDING_WOREDA: 'warning',
-                PENDING_ZONE: 'warning',
-                PENDING_BUREAU: 'warning',
-                PENDING_TARGET_SCHOOL: 'info' as any,
-                APPROVED: 'success',
-                REJECTED: 'error',
-                CANCELLED: 'error',
-            };
-            return (
-                <Chip
-                    label={statusLabels[params.value as string] || params.value}
-                    size="small"
-                    color={statusColors[params.value as string] || 'default'}
-                    sx={{ height: 20, fontSize: '0.65rem' }}
-                />
-            );
-        }
-    },
-    {
-        field: 'requestedAt',
-        headerName: 'Requested',
-        width: 110,
-        valueFormatter: (value) => value ? new Date(value as string).toLocaleDateString() : '-',
-    },
-    {
-        field: 'attachments',
-        headerName: 'Docs',
-        width: 70,
-        renderCell: (params) => {
-            const count = (params.value as string[])?.length || 0;
-            if (count === 0) return '-';
-            return (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <AttachFileIcon sx={{ fontSize: 16 }} />
-                    <Typography variant="caption">{count}</Typography>
-                </Box>
-            );
-        }
-    },
-];
-
+// --- Constants & Helpers ---
 const approvalSteps = ['Source School', 'Woreda', 'Zone', 'Bureau'];
 const studentApprovalSteps = ['Source School', 'Target School'];
 
@@ -168,15 +68,11 @@ function getActiveStep(status: TransferStatus, isStudent: boolean = false) {
         PENDING_WOREDA: 1,
         PENDING_ZONE: 2,
         PENDING_BUREAU: 3,
-        PENDING_TARGET_SCHOOL: -1, // Should not happen in staff flow
         APPROVED: 4,
-        REJECTED: -1,
-        CANCELLED: -1,
     };
     return stepMap[status] ?? -1;
 }
 
-// Logic to determine if a user can approve at current status
 function canApproveAtStatus(userTenantType: string, userScopeId: string, request: HRTransfer) {
     const status = request.status;
     if (userTenantType === 'school') {
@@ -189,16 +85,13 @@ function canApproveAtStatus(userTenantType: string, userScopeId: string, request
     return false;
 }
 
-// Map level to next status
 function getNextStatus(request: HRTransfer): TransferStatus {
     const isStudent = (request as any).requester?.role?.name === 'STUDENT';
     const status = request.status;
-
     if (isStudent) {
         if (status === 'PENDING_SCHOOL') return 'PENDING_TARGET_SCHOOL';
         return 'APPROVED';
     }
-
     const nextMap: Partial<Record<TransferStatus, TransferStatus>> = {
         PENDING_SCHOOL: 'PENDING_WOREDA',
         PENDING_WOREDA: 'PENDING_ZONE',
@@ -208,24 +101,15 @@ function getNextStatus(request: HRTransfer): TransferStatus {
     return nextMap[status] || 'APPROVED';
 }
 
+// --- Main Component ---
 export default function TransfersPage() {
     const theme = useTheme();
+    const queryClient = useQueryClient();
     const { user } = useAuthStore();
-    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState(0);
     const [openDialog, setOpenDialog] = useState(false);
-    const [requests, setRequests] = useState<HRTransfer[]>([]);
-    const [pendingRequests, setPendingRequests] = useState<HRTransfer[]>([]);
-    const [history, setHistory] = useState<any[]>([]);
-    const [schools, setSchools] = useState<Institution[]>([]);
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [submitting, setSubmitting] = useState(false);
-
-    const canApprove = ['bureau', 'zone', 'woreda', 'school'].includes(user?.tenantType || '') &&
-        (user?.roles.some(r => ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN'].includes(r.name)) || false);
-
-    // Form state
     const [formData, setFormData] = useState<CreateTransferRequestDto>({
         targetInstitutionId: '',
         type: 'permanent',
@@ -234,535 +118,290 @@ export default function TransfersPage() {
         attachments: [],
     });
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
+    const isPrivileged = ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN'].some(role => 
+        user?.roles?.some(r => r.name === role)
+    );
 
-            // Fetch my requests (always)
-            try {
-                const myData = await transfersService.getMyRequests();
-                setRequests(myData);
-            } catch (e) {
-                console.error('Failed to fetch my transfers:', e);
-            }
+    // --- Queries ---
+    const { data: myRequests = [], isLoading: isLoadingMy } = useQuery({
+        queryKey: ['transfers', 'my', user?.id],
+        queryFn: () => transfersService.getMyRequests(),
+        enabled: !!user?.id,
+    });
 
-            // Fetch pending requests if applicable
-            if (canApprove) {
-                try {
-                    const pendingData = await transfersService.getPendingRequests();
-                    setPendingRequests(pendingData);
-                } catch (e) {
-                    console.warn('User cannot fetch pending requests (ignoring):', e);
-                }
-            }
+    const { data: pendingRequests = [], isLoading: isLoadingPending } = useQuery({
+        queryKey: ['transfers', 'pending', user?.tenantId],
+        queryFn: () => transfersService.getPendingRequests(),
+        enabled: isPrivileged && !!user?.tenantId,
+    });
 
-            // Fetch institutions for selection
-            try {
-                const [institutions, historyData] = await Promise.all([
-                    institutionsService.getAll({ all: true }),
-                    transfersService.getHistory()
-                ]);
-                setSchools(institutions);
-                setHistory(historyData);
-            } catch (e) {
-                console.error('Failed to fetch institutions/history:', e);
-            }
+    const { data: schools = [] } = useQuery({
+        queryKey: ['institutions', 'all-minimal'],
+        queryFn: () => institutionsService.getAll({ all: true }),
+    });
 
-        } catch (error) {
-            console.error('Global transfer fetch error:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { data: history = [], isLoading: isLoadingHistory } = useQuery({
+        queryKey: ['transfers', 'history', user?.id],
+        queryFn: () => transfersService.getHistory(),
+    });
 
-    useEffect(() => {
-        fetchData();
-    }, [user]);
+    // --- Real-time Sync ---
+    useRealTime('transfer_updated', () => {
+        queryClient.invalidateQueries({ queryKey: ['transfers'] });
+    });
 
-    const handleApprove = async (request: HRTransfer) => {
-        try {
-            const nextStatus = getNextStatus(request);
-            await transfersService.updateStatus(request.id, {
-                status: nextStatus,
-                comment: 'Approved through dashboard'
-            });
-            toast.success(`Request approved and moved to ${nextStatus}`);
-            fetchData();
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to approve request');
-        }
-    };
-
-    const handleReject = async (request: HRTransfer) => {
-        try {
-            await transfersService.updateStatus(request.id, {
-                status: 'REJECTED',
-                comment: 'Rejected through dashboard'
-            });
-            toast.error('Request rejected');
-            fetchData();
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to reject request');
-        }
-    };
-
-    const handleCancel = async (request: HRTransfer) => {
-        if (!window.confirm('Are you sure you want to cancel this request?')) return;
-        try {
-            await transfersService.cancelRequest(request.id);
-            toast.success('Request cancelled');
-            fetchData();
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to cancel request');
-        }
-    };
-
-    const handleBulkAction = async (action: 'approve' | 'reject') => {
-        if (selectedIds.length === 0) return;
-        
-        const status = action === 'approve' ? 'APPROVED' : 'REJECTED'; // Simple bulk logic for now
-        const confirmMsg = `Are you sure you want to ${action} ${selectedIds.length} requests?`;
-        if (!window.confirm(confirmMsg)) return;
-
-        try {
-            setLoading(true);
-            const result = await transfersService.bulkUpdateStatus({
-                requestIds: selectedIds,
-                status: status as any,
-                comment: `Bulk ${action} via dashboard`
-            });
-            
-            toast.success(`Bulk ${action} complete: ${result.success} succeeded, ${result.failed} failed.`);
-            setSelectedIds([]);
-            fetchData();
-        } catch (error: any) {
-            toast.error(error.message || `Failed to perform bulk ${action}`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSubmit = async () => {
-        if (!formData.targetInstitutionId || !formData.reason) {
-            toast.error('Please fill in all required fields');
-            return;
-        }
-
-        try {
-            console.log('[Transfers] Submitting request with data:', formData);
-            await transfersService.createRequest(formData);
-            console.log('[Transfers] Request created successfully');
-
+    // --- Mutations ---
+    const createMutation = useMutation({
+        mutationFn: (data: CreateTransferRequestDto) => transfersService.createRequest(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['transfers'] });
             toast.success('Transfer request submitted successfully');
             setOpenDialog(false);
-            setFormData({
-                targetInstitutionId: '',
-                type: 'permanent',
-                reason: '',
-                effectiveDate: '',
-                attachments: [],
-            });
+        },
+        onError: (error: any) => toast.error(error.message || 'Failed to submit request')
+    });
 
-            // Refresh counts/list
-            await fetchData();
-        } catch (error: any) {
-            console.error('[Transfers] Submission error:', error);
-            const message = error.response?.data?.message || error.message || 'Failed to submit request';
-            toast.error(message);
-        } finally {
-            setSubmitting(false);
+    const statusMutation = useMutation({
+        mutationFn: ({ id, payload }: { id: string, payload: any }) => transfersService.updateStatus(id, payload),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['transfers'] });
+            toast.success('Status updated successfully');
+        },
+        onError: (error: any) => toast.error(error.message || 'Action failed')
+    });
+
+    const cancelMutation = useMutation({
+        mutationFn: (id: string) => transfersService.cancelRequest(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['transfers'] });
+            toast.error('Request cancelled');
         }
-    };
+    });
 
-    const columnsWithApprovals: GridColDef<HRTransfer>[] = [
-        ...transferColumns,
+    const bulkMutation = useMutation({
+        mutationFn: (payload: any) => transfersService.bulkUpdateStatus(payload),
+        onSuccess: (res) => {
+            queryClient.invalidateQueries({ queryKey: ['transfers'] });
+            toast.success(`Bulk action complete: ${res.success} succeeded`);
+            setSelectedIds([]);
+        }
+    });
+
+    // --- Column Definitions ---
+    const baseColumns: GridColDef<HRTransfer>[] = [
         {
-            field: 'approvalActions',
-            headerName: 'Approvals',
-            width: 150,
-            sortable: false,
-            renderCell: (params) => {
-                const request = params.row as HRTransfer;
-                if (!canApproveAtStatus(user?.tenantType || '', user?.tenantId || '', request)) return null;
-
-                return (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleApprove(request)}
-                            title="Approve"
-                        >
-                            <ApproveIcon />
-                        </IconButton>
-                        <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleReject(request)}
-                            title="Reject"
-                        >
-                            <RejectIcon />
-                        </IconButton>
-                    </Box>
-                );
-            }
+            field: 'staffName',
+            headerName: 'Staff Member',
+            flex: 1.2,
+            minWidth: 160,
+            valueGetter: (_, row: any) => row.requester ? `${row.requester.firstName} ${row.requester.lastName}` : '-'
         },
         {
-            field: 'cancelAction',
-            headerName: 'Actions',
+            field: 'targetInstitution',
+            headerName: 'Target Institution',
+            width: 160,
+            valueGetter: (_, row: any) => row.targetInstitution?.name || '-'
+        },
+        {
+            field: 'type',
+            headerName: 'Type',
             width: 100,
-            sortable: false,
-            renderCell: (params) => {
-                const request = params.row as HRTransfer;
-                const isOwner = (request as any).requesterId === user?.id;
-                const canCancel = isOwner && ['PENDING_SCHOOL', 'PENDING_WOREDA', 'PENDING_ZONE', 'PENDING_BUREAU'].includes(request.status);
-
-                if (!canCancel) return null;
-
-                return (
-                    <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleCancel(request)}
-                        title="Cancel Request"
-                    >
-                        <RejectIcon />
-                    </IconButton>
-                );
-            }
+            renderCell: (params) => (
+                <Chip
+                    label={params.value}
+                    size="small"
+                    variant="outlined"
+                    sx={{ height: 20, fontSize: '0.65rem' }}
+                />
+            )
+        },
+        {
+            field: 'status',
+            headerName: 'Status',
+            width: 140,
+            renderCell: (params) => (
+                <Chip
+                    label={params.value?.replace(/_/g, ' ')}
+                    size="small"
+                    color={params.value === 'APPROVED' ? 'success' : params.value === 'REJECTED' ? 'error' : 'warning'}
+                    sx={{ height: 20, fontSize: '0.65rem' }}
+                />
+            )
+        },
+        {
+            field: 'createdAt',
+            headerName: 'Date',
+            width: 110,
+            valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '-'
         }
     ];
 
+    const actionsColumn: GridColDef<HRTransfer> = {
+        field: 'actions',
+        headerName: 'Approvals',
+        width: 120,
+        sortable: false,
+        renderCell: (params) => {
+            const request = params.row;
+            if (!canApproveAtStatus(user?.tenantType || '', user?.tenantId || '', request)) return null;
+            return (
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <IconButton size="small" color="success" onClick={() => statusMutation.mutate({ id: request.id, payload: { status: getNextStatus(request), comment: 'Approved via dashboard' } })}>
+                        <ApproveIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => statusMutation.mutate({ id: request.id, payload: { status: 'REJECTED', comment: 'Rejected via dashboard' } })}>
+                        <RejectIcon fontSize="small" />
+                    </IconButton>
+                </Box>
+            );
+        }
+    };
+
+    // --- Render ---
+    const isLoading = isLoadingMy || isLoadingPending || isLoadingHistory;
+    const selectedRecord = useMemo(() => 
+        [...myRequests, ...pendingRequests].find(r => r.id === selectedRequestId), 
+    [selectedRequestId, myRequests, pendingRequests]);
+
     return (
-        <Box className="animate-fade-in" sx={{ p: { xs: 2.5, md: 3, lg: 5 }, maxWidth: '100%', overflow: 'hidden' }}>
-            {/* Header section */}
-            <Box sx={{
-                mb: 5,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                gap: 2
-            }}>
+        <Box sx={{ p: { xs: 2.5, md: 3, lg: 5 }, className: "animate-fade-in" }}>
+            <Box sx={{ mb: 5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <TransferIcon color="primary" sx={{ fontSize: 32 }} />
-                        <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1 }}>
+                        <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1.5 }}>
                             Staff Transfers
                         </Typography>
+                        {isLoading && <CircularProgress size={20} />}
                     </Box>
                     <Typography variant="body1" color="text.secondary" fontWeight={500}>
-                        Manage and track personnel transfer requests across institutions
+                        Manage personnel mobility across institutions and administrative levels.
                     </Typography>
                 </Box>
-
                 <Box sx={{ display: 'flex', gap: 2 }}>
-                    {selectedIds.length > 0 && canApprove && (
-                        <>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<RejectIcon />}
-                                onClick={() => handleBulkAction('reject')}
-                                sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
-                            >
-                                Reject ({selectedIds.length})
-                            </Button>
-                            <Button
-                                variant="contained"
-                                color="success"
-                                startIcon={<ApproveIcon />}
-                                onClick={() => handleBulkAction('approve')}
-                                sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
-                            >
-                                Approve ({selectedIds.length})
-                            </Button>
-                        </>
-                    )}
-                    {activeTab === 0 && (
+                    {selectedIds.length > 0 && (
                         <Button
                             variant="contained"
-                            startIcon={<AddIcon />}
-                            onClick={() => setOpenDialog(true)}
-                            sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
+                            color="success"
+                            startIcon={<ApproveIcon />}
+                            onClick={() => bulkMutation.mutate({ requestIds: selectedIds, status: 'APPROVED', comment: 'Bulk Approved' })}
+                            sx={{ borderRadius: 2.5, px: 3, fontWeight: 700 }}
                         >
-                            New Transfer Request
+                            Approve ({selectedIds.length})
                         </Button>
                     )}
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setOpenDialog(true)}
+                        sx={{ borderRadius: 2.5, px: 3, fontWeight: 700, height: 48 }}
+                    >
+                        New Request
+                    </Button>
                 </Box>
             </Box>
 
-            {/* Approval Workflow Visual */}
-            <Card sx={{ mb: 4, borderRadius: 3 }}>
-                <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle1" fontWeight={600}>
-                            Transfer Approval Workflow
-                        </Typography>
-                        {selectedRequestId && (
-                            <Button size="small" onClick={() => setSelectedRequestId(null)}>
-                                Reset View
-                            </Button>
-                        )}
-                    </Box>
-                    <Stepper
-                        alternativeLabel
-                        activeStep={(() => {
-                            const target = selectedRequestId
-                                ? [...requests, ...pendingRequests].find(r => r.id === selectedRequestId)
-                                : requests[0] || pendingRequests[0];
-                            const isStudent = target ? (target as any)?.requester?.role?.name === 'STUDENT' : user?.roles?.some(r => r.name === 'STUDENT');
-                            return target ? getActiveStep(target.status, isStudent) : -1;
-                        })()}
-                        sx={{ py: 2 }}
+            {/* Progress Stepper */}
+            <Card sx={{ mb: 4, borderRadius: 3, border: 1, borderColor: 'divider', boxShadow: 'none' }}>
+                <CardContent sx={{ p: 4 }}>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3 }}>
+                        Workflow Progress: {selectedRecord ? (selectedRecord as any).requester?.firstName : 'Select a request'}
+                    </Typography>
+                    <Stepper 
+                        alternativeLabel 
+                        activeStep={selectedRecord ? getActiveStep(selectedRecord.status) : -1}
+                        sx={{ '& .MuiStepLabel-label': { fontWeight: 600 } }}
                     >
-                        {(() => {
-                            const target = selectedRequestId
-                                ? [...requests, ...pendingRequests].find(r => r.id === selectedRequestId)
-                                : requests[0] || pendingRequests[0];
-                            const isStudent = target ? (target as any)?.requester?.role?.name === 'STUDENT' : user?.roles?.some(r => r.name === 'STUDENT');
-                            const steps = isStudent ? studentApprovalSteps : approvalSteps;
-                            return steps.map((label) => (
-                                <Step key={label}>
-                                    <StepLabel>{label} Approval</StepLabel>
-                                </Step>
-                            ));
-                        })()}
+                        {approvalSteps.map((label) => (
+                            <Step key={label}><StepLabel>{label}</StepLabel></Step>
+                        ))}
                     </Stepper>
-                    {selectedRequestId && (
-                        <Typography variant="caption" color="primary" sx={{ display: 'block', textAlign: 'center', mt: 1, fontWeight: 600 }}>
-                            Viewing progress for: {(() => {
-                                const target = [...requests, ...pendingRequests].find(r => r.id === selectedRequestId);
-                                const requester = (target as any)?.requester;
-                                return requester ? `${requester.firstName} ${requester.lastName}` : 'Selected Request';
-                            })()}
-                        </Typography>
-                    )}
                 </CardContent>
             </Card>
 
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)}>
-                    <Tab label="My Requests" />
-                    {canApprove && <Tab label="Pending Approvals" />}
-                    <Tab label="Recent History" />
-                </Tabs>
-            </Box>
+            <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 4, borderBottom: 1, borderColor: 'divider' }}>
+                <Tab label="My Requests" sx={{ fontWeight: 700 }} />
+                {isPrivileged && <Tab label="Pending Approvals" sx={{ fontWeight: 700 }} />}
+                <Tab label="Recent History" sx={{ fontWeight: 700 }} />
+            </Tabs>
 
             {activeTab === 0 ? (
                 <DataTable
-                    title="My Requests"
-                    subtitle={`${requests.length} requests submitted by you. Click a row to see progress.`}
-                    columns={columnsWithApprovals}
-                    rows={requests}
-                    loading={loading}
-                    module="hr"
+                    title="My Transfer Requests"
+                    rows={myRequests}
+                    columns={baseColumns}
+                    loading={isLoadingMy}
                     onView={(row) => setSelectedRequestId(row.id)}
+                    module="hr"
                 />
-            ) : activeTab === 1 && canApprove ? (
+            ) : activeTab === 1 ? (
                 <DataTable
-                    title="Pending Approvals"
-                    subtitle={`${pendingRequests.length} requests awaiting your decision. Select multiple for bulk actions.`}
-                    columns={columnsWithApprovals}
+                    title="Awaiting Approval"
                     rows={pendingRequests}
-                    loading={loading}
-                    module="hr"
-                    onView={(row) => setSelectedRequestId(row.id)}
+                    columns={[...baseColumns, actionsColumn]}
+                    loading={isLoadingPending}
                     checkboxSelection
                     onSelectionChange={(ids) => setSelectedIds(ids as string[])}
+                    onView={(row) => setSelectedRequestId(row.id)}
+                    module="hr"
                 />
             ) : (
                 <DataTable
-                    title="Transfer History"
-                    subtitle={`${history.length} completed transfers logged in the system`}
-                    columns={[
-                        {
-                            field: 'user',
-                            headerName: 'Personnel',
-                            flex: 1.2,
-                            valueGetter: (_, row) => row.user ? `${row.user.firstName} ${row.user.lastName}` : '-'
-                        },
-                        {
-                            field: 'fromScopeId',
-                            headerName: 'From',
-                            flex: 1,
-                            valueGetter: (value) => schools.find(s => s.id === value)?.name || value || '-'
-                        },
-                        {
-                            field: 'toScopeId',
-                            headerName: 'To',
-                            flex: 1,
-                            valueGetter: (value) => schools.find(s => s.id === value)?.name || value || '-'
-                        },
-                        {
-                            field: 'reason',
-                            headerName: 'Justification',
-                            flex: 1.5,
-                        },
-                        {
-                            field: 'createdAt',
-                            headerName: 'Executed Date',
-                            width: 130,
-                            valueFormatter: (value) => value ? new Date(value as string).toLocaleDateString() : '-'
-                        },
-                        {
-                            field: 'snapshot',
-                            headerName: 'Snapshot',
-                            width: 100,
-                            renderCell: (params) => (
-                                <IconButton size="small" color="primary" onClick={() => toast.success('Viewing Academic Record Snapshot...')}>
-                                    <HistoryIcon fontSize="small" />
-                                </IconButton>
-                            )
-                        }
-                    ]}
+                    title="Archived Transfers"
                     rows={history}
-                    loading={loading}
+                    columns={baseColumns}
+                    loading={isLoadingHistory}
                     module="hr"
                 />
             )}
 
-            {/* New Transfer Dialog */}
-            <Dialog
-                open={openDialog}
-                onClose={() => setOpenDialog(false)}
-                maxWidth="md"
-                fullWidth
-            >
-                <DialogTitle>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <TransferIcon />
-                        <Typography variant="h6">New Transfer Request</Typography>
-                    </Box>
-                </DialogTitle>
+            {/* Create Dialog */}
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ fontWeight: 800 }}>New Transfer Request</DialogTitle>
                 <DialogContent>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+                    <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
                         <Autocomplete
-                            id="target-institution-autocomplete"
                             options={schools}
-                            getOptionLabel={(option) => option.name}
-                            isOptionEqualToValue={(option, value) => option.id === value?.id}
-                            renderOption={(props, option) => {
-                                const { key, ...optionProps } = props as any;
-                                return (
-                                    <li key={option.id} {...optionProps}>
-                                        {option.name}
-                                    </li>
-                                );
-                            }}
-                            value={schools.find(s => s.id === formData.targetInstitutionId) || null}
-                            onChange={(_, newValue) => {
-                                setFormData({ ...formData, targetInstitutionId: newValue?.id || '' });
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Target Institution"
-                                    required
-                                    placeholder="Search for school..."
-                                />
-                            )}
-                            fullWidth
-                            noOptionsText="No institutions found"
+                            getOptionLabel={(o) => o.name}
+                            onChange={(_, v) => setFormData({ ...formData, targetInstitutionId: v?.id || '' })}
+                            renderInput={(params) => <TextField {...params} label="Target Institution" required />}
                         />
-                        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-                            <FormControl fullWidth>
-                                <InputLabel id="transfer-type-label">Transfer Type</InputLabel>
-                                <Select
-                                    labelId="transfer-type-label"
-                                    id="transfer-type-select"
-                                    label="Transfer Type"
-                                    value={formData.type}
-                                    onChange={(e) => setFormData({ ...formData, type: e.target.value as string })}
-                                >
-                                    <MenuItem value="permanent">Permanent</MenuItem>
-                                    <MenuItem value="temporary">Temporary</MenuItem>
-                                    <MenuItem value="promotion">Promotion</MenuItem>
-                                    <MenuItem value="disciplinary">Disciplinary</MenuItem>
-                                </Select>
-                            </FormControl>
-                            <TextField
-                                fullWidth
-                                label="Requested Effective Date"
-                                type="date"
-                                InputLabelProps={{ shrink: true }}
-                                value={formData.effectiveDate}
-                                onChange={(e) => setFormData({ ...formData, effectiveDate: e.target.value })}
-                            />
-                        </Box>
                         <TextField
-                            fullWidth
-                            required
-                            label="Reason for Transfer"
+                            select
+                            label="Type"
+                            value={formData.type}
+                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                        >
+                            <MenuItem value="permanent">Permanent</MenuItem>
+                            <MenuItem value="temporary">Temporary</MenuItem>
+                        </TextField>
+                        <TextField
+                            label="Reason / Justification"
                             multiline
-                            rows={3}
+                            rows={4}
                             value={formData.reason}
                             onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                         />
-
-                        {/* File Attachments (Simplified) */}
-                        <Box sx={{
-                            p: 2,
-                            border: '2px dashed',
-                            borderColor: 'divider',
-                            borderRadius: 2,
-                            bgcolor: alpha(theme.palette.primary.main, 0.05),
-                            textAlign: 'center'
-                        }}>
-                            <Button
-                                component="label"
-                                variant="outlined"
-                                startIcon={<CloudUploadIcon />}
-                                sx={{ mb: 1 }}
-                            >
-                                Upload Supporting Documents
-                                <input
-                                    type="file"
-                                    hidden
-                                    multiple
-                                    onChange={(e) => {
-                                        // Mock upload: just store the filenames for now
-                                        const files = Array.from(e.target.files || []);
-                                        const fileNames = files.map(f => f.name);
-                                        setFormData(prev => ({ 
-                                            ...prev, 
-                                            attachments: [...(prev.attachments || []), ...fileNames] 
-                                        }));
-                                        toast.success(`${files.length} files attached.`);
-                                    }}
-                                />
-                            </Button>
-                            <Typography variant="caption" display="block" color="text.secondary">
-                                (Max 5MB per file: PDF, JPG, PNG)
-                            </Typography>
-                            {formData.attachments && formData.attachments.length > 0 && (
-                                <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                    {formData.attachments.map((name, idx) => (
-                                        <Chip 
-                                            key={idx} 
-                                            label={name} 
-                                            size="small" 
-                                            onDelete={() => {
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    attachments: prev.attachments?.filter((_, i) => i !== idx)
-                                                }));
-                                            }}
-                                        />
-                                    ))}
-                                </Box>
-                            )}
-                        </Box>
+                        <Button 
+                            variant="outlined" 
+                            component="label" 
+                            startIcon={<CloudUploadIcon />}
+                            sx={{ py: 2, borderStyle: 'dashed' }}
+                        >
+                            Attach Supporting Documents
+                            <input type="file" hidden multiple />
+                        </Button>
                     </Box>
                 </DialogContent>
-                <DialogActions sx={{ p: 2.5 }}>
-                    <Button onClick={() => setOpenDialog(false)} disabled={submitting}>Cancel</Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleSubmit}
-                        disabled={submitting}
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={() => createMutation.mutate(formData)}
+                        disabled={!formData.targetInstitutionId || createMutation.isPending}
+                        sx={{ borderRadius: 2, px: 4, fontWeight: 700 }}
                     >
-                        {submitting ? 'Submitting...' : 'Submit Request'}
+                        {createMutation.isPending ? 'Submitting...' : 'Submit Request'}
                     </Button>
                 </DialogActions>
             </Dialog>

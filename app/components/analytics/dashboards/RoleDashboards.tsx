@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { 
-    Box, Typography, alpha, useTheme, Card, CardHeader, CardContent, Avatar, Divider, Stack, 
-    Grid, Paper, FormControl, InputLabel, Select, MenuItem, Button, Chip, Tooltip, LinearProgress 
+import {
+    Box, Typography, alpha, useTheme, Card, CardHeader, CardContent, Avatar, Divider, Stack,
+    Grid, Paper, FormControl, InputLabel, Select, MenuItem, Button, Chip, Tooltip, LinearProgress
 } from '@mui/material';
 import {
     School as SchoolIcon,
@@ -116,18 +116,18 @@ export function InstitutionDashboard({ stats, loading, user }: any) {
                                 { label: 'Course Catalog', icon: <SchoolIcon />, color: theme.palette.secondary.main, href: '/academic/courses' },
                                 { label: 'Transfers', icon: <CourseIcon />, color: theme.palette.success.main, href: '/hr/transfers' },
                             ].map((action, i) => (
-                                <Box key={i} 
+                                <Box key={i}
                                     component="a"
                                     href={action.href}
                                     sx={{
-                                    p: 2, borderRadius: 3, cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: 2,
-                                    bgcolor: alpha(action.color, 0.05),
-                                    border: `1px solid ${alpha(action.color, 0.1)}`,
-                                    textDecoration: 'none',
-                                    color: 'inherit',
-                                    '&:hover': { bgcolor: alpha(action.color, 0.1) }
-                                }}>
+                                        p: 2, borderRadius: 3, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: 2,
+                                        bgcolor: alpha(action.color, 0.05),
+                                        border: `1px solid ${alpha(action.color, 0.1)}`,
+                                        textDecoration: 'none',
+                                        color: 'inherit',
+                                        '&:hover': { bgcolor: alpha(action.color, 0.1) }
+                                    }}>
                                     <Avatar sx={{ bgcolor: action.color, width: 32, height: 32 }}>
                                         {action.icon}
                                     </Avatar>
@@ -161,12 +161,12 @@ export function InstructorDashboard({ stats, loading, user }: any) {
     React.useEffect(() => {
         if (!stats) return;
 
-        let filtered = { ...stats };
+        const filtered = { ...stats };
 
         // 1. Calculate students for the selected course to derive other metrics
         const baseStudents = stats.studentPerformance || [];
-        const currentFiltered = selectedCourse === 'all' 
-            ? baseStudents 
+        const currentFiltered = selectedCourse === 'all'
+            ? baseStudents
             : baseStudents.filter((s: any) => s.courseCode === stats?.courses?.find((c: any) => c.id === selectedCourse)?.code);
 
         // 2. Dynamically Re-calculate Grade Distribution from filtered students
@@ -210,8 +210,8 @@ export function InstructorDashboard({ stats, loading, user }: any) {
     const displayStats = filteredStats || stats;
 
     const baseStudents = stats?.studentPerformance || [];
-    const filteredStudents = selectedCourse === 'all' 
-        ? baseStudents 
+    const filteredStudents = selectedCourse === 'all'
+        ? baseStudents
         : baseStudents.filter((s: any) => s.courseCode === stats?.courses?.find((c: any) => c.id === selectedCourse)?.code);
 
     const kpis = [
@@ -224,7 +224,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
         },
         {
             label: 'Selection Attendance',
-            value: filteredStudents.length > 0 
+            value: filteredStudents.length > 0
                 ? `${Math.round(filteredStudents.reduce((a: any, b: any) => a + b.attendance, 0) / filteredStudents.length)}%`
                 : '0%',
             change: -0.5,
@@ -240,7 +240,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
         },
         {
             label: 'Selection Avg Score',
-            value: filteredStudents.length > 0 
+            value: filteredStudents.length > 0
                 ? `${Math.round(filteredStudents.reduce((a: any, b: any) => a + b.total, 0) / filteredStudents.length)}%`
                 : '0%',
             change: 4.8,
@@ -252,18 +252,18 @@ export function InstructorDashboard({ stats, loading, user }: any) {
     const attendanceData = attendanceView === 'week' ? displayStats?.attendanceTrends : displayStats?.attendanceByDay;
     const gradeDistribution = displayStats?.gradeDistribution || [];
     const behaviorData = displayStats?.behaviorSummary || [];
-    
+
     // New: Teaching schedule with 'current session' highlights (depends on hydrated currentDay)
     const todaySchedule = currentDay ? (displayStats?.schedule?.filter((s: any) => s.day === currentDay) || []) : [];
 
     const milestones = displayStats?.milestones || [];
 
     // Columns with 'At-Risk' badges
-    const studentColumns = [
-        { 
-            field: 'name', 
-            headerName: 'Student Name', 
-            flex: 1, 
+    const studentColumns: any[] = [
+        {
+            field: 'name',
+            headerName: 'Student Name',
+            flex: 1,
             minWidth: 200,
             renderCell: (params: any) => (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -310,7 +310,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
     const handleExport = () => {
         if (!filteredStudents.length) return;
         // Trigger a simple CSV download
-        const csvContent = "data:text/csv;charset=utf-8," 
+        const csvContent = "data:text/csv;charset=utf-8,"
             + "ID,Name,Attendance,Midterm,Final,Total,Course\n"
             + filteredStudents.map((s: any) => `${s.id},${s.name},${s.attendance},${s.midterm},${s.final},${s.total},${s.courseCode}`).join("\n");
         const encodedUri = encodeURI(csvContent);
@@ -411,7 +411,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
 
             <Grid container spacing={3} sx={{ mt: 1 }}>
                 {/* Main Trends Chart */}
-                <Grid item xs={12} lg={8}>
+                <Grid size={{ xs: 12, lg: 8 }}>
                     <AnalyticsChart
                         title="Attendance Tracking"
                         subtitle={attendanceView === 'week' ? "Weekly presence percentage (Last 6 weeks)" : "Daily presence tracking (Current week)"}
@@ -424,17 +424,17 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                         onExport={handleExport}
                         extraActions={
                             <Stack direction="row" spacing={1} sx={{ bgcolor: alpha(theme.palette.action.hover, 0.1), p: 0.5, borderRadius: 2 }}>
-                                <Button 
-                                    size="small" 
-                                    variant={attendanceView === 'day' ? 'contained' : 'text'} 
+                                <Button
+                                    size="small"
+                                    variant={attendanceView === 'day' ? 'contained' : 'text'}
                                     onClick={() => setAttendanceView('day')}
                                     sx={{ minWidth: 60, borderRadius: 1.5, fontSize: '0.7rem', py: 0 }}
                                 >
                                     Daily
                                 </Button>
-                                <Button 
-                                    size="small" 
-                                    variant={attendanceView === 'week' ? 'contained' : 'text'} 
+                                <Button
+                                    size="small"
+                                    variant={attendanceView === 'week' ? 'contained' : 'text'}
                                     onClick={() => setAttendanceView('week')}
                                     sx={{ minWidth: 60, borderRadius: 1.5, fontSize: '0.7rem', py: 0 }}
                                 >
@@ -451,7 +451,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                 </Grid>
 
                 {/* Academic Progress / Timeline Side Card */}
-                <Grid item xs={12} lg={4}>
+                <Grid size={{ xs: 12, lg: 4 }}>
                     <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
                         <CardContent>
                             <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -500,7 +500,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
 
             {/* Smart Insights & Classroom Wellness */}
             <Grid container spacing={3} sx={{ mt: 1 }}>
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 5 }}>
                     <AnalyticsChart
                         title="Classroom Wellness"
                         subtitle="Engagement trends by behavioral records"
@@ -511,7 +511,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                     />
                 </Grid>
 
-                <Grid item xs={12} md={7}>
+                <Grid size={{ xs: 12, md: 7 }}>
                     <Card sx={{ borderRadius: 4, bgcolor: alpha(theme.palette.primary.main, 0.02), border: `2px dashed ${alpha(theme.palette.primary.main, 0.1)}`, minHeight: 320 }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
@@ -520,13 +520,13 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                                 </Avatar>
                                 <Typography variant="h6" fontWeight={800}>AI Instruction Insights</Typography>
                             </Box>
-                            
+
                             <Stack spacing={2}>
                                 {[
                                     { title: "Class Performance Benchmark", text: `Your ${selectedCourse === 'all' ? 'active selection' : 'current class'} is performing ${(displayStats?.peerAvgScore - 65).toFixed(1)}% above the school benchmark of ${displayStats?.peerAvgScore}%.`, type: 'success' },
                                     { title: "At-Risk Alert", text: displayStats?.atRiskCount > 0 ? `${displayStats?.atRiskCount} student(s) show signs of disengagement. One-on-one intervention recommended.` : "All students are current on their coursework. Keep up the high engagement!", type: displayStats?.atRiskCount > 0 ? 'warning' : 'success' }
                                 ].map((note, i) => (
-                                    <Box key={i} sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette[note.type as any].main, 0.05), borderLeft: `4px solid ${theme.palette[note.type as any].main}` }}>
+                                    <Box key={i} sx={{ p: 2, borderRadius: 2, bgcolor: alpha((theme.palette as any)[note.type].main, 0.05), borderLeft: `4px solid ${(theme.palette as any)[note.type].main}` }}>
                                         <Typography variant="subtitle2" fontWeight={800} color={`${note.type}.main`}>{note.title}</Typography>
                                         <Typography variant="body2" color="text.secondary">{note.text}</Typography>
                                     </Box>
@@ -542,7 +542,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
 
             {/* Course Comparison & Activity Stream */}
             <Grid container spacing={3} sx={{ mt: 1 }}>
-                <Grid item xs={12} md={7}>
+                <Grid size={{ xs: 12, md: 7 }}>
                     <AnalyticsChart
                         title="Subject Comparison"
                         subtitle="Benchmarking performance across all assigned subjects"
@@ -555,9 +555,9 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                     />
                 </Grid>
 
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 5 }}>
                     <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-                        <CardHeader 
+                        <CardHeader
                             title={<Typography variant="subtitle1" fontWeight={800}>Activity Stream</Typography>}
                             avatar={<Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 1), width: 32, height: 32 }}><InsightIcon sx={{ fontSize: 16, color: '#fff' }} /></Avatar>}
                         />
@@ -586,7 +586,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
             {/* Final Analytics Row: Grade Distribution, Quick Actions, and Assessments */}
             <Grid container spacing={3} sx={{ mt: 1 }}>
                 {/* Grade Distribution */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <AnalyticsChart
                         title="Grade Distribution"
                         subtitle="Performance breakdown for the selected cohort"
@@ -605,7 +605,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                 </Grid>
 
                 {/* Quick Academic Actions Card */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
                         <CardContent>
                             <Typography variant="h6" fontWeight={800} sx={{ mb: 3 }}>Quick Management</Typography>
@@ -657,7 +657,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                 </Grid>
 
                 {/* Assessment Performance chart */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <AnalyticsChart
                         title="Assessment Performance"
                         subtitle="Average results per evaluation type"
@@ -680,10 +680,10 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                     rows={filteredStudents}
                     loading={loading}
                     module="academic"
-                    resourceType="student"
+                    resourceType={"student" as any}
                     showSearch
                     showExport
-                    onView={() => {}}
+                    onView={() => { }}
                 />
             </Box>
         </Box>

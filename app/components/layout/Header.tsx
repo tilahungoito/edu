@@ -72,7 +72,7 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
     const { data: unreadAnnouncements } = useQuery({
         queryKey: ['announcements', 'unread-count'],
         queryFn: () => announcementsService.getUnreadCount(),
-        refetchInterval: 30000, 
+        refetchInterval: 30000,
         enabled: !!user,
     });
 
@@ -88,8 +88,8 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
     const { data: announcements = [] } = useQuery({
         queryKey: ['announcements'],
         queryFn: () => announcementsService.getAll(),
-        refetchInterval: 60000, 
-        enabled: Boolean(notificationAnchor), 
+        refetchInterval: 60000,
+        enabled: Boolean(notificationAnchor),
     });
 
     const { data: notifications = [] } = useQuery({
@@ -281,7 +281,7 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
                             </Box>
                         ) : searchResults.length > 0 ? (
                             searchResults.map((result) => (
-                                <MenuItem 
+                                <MenuItem
                                     key={`${result.type}-${result.id}`}
                                     onClick={() => {
                                         router.push(result.path);
@@ -464,46 +464,46 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
                             System Inbox
                         </Typography>
                         {totalUnreadCount > 0 && (
-                             <Typography variant="caption" sx={{ bgcolor: 'error.main', color: 'white', px: 1, borderRadius: 1, fontWeight: 700 }}>
-                                 {totalUnreadCount} NEW
-                             </Typography>
+                            <Typography variant="caption" sx={{ bgcolor: 'error.main', color: 'white', px: 1, borderRadius: 1, fontWeight: 700 }}>
+                                {totalUnreadCount} NEW
+                            </Typography>
                         )}
                     </Box>
 
                     <Box sx={{ flex: 1, overflow: 'auto', p: 1 }}>
                         {/* PERSONAL NOTIFICATIONS (HIGHER PRIORITY) */}
                         {notifications.length > 0 && (
-                             <Box sx={{ mb: 2 }}>
-                                 <Typography variant="overline" color="text.secondary" sx={{ px: 1, fontWeight: 800 }}>Recent Alerts</Typography>
-                                 {notifications.slice(0, 5).map((notif: Notification) => (
-                                     <Box
-                                         key={notif.id}
-                                         onClick={() => handleNotificationClick(notif)}
-                                         sx={{
-                                             p: 1.5,
-                                             borderRadius: 2,
-                                             backgroundColor: notif.isRead ? 'transparent' : alpha(theme.palette.primary.main, 0.06),
-                                             mb: 0.5,
-                                             cursor: 'pointer',
-                                             transition: 'all 0.2s',
-                                             borderLeft: notif.isRead ? '3px solid transparent' : `3px solid ${theme.palette.primary.main}`,
-                                             '&:hover': {
-                                                 backgroundColor: alpha(theme.palette.action.hover, 0.1),
-                                             }
-                                         }}
-                                     >
-                                         <Typography variant="subtitle2" fontWeight={notif.isRead ? 600 : 800} color={notif.isRead ? 'text.secondary' : 'text.primary'}>
-                                             {notif.title}
-                                         </Typography>
-                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                                             {notif.content}
-                                         </Typography>
-                                         <Typography variant="caption" color="primary" fontWeight={700} sx={{ fontSize: '0.65rem' }}>
-                                             {new Date(notif.createdAt).toLocaleDateString()}
-                                         </Typography>
-                                     </Box>
-                                 ))}
-                             </Box>
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="overline" color="text.secondary" sx={{ px: 1, fontWeight: 800 }}>Recent Alerts</Typography>
+                                {notifications.slice(0, 5).map((notif: Notification) => (
+                                    <Box
+                                        key={notif.id}
+                                        onClick={() => handleNotificationClick(notif)}
+                                        sx={{
+                                            p: 1.5,
+                                            borderRadius: 2,
+                                            backgroundColor: notif.isRead ? 'transparent' : alpha(theme.palette.primary.main, 0.06),
+                                            mb: 0.5,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            borderLeft: notif.isRead ? '3px solid transparent' : `3px solid ${theme.palette.primary.main}`,
+                                            '&:hover': {
+                                                backgroundColor: alpha(theme.palette.action.hover, 0.1),
+                                            }
+                                        }}
+                                    >
+                                        <Typography variant="subtitle2" fontWeight={notif.isRead ? 600 : 800} color={notif.isRead ? 'text.secondary' : 'text.primary'}>
+                                            {notif.title}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                                            {notif.content}
+                                        </Typography>
+                                        <Typography variant="caption" color="primary" fontWeight={700} sx={{ fontSize: '0.65rem' }}>
+                                            {new Date(notif.createdAt).toLocaleDateString()}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
                         )}
 
                         {/* SYSTEM ANNOUNCEMENTS */}

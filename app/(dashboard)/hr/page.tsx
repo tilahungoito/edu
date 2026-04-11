@@ -95,7 +95,7 @@ export default function HRDashboard() {
             try {
                 setLoading(true);
                 const [staff, pending, myRequests] = await Promise.all([
-                    staffService.getAllStaff(user?.tenantId || undefined),
+                    staffService.getAllStaff({ scopeId: user?.tenantId || undefined }),
                     transfersService.getPendingRequests(),
                     transfersService.getMyRequests(),
                 ]);

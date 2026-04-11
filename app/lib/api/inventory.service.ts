@@ -31,30 +31,35 @@ export interface CreateAssetDto {
     institutionId: string;
 }
 
+export interface InventoryFilters {
+    institutionId?: string;
+    category?: string;
+}
+
 export const inventoryService = {
-    getAll: async (institutionId?: string): Promise<Asset[]> => {
-        const response = await apiClient.get<Asset[]>('assets', {
-            params: { institutionId },
+    getAll: async (filters: InventoryFilters = {}): Promise<Asset[]> => {
+        const response = await apiClient.get<Asset[]>('inventory', {
+            params: filters,
         });
         return response.data;
     },
 
     getById: async (id: string): Promise<Asset> => {
-        const response = await apiClient.get<Asset>(`assets/${id}`);
+        const response = await apiClient.get<Asset>(`inventory/${id}`);
         return response.data;
     },
 
     create: async (data: CreateAssetDto): Promise<Asset> => {
-        const response = await apiClient.post<Asset>('assets', data);
+        const response = await apiClient.post<Asset>('inventory', data);
         return response.data;
     },
 
-    update: async (id: string, data: Partial<CreateAssetDto>): Promise<Asset> => {
-        const response = await apiClient.patch<Asset>(`assets/${id}`, data);
+    update: async (params: { id: string; data: Partial<CreateAssetDto> }): Promise<Asset> => {
+        const response = await apiClient.patch<Asset>(`inventory/${params.id}`, params.data);
         return response.data;
     },
 
     delete: async (id: string): Promise<void> => {
-        await apiClient.delete(`assets/${id}`);
+        await apiClient.delete(`inventory/${id}`);
     },
 };

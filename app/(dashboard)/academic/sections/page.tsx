@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Box,
     Typography,
     Button,
-    Grid,
     Card,
     CardContent,
     IconButton,
@@ -34,503 +33,330 @@ import {
     Edit as EditIcon,
     MoreVert as MoreVertIcon,
     Search as SearchIcon,
+    Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { useAuthStore } from '@/app/lib/store/auth-store';
-import { sectionsService } from '@/app/lib/api/sections.service';
+import { sectionsService, Section, CreateSectionData, UpdateSectionData } from '@/app/lib/api/sections.service';
 import { useRouter } from 'next/navigation';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 
 export default function SectionsPage() {
     const theme = useTheme();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const user = useAuthStore(state => state.user);
-    const [sections, setSections] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [openDialog, setOpenDialog] = useState(false);
+    
+    const [searchQuery, setSearchQuery] = useState('');
+    const [openCreateDialog, setOpenCreateDialog] = useState(false);
     const [openEditDialog, setOpenEditDialog] = useState(false);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-    const [newSection, setNewSection] = useState({ name: '', nextSectionId: '', gradeLevel: '', program: 'General', capacity: 50 });
-    const [editSection, setEditSection] = useState<any>(null);
-    const [sectionToDelete, setSectionToDelete] = useState<any>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+    
+    const [formData, setFormData] = useState<CreateSectionData>({
+        name: '',
+        institutionId: user?.tenantId || '',
+        gradeLevel: undefined,
+        program: 'General',
+        capacity: 50,
+        nextSectionId: null,
+    });
+    
+    const [editSection, setEditSection] = useState<Section | null>(null);
+    const [sectionToDelete, setSectionToDelete] = useState<Section | null>(null);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-    const [menuSection, setMenuSection] = useState<any>(null);
-    const [saving, setSaving] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
+    const [menuSection, setMenuSection] = useState<Section | null>(null);
 
-    const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, section: any) => {
+    // Queries
+    const { data: sections = [], isLoading, isFetching, refetch } = useQuery({
+        queryKey: ['sections', user?.tenantId],
+        queryFn: () => sectionsService.getAll(user?.tenantId || ''),
+        enabled: !!user?.tenantId,
+    });
+
+    // Real-time synchronization
+    useRealTime('STATS_UPDATED', () => {
+        queryClient.invalidateQueries({ queryKey: ['sections'] });
+    });
+
+    const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, section: Section) => {
         setAnchorEl(event.currentTarget);
         setMenuSection(section);
     };
+
     const handleMenuClose = () => {
         setAnchorEl(null);
         setMenuSection(null);
     };
 
-    const filteredSections = sections.filter(s => 
-        (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.program || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredSections = useMemo(() => {
+        return sections.filter(s => 
+            (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (s.program || '').toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [sections, searchQuery]);
 
-    const fetchSections = useCallback(async (isBackground = false) => {
-        if (!user?.tenantId) return;
-        if (isBackground) setRefreshing(true);
-        else setLoading(true);
-        
-        try {
-            const data = await sectionsService.getAll(user.tenantId);
-            setSections(data);
-        } catch (error) {
-            console.error('Error fetching sections:', error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, [user?.tenantId]);
-
-    useEffect(() => {
-        fetchSections();
-    }, [fetchSections]);
-
-    // Polling fallback: refresh every 15s to guarantee visibility even if WS fails
-    useEffect(() => {
-        const interval = setInterval(() => { fetchSections(true); }, 15000);
-        return () => clearInterval(interval);
-    }, [fetchSections]);
-
-    useRealTime('STATS_UPDATED', () => fetchSections(true));
-
-    const handleCreateSection = async () => {
-        setSaving(true);
-        try {
-            const payload: any = {
-                name: newSection.name,
-                institutionId: user?.tenantId,
-                gradeLevel: newSection.gradeLevel ? Number(newSection.gradeLevel) : undefined,
-                program: newSection.program || undefined,
-                capacity: newSection.capacity || 50,
-            };
-            if (newSection.nextSectionId) {
-                payload.nextSectionId = newSection.nextSectionId;
-            }
-            await sectionsService.create(payload);
+    // Mutations
+    const createMutation = useMutation({
+        mutationFn: (data: CreateSectionData) => sectionsService.create(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sections'] });
             toast.success('Section created successfully');
-            setOpenDialog(false);
-            setNewSection({ name: '', nextSectionId: '', gradeLevel: '', program: 'General', capacity: 50 });
-            fetchSections();
-        } catch (error) {
-            console.error('Error creating section:', error);
-            toast.error('Failed to create section');
-        } finally {
-            setSaving(false);
+            setOpenCreateDialog(false);
+            setFormData({
+                name: '',
+                institutionId: user?.tenantId || '',
+                gradeLevel: undefined,
+                program: 'General',
+                capacity: 50,
+                nextSectionId: null,
+            });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to create section');
         }
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string, data: UpdateSectionData }) => sectionsService.update(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sections'] });
+            toast.success('Section updated successfully');
+            setOpenEditDialog(false);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to update section');
+        }
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: (id: string) => sectionsService.delete(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['sections'] });
+            toast.success('Section deleted successfully');
+            setOpenDeleteDialog(false);
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to delete section');
+        }
+    });
+
+    const handleCreateSubmit = () => {
+        if (!formData.name || !formData.gradeLevel) {
+            toast.error('Name and Grade Level are required');
+            return;
+        }
+        createMutation.mutate({ ...formData, institutionId: user?.tenantId || '' });
     };
 
-    const handleUpdateSection = async () => {
+    const handleUpdateSubmit = () => {
         if (!editSection) return;
-        setSaving(true);
-        try {
-            await sectionsService.update(editSection.id, {
+        updateMutation.mutate({ 
+            id: editSection.id, 
+            data: {
                 name: editSection.name,
-                gradeLevel: editSection.gradeLevel ? Number(editSection.gradeLevel) : undefined,
+                gradeLevel: editSection.gradeLevel,
                 program: editSection.program,
                 capacity: editSection.capacity,
                 nextSectionId: editSection.nextSectionId || null,
-            });
-            toast.success('Section updated successfully');
-            setOpenEditDialog(false);
-            fetchSections();
-        } catch (error) {
-            console.error('Error updating section:', error);
-            toast.error('Failed to update section');
-        } finally {
-            setSaving(false);
-        }
+            } 
+        });
     };
 
-    const handleDeleteSection = async () => {
-        if (!sectionToDelete) return;
-        setSaving(true);
-        try {
-            await sectionsService.delete(sectionToDelete.id);
-            toast.success('Section deleted successfully');
-            setOpenDeleteDialog(false);
-            fetchSections();
-        } catch (error) {
-            console.error('Error deleting section:', error);
-            toast.error('Failed to delete section');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    if (loading) {
+    if (isLoading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-                <CircularProgress />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 15, gap: 2 }}>
+                <CircularProgress size={48} thickness={4} />
+                <Typography variant="body1" color="text.secondary" fontWeight={600}>Loading Sections...</Typography>
             </Box>
         );
     }
 
     return (
-        <Box>
+        <Box sx={{ p: { xs: 2.5, md: 3, lg: 5 }, className: "animate-fade-in" }}>
+            {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box>
-                        <Typography variant="h4" fontWeight={800} color="text.primary">
+                <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1.5 }}>
                             Sections & Rosters
                         </Typography>
-                        <Typography variant="body1" color="text.secondary">
-                            Manage classroom groups and student assignments
-                        </Typography>
+                        {isFetching && <CircularProgress size={20} thickness={5} />}
                     </Box>
-                    {refreshing && <CircularProgress size={20} />}
+                    <Typography variant="body1" color="text.secondary" fontWeight={500}>
+                        Manage classroom groups and student assignments
+                    </Typography>
                 </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setOpenDialog(true)}
-                    sx={{ borderRadius: '12px', px: 3, py: 1.5, fontWeight: 700 }}
-                >
-                    Create New Section
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <IconButton onClick={() => refetch()} disabled={isFetching} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                        <RefreshIcon />
+                    </IconButton>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setOpenCreateDialog(true)}
+                        sx={{ borderRadius: '12px', px: 3, py: 1.5, fontWeight: 700, textTransform: 'none' }}
+                    >
+                        Create Section
+                    </Button>
+                </Box>
             </Box>
 
-            <Paper sx={{ p: 2, mb: 3, borderRadius: 3, display: 'flex', alignItems: 'center', border: `1px solid ${alpha(theme.palette.divider, 0.5)}` }}>
+            {/* Filter Bar */}
+            <Paper sx={{ p: 2, mb: 4, borderRadius: 3, display: 'flex', alignItems: 'center', bgcolor: alpha(theme.palette.background.paper, 0.8), border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                 <TextField
                     size="small"
-                    placeholder="Search sections by name or program..."
+                    placeholder="Search sections..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} /></InputAdornment> } }}
-                    sx={{ width: { xs: '100%', sm: 300 }, '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    InputProps={{ 
+                        startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: 'text.secondary' }} /></InputAdornment>,
+                        sx: { borderRadius: 2.5 }
+                    }}
+                    sx={{ width: { xs: '100%', sm: 350 } }}
                 />
             </Paper>
 
-            <Grid container spacing={3}>
+            {/* Grid */}
+            <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(4, 1fr)'
+                },
+                gap: 3 
+            }}>
                 {filteredSections.length === 0 ? (
-                    <Grid size={{ xs: 12 }}>
-                        <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 6, bgcolor: alpha(theme.palette.background.paper, 0.5), backdropFilter: 'blur(10px)', border: `1px dashed ${theme.palette.divider}` }}>
+                    <Box sx={{ gridColumn: '1 / -1' }}>
+                        <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 6, border: `1px dashed ${theme.palette.divider}`, bgcolor: alpha(theme.palette.background.paper, 0.5) }}>
                             <GroupsIcon sx={{ fontSize: 64, color: alpha(theme.palette.text.secondary, 0.2), mb: 2 }} />
                             <Typography variant="h6" color="text.secondary">No sections found</Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Try adjusting your search or create a new section group.</Typography>
-                            <Button startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>Create First Section</Button>
+                            <Button variant="text" startIcon={<AddIcon />} onClick={() => setOpenCreateDialog(true)} sx={{ mt: 2 }}>Create First Section</Button>
                         </Paper>
-                    </Grid>
+                    </Box>
                 ) : (
                     filteredSections.map((section) => (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={section.id}>
-                            <Card sx={{
-                                borderRadius: '24px',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                position: 'relative',
-                                overflow: 'visible',
-                                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                                '&:hover': {
-                                    transform: 'translateY(-8px)',
-                                    boxShadow: `0 20px 40px ${alpha(theme.palette.primary.main, 0.15)}`,
-                                    '& .section-icon': {
-                                        transform: 'scale(1.1) rotate(5deg)',
-                                        bgcolor: theme.palette.primary.main,
-                                        color: '#fff'
-                                    }
-                                }
-                            }}>
-                                <CardContent sx={{ p: 4 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                                        <Box className="section-icon" sx={{
-                                            p: 2,
-                                            borderRadius: '16px',
-                                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                            color: theme.palette.primary.main,
-                                            transition: 'all 0.3s ease'
-                                        }}>
-                                            <GroupsIcon />
-                                        </Box>
-                                        <Box>
-                                            <IconButton size="small" onClick={(e) => handleMenuOpen(e, section)}>
-                                                <MoreVertIcon fontSize="small" />
-                                            </IconButton>
-                                        </Box>
+                        <Card key={section.id} sx={{
+                            borderRadius: '24px',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                            '&:hover': {
+                                transform: 'translateY(-8px)',
+                                boxShadow: `0 20px 40px ${alpha(theme.palette.primary.main, 0.1)}`,
+                                '& .section-icon': { bgcolor: 'primary.main', color: '#fff' }
+                            }
+                        }}>
+                            <CardContent sx={{ p: 3.5 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                                    <Box className="section-icon" sx={{ p: 1.5, borderRadius: '14px', bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', transition: '0.3s' }}>
+                                        <GroupsIcon />
                                     </Box>
+                                    <IconButton size="small" onClick={(e) => handleMenuOpen(e, section)}>
+                                        <MoreVertIcon fontSize="small" />
+                                    </IconButton>
+                                </Box>
 
-                                    <Typography variant="h5" fontWeight={800} gutterBottom sx={{ letterSpacing: '-0.5px' }}>
-                                        {section.name}
-                                    </Typography>
+                                <Typography variant="h6" fontWeight={800} gutterBottom noWrap title={section.name}>
+                                    {section.name}
+                                </Typography>
 
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-                                        {section.gradeLevel && (
-                                            <Chip 
-                                                label={`Grade ${section.gradeLevel}`} 
-                                                size="small" 
-                                                sx={{ 
-                                                    fontWeight: 700, 
-                                                    bgcolor: alpha(theme.palette.primary.main, 0.1), 
-                                                    color: theme.palette.primary.main,
-                                                    borderRadius: '8px'
-                                                }} 
-                                            />
-                                        )}
-                                        {section.program && (
-                                            <Chip 
-                                                label={section.program} 
-                                                size="small" 
-                                                variant="outlined"
-                                                sx={{ fontWeight: 600, color: theme.palette.secondary.main, borderColor: alpha(theme.palette.secondary.main, 0.3) }} 
-                                            />
-                                        )}
+                                <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+                                    <Chip label={`Grade ${section.gradeLevel}`} size="small" sx={{ fontWeight: 700, bgcolor: alpha(theme.palette.primary.main, 0.08), color: 'primary.main' }} />
+                                    <Chip label={section.program || 'General'} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+                                </Box>
+
+                                <Box sx={{ mb: 4 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary" fontWeight={600}>Capacity</Typography>
+                                        <Typography variant="body2" fontWeight={800}>{section._count?.students || 0} / {section.capacity || 50}</Typography>
                                     </Box>
-
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Typography variant="body2" color="text.secondary" fontWeight={500}>Recent Roster</Typography>
-                                            <AvatarGroup max={4} sx={{ 
-                                                '& .MuiAvatar-root': { 
-                                                    width: 28, 
-                                                    height: 28, 
-                                                    fontSize: '0.8rem',
-                                                    border: `2px solid ${theme.palette.background.paper}`
-                                                } 
-                                            }}>
-                                                {section.students?.map((std: any) => (
-                                                    <Tooltip key={std.id} title={`${std.user?.firstName || ''} ${std.user?.lastName || ''}`.trim() || std.user?.username || 'Student'}>
-                                                        <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, fontWeight: 700 }}>
-                                                            {std.user?.firstName?.charAt(0) || std.user?.username?.charAt(0)?.toUpperCase() || '?'}
-                                                        </Avatar>
-                                                    </Tooltip>
-                                                ))}
-                                                {(!section.students || section.students.length === 0) && (
-                                                    <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>Empty</Typography>
-                                                )}
-                                            </AvatarGroup>
-                                        </Box>
-                                        
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                                            <Typography variant="body2" color="text.secondary" fontWeight={500}>Capacity</Typography>
-                                            <Typography variant="body2" fontWeight={700} color={
-                                                (section._count?.students ?? 0) >= (section.capacity || 50)
-                                                    ? 'error.main' : 'text.primary'
-                                            }>
-                                                {section._count?.students ?? 0} / {section.capacity || 50}
-                                            </Typography>
-                                        </Box>
-                                        <Box sx={{ width: '100%', height: 6, bgcolor: alpha(theme.palette.divider, 0.1), borderRadius: 3, overflow: 'hidden' }}>
-                                            <Box sx={{ 
-                                                width: `${Math.min(100, ((section._count?.students ?? 0) / (section.capacity || 50)) * 100)}%`, 
-                                                height: '100%', 
-                                                bgcolor: (section._count?.students ?? 0) >= (section.capacity || 50) ? 'error.main' : 'primary.main',
-                                                borderRadius: 3,
-                                                transition: 'width 0.5s ease-in-out'
-                                            }} />
-                                        </Box>
+                                    <Box sx={{ height: 6, bgcolor: alpha(theme.palette.divider, 0.1), borderRadius: 3, overflow: 'hidden' }}>
+                                        <Box sx={{ 
+                                            width: `${Math.min(100, ((section._count?.students || 0) / (section.capacity || 50)) * 100)}%`, 
+                                            height: '100%', 
+                                            bgcolor: (section._count?.students || 0) >= (section.capacity || 50) ? 'error.main' : 'primary.main',
+                                            borderRadius: 3 
+                                        }} />
                                     </Box>
+                                </Box>
 
-                                    <Button
-                                        fullWidth
-                                        variant="contained"
-                                        disableElevation
-                                        endIcon={<ArrowForwardIcon />}
-                                        onClick={() => router.push(`/academic/sections/${section.id}`)}
-                                        sx={{
-                                            borderRadius: '14px',
-                                            py: 1.5,
-                                            fontWeight: 800,
-                                            boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.2)}`,
-                                            '&:hover': { boxShadow: `0 12px 25px ${alpha(theme.palette.primary.main, 0.3)}` }
-                                        }}
-                                    >
-                                        Manage Roster
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        </Grid>
+                                <Button
+                                    fullWidth
+                                    variant="contained"
+                                    disableElevation
+                                    onClick={() => router.push(`/academic/sections/${section.id}`)}
+                                    endIcon={<ArrowForwardIcon />}
+                                    sx={{ borderRadius: '16px', py: 1.5, fontWeight: 800, textTransform: 'none' }}
+                                >
+                                    Manage Roster
+                                </Button>
+                            </CardContent>
+                        </Card>
                     ))
                 )}
-            </Grid>
+            </Box>
 
-            {/* Create Dialog */}
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}>
+            {/* Dialogs */}
+            <Dialog open={openCreateDialog} onClose={() => !createMutation.isPending && setOpenCreateDialog(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
                 <DialogTitle sx={{ fontWeight: 800 }}>Create New Section</DialogTitle>
-                <DialogContent>
-                    <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                        <TextField
-                            label="Section Name"
-                            placeholder="e.g. Grade 10-A"
-                            fullWidth
-                            autoFocus
-                            required
-                            value={newSection.name}
-                            onChange={(e) => setNewSection({ ...newSection, name: e.target.value })}
-                        />
-                        <TextField
-                            select
-                            label="Target Grade Level"
-                            fullWidth
-                            required
-                            SelectProps={{ native: true }}
-                            value={newSection.gradeLevel}
-                            onChange={(e) => setNewSection({ ...newSection, gradeLevel: e.target.value })}
-                        >
-                            <option value="">Select Grade</option>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                                <option key={g} value={g}>Grade {g}</option>
-                            ))}
-                        </TextField>
-                        <TextField
-                            label="Max Capacity"
-                            type="number"
-                            fullWidth
-                            value={newSection.capacity}
-                            onChange={(e) => setNewSection({ ...newSection, capacity: Number(e.target.value) })}
-                        />
-                        <TextField
-                            select
-                            label="Program/Stream"
-                            fullWidth
-                            required
-                            SelectProps={{ native: true }}
-                            value={newSection.program}
-                            onChange={(e) => setNewSection({ ...newSection, program: e.target.value })}
-                        >
-                            <option value="General">General</option>
-                            <option value="Natural Science">Natural Science</option>
-                            <option value="Social Science">Social Science</option>
-                            <option value="Vocational">Vocational</option>
-                        </TextField>
-                        <TextField
-                            select
-                            label="Promotion Path (Optional)"
-                            fullWidth
-                            SelectProps={{ native: true }}
-                            value={newSection.nextSectionId}
-                            onChange={(e) => setNewSection({ ...newSection, nextSectionId: e.target.value })}
-                        >
-                            <option value="">None</option>
-                            {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </TextField>
-                    </Box>
+                <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
+                    <TextField label="Section Name" fullWidth value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. 10-A" />
+                    <TextField select label="Grade Level" fullWidth value={formData.gradeLevel || ''} onChange={e => setFormData({ ...formData, gradeLevel: Number(e.target.value) })}>
+                        {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => <MenuItem key={g} value={g}>Grade {g}</MenuItem>)}
+                    </TextField>
+                    <TextField label="Max Capacity" type="number" fullWidth value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: Number(e.target.value) })} />
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setOpenDialog(false)} sx={{ fontWeight: 700 }} disabled={saving}>Cancel</Button>
-                    <Button 
-                        onClick={handleCreateSection} 
-                        variant="contained" 
-                        disabled={saving || !newSection.name || !newSection.gradeLevel} 
-                        sx={{ borderRadius: '10px', fontWeight: 700, minWidth: 120 }}
-                        startIcon={saving && <CircularProgress size={16} color="inherit" />}
-                    >
-                        {saving ? 'Creating...' : 'Create Section'}
+                    <Button onClick={() => setOpenCreateDialog(false)} disabled={createMutation.isPending}>Cancel</Button>
+                    <Button variant="contained" onClick={handleCreateSubmit} disabled={createMutation.isPending} sx={{ borderRadius: 2, fontWeight: 700 }}>
+                        {createMutation.isPending ? 'Creating...' : 'Create Section'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Edit Dialog */}
-            <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} PaperProps={{ sx: { borderRadius: '24px', p: 1 } }}>
+            <Dialog open={openEditDialog} onClose={() => !updateMutation.isPending && setOpenEditDialog(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
                 <DialogTitle sx={{ fontWeight: 800 }}>Edit Section</DialogTitle>
-                <DialogContent>
-                    <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                        <TextField
-                            label="Section Name"
-                            fullWidth
-                            value={editSection?.name || ''}
-                            onChange={(e) => setEditSection({ ...editSection, name: e.target.value })}
-                        />
-                        <TextField
-                            select
-                            label="Grade Level"
-                            fullWidth
-                            SelectProps={{ native: true }}
-                            value={editSection?.gradeLevel || ''}
-                            onChange={(e) => setEditSection({ ...editSection, gradeLevel: e.target.value })}
-                        >
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                                <option key={g} value={g}>Grade {g}</option>
-                            ))}
-                        </TextField>
-                        <TextField
-                            label="Max Capacity"
-                            type="number"
-                            fullWidth
-                            value={editSection?.capacity || 50}
-                            onChange={(e) => setEditSection({ ...editSection, capacity: Number(e.target.value) })}
-                        />
-                        <TextField
-                            select
-                            label="Program/Stream"
-                            fullWidth
-                            SelectProps={{ native: true }}
-                            value={editSection?.program || 'General'}
-                            onChange={(e) => setEditSection({ ...editSection, program: e.target.value })}
-                        >
-                            <option value="General">General</option>
-                            <option value="Natural Science">Natural Science</option>
-                            <option value="Social Science">Social Science</option>
-                            <option value="Vocational">Vocational</option>
-                        </TextField>
-                    </Box>
+                <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 1 }}>
+                    {editSection && (
+                        <>
+                            <TextField label="Section Name" fullWidth value={editSection.name} onChange={e => setEditSection({ ...editSection, name: e.target.value })} />
+                            <TextField select label="Grade Level" fullWidth value={editSection.gradeLevel || ''} onChange={e => setEditSection({ ...editSection, gradeLevel: Number(e.target.value) })}>
+                                {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => <MenuItem key={g} value={g}>Grade {g}</MenuItem>)}
+                            </TextField>
+                            <TextField label="Max Capacity" type="number" fullWidth value={editSection.capacity || 50} onChange={e => setEditSection({ ...editSection, capacity: Number(e.target.value) })} />
+                        </>
+                    )}
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setOpenEditDialog(false)} disabled={saving}>Cancel</Button>
-                    <Button 
-                        onClick={handleUpdateSection} 
-                        variant="contained" 
-                        disabled={saving}
-                        sx={{ borderRadius: '10px', fontWeight: 700, minWidth: 120 }}
-                        startIcon={saving && <CircularProgress size={16} color="inherit" />}
-                    >
-                        {saving ? 'Saving...' : 'Save Changes'}
+                    <Button onClick={() => setOpenEditDialog(false)} disabled={updateMutation.isPending}>Cancel</Button>
+                    <Button variant="contained" onClick={handleUpdateSubmit} disabled={updateMutation.isPending} sx={{ borderRadius: 2, fontWeight: 700 }}>
+                        {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)} PaperProps={{ sx: { borderRadius: '20px' } }}>
+            <Dialog open={openDeleteDialog} onClose={() => !deleteMutation.isPending && setOpenDeleteDialog(false)} PaperProps={{ sx: { borderRadius: 4 } }}>
                 <DialogTitle sx={{ fontWeight: 800 }}>Delete Section?</DialogTitle>
                 <DialogContent>
-                    <Typography>
-                        Are you sure you want to delete <b>{sectionToDelete?.name}</b>? 
-                        This action cannot be undone and may affect student assignments.
-                    </Typography>
+                    <Typography>Are you sure you want to delete <b>{sectionToDelete?.name}</b>? This cannot be undone.</Typography>
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setOpenDeleteDialog(false)} disabled={saving}>Cancel</Button>
-                    <Button 
-                        onClick={handleDeleteSection} 
-                        color="error" 
-                        variant="contained" 
-                        disabled={saving}
-                        sx={{ borderRadius: '10px', fontWeight: 700, minWidth: 120 }}
-                        startIcon={saving && <CircularProgress size={16} color="inherit" />}
-                    >
-                        {saving ? 'Deleting...' : 'Delete Section'}
+                    <Button onClick={() => setOpenDeleteDialog(false)} disabled={deleteMutation.isPending}>Cancel</Button>
+                    <Button variant="contained" color="error" onClick={() => sectionToDelete && deleteMutation.mutate(sectionToDelete.id)} disabled={deleteMutation.isPending} sx={{ borderRadius: 2, fontWeight: 700 }}>
+                        {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleMenuClose}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                PaperProps={{ sx: { borderRadius: 2, minWidth: 160, boxShadow: theme.shadows[4] } }}
-            >
-                <MenuItem onClick={() => { 
-                    setEditSection(menuSection);
-                    setOpenEditDialog(true);
-                    handleMenuClose(); 
-                }} sx={{ py: 1.5 }}>
-                    <EditIcon sx={{ mr: 2, fontSize: 18, color: 'info.main' }} />
-                    <Typography fontWeight={600}>Edit Section</Typography>
+            {/* Menu */}
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} PaperProps={{ sx: { borderRadius: 3, minWidth: 160 } }}>
+                <MenuItem onClick={() => { setEditSection(menuSection); setOpenEditDialog(true); handleMenuClose(); }}>
+                    <EditIcon sx={{ mr: 1.5, fontSize: 18 }} /> Edit
                 </MenuItem>
-                <MenuItem onClick={() => { 
-                    setSectionToDelete(menuSection);
-                    setOpenDeleteDialog(true);
-                    handleMenuClose(); 
-                }} sx={{ py: 1.5, color: 'error.main' }}>
-                    <DeleteIcon sx={{ mr: 2, fontSize: 18 }} />
-                    <Typography fontWeight={600}>Delete Section</Typography>
+                <MenuItem onClick={() => { setSectionToDelete(menuSection); setOpenDeleteDialog(true); handleMenuClose(); }} sx={{ color: 'error.main' }}>
+                    <DeleteIcon sx={{ mr: 1.5, fontSize: 18 }} /> Delete
                 </MenuItem>
             </Menu>
         </Box>

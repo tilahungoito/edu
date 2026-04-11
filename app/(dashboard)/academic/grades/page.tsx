@@ -58,6 +58,8 @@ import enrollmentsService from '@/app/lib/api/enrollments.service';
 import assessmentsService, { Assessment, AssessmentScore } from '@/app/lib/api/assessments.service';
 import { gradesService, GradeBookStatus } from '@/app/lib/api/grades.service';
 import { useAuthStore } from '@/app/lib/store';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
+import { getCurrentSemester, getSemesterOptions } from '@/app/lib/utils/semester';
 
 
 const ASSESSMENT_TYPES = ['QUIZ', 'ASSIGNMENT', 'HOMEWORK', 'PRACTICAL', 'CLASS_PARTICIPATION', 'MIDTERM_EXAM', 'FINAL_EXAM'];
@@ -158,6 +160,8 @@ const calculateGradeCategory = (score: number): { letter: string; category: stri
 // legacy helper alias used in existing code
 const calculateGradeLetter = (score: number) => calculateGradeCategory(score).category;
 
+// getCurrentSemester now imported from @/app/lib/utils/semester
+
 // Status badge helper
 const GradeBookStatusBadge = ({ status }: { status: GradeBookStatus | null }) => {
     const theme = useTheme();
@@ -194,7 +198,7 @@ function ScoreInputCell({ initialValue, maxScore, onChangeCommit }: { initialVal
                 value={val === '' || val === null ? '' : val}
                 onChange={(e) => setVal(e.target.value)}
                 onBlur={() => {
-                    let str = String(val);
+                    const str = String(val);
                     if (str === '') {
                         onChangeCommit(null);
                         return;
@@ -238,6 +242,7 @@ function InstructorGradebookView() {
     const user = useAuthStore(state => state.user);
 
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+    const [selectedSemester, setSelectedSemester] = useState<string>(getCurrentSemester());
     const [createAssessmentOpen, setCreateAssessmentOpen] = useState(false);
     const [editAssessmentOpen, setEditAssessmentOpen] = useState(false);
     const [assessmentToEdit, setAssessmentToEdit] = useState<Assessment | null>(null);
@@ -283,8 +288,8 @@ function InstructorGradebookView() {
 
     // 2. Fetch Enrollments (Rows)
     const { data: enrollments, isLoading: loadingEnrollments } = useQuery({
-        queryKey: ['enrollments', selectedCourseId],
-        queryFn: () => enrollmentsService.getByCourse(selectedCourseId),
+        queryKey: ['enrollments', selectedCourseId, selectedSemester],
+        queryFn: () => enrollmentsService.getByCourse(selectedCourseId, selectedSemester),
         enabled: !!selectedCourseId,
     });
 
@@ -322,8 +327,8 @@ function InstructorGradebookView() {
 
     // 5. Fetch GradeBook status
     const { data: gradeBookRows, isLoading: loadingGradeBook } = useQuery({
-        queryKey: ['gradebook-status', selectedCourseId],
-        queryFn: () => gradesService.getGradeBookStatus(selectedCourseId),
+        queryKey: ['gradebook-status', selectedCourseId, selectedSemester],
+        queryFn: () => gradesService.getGradeBookStatus(selectedCourseId, selectedSemester),
         enabled: !!selectedCourseId,
     });
 
@@ -338,6 +343,46 @@ function InstructorGradebookView() {
     }, [gradeBookRows]);
 
     const isGradebookLocked = courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED' || courseGradeBookStatus === 'PENDING_REVIEW';
+    
+    // 6. Real-time Synchronization
+    useRealTime('assessment_created', (data) => {
+        if (data.courseId === selectedCourseId) {
+            queryClient.invalidateQueries({ queryKey: ['assessments', selectedCourseId] });
+            toast.success(`New assessment added: ${data.title}`, { id: 'rt-assessment' });
+        }
+    });
+
+    useRealTime('assessment_updated', (data) => {
+        if (data.courseId === selectedCourseId) {
+            queryClient.invalidateQueries({ queryKey: ['assessments', selectedCourseId] });
+        }
+    });
+
+    useRealTime('assessment_deleted', (data) => {
+        if (data.courseId === selectedCourseId) {
+            queryClient.invalidateQueries({ queryKey: ['assessments', selectedCourseId] });
+            toast.error('An assessment was deleted.', { id: 'rt-assessment-deleted' });
+        }
+    });
+
+    useRealTime('score_recorded', (data) => {
+        if (data.assessmentId) {
+             // Invalidate all scores for this course since we don't know the exact assessment/enrollment map easily here
+             // but we can be specific with the query key if we want.
+             queryClient.invalidateQueries({ queryKey: ['assessment-scores-all', selectedCourseId] });
+        }
+    });
+
+    useRealTime('bulk_scores_recorded', (data) => {
+        queryClient.invalidateQueries({ queryKey: ['assessment-scores-all', selectedCourseId] });
+    });
+
+    useRealTime('gradebook_status_updated', (data) => {
+        if (data.courseId === selectedCourseId) {
+            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
+            toast(`Gradebook status updated: ${data.status}`, { id: 'rt-gradebook' });
+        }
+    });
 
 
     // Derived state for the currently selected course
@@ -621,9 +666,9 @@ function InstructorGradebookView() {
     const confirmSubmission = async () => {
         setSubmitting(true);
         try {
-            await gradesService.submitForReview(selectedCourseId);
+            await gradesService.submitForReview(selectedCourseId, selectedSemester);
             toast.success('Grades submitted for review!');
-            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
+            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId, selectedSemester] });
             setSubmitReviewConfirmOpen(false);
         } catch (e: any) {
             toast.error(e?.response?.data?.message || 'Failed to submit grades');
@@ -663,10 +708,10 @@ function InstructorGradebookView() {
     const confirmUnlock = async () => {
         setIsUnlocking(true);
         try {
-            await gradesService.unlockGradebook(selectedCourseId, tempReason);
+            await gradesService.unlockGradebook(selectedCourseId, selectedSemester, tempReason);
             toast.success("Gradebook unlocked! The instructor can now edit grades.");
-            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
-            queryClient.invalidateQueries({ queryKey: ['assessment-scores-all'] });
+            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId, selectedSemester] });
+            queryClient.invalidateQueries({ queryKey: ['assessment-scores-all', selectedCourseId] });
             setUnlockConfirmOpen(false);
             setTempReason('');
         } catch (e: any) {
@@ -684,9 +729,9 @@ function InstructorGradebookView() {
     const confirmApproveAndLock = async () => {
         setApproving(true);
         try {
-            await gradesService.approveAndLock(selectedCourseId);
+            await gradesService.approveAndLock(selectedCourseId, selectedSemester);
             toast.success('Grades approved and locked!');
-            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId] });
+            queryClient.invalidateQueries({ queryKey: ['gradebook-status', selectedCourseId, selectedSemester] });
             queryClient.invalidateQueries({ queryKey: ['assessment-scores-all'] });
             setApproveConfirmOpen(false);
         } catch (e: any) {
@@ -754,6 +799,29 @@ function InstructorGradebookView() {
                                 ))
                             ])
                         )}
+                    </TextField>
+
+                    <TextField
+                        select
+                        size="small"
+                        label="Semester"
+                        value={selectedSemester}
+                        onChange={(e) => setSelectedSemester(e.target.value)}
+                        sx={{ minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
+                    >
+                        <MenuItem value={getCurrentSemester()}>
+                            <Typography variant="body2" fontWeight={600}>Current: {getCurrentSemester()}</Typography>
+                        </MenuItem>
+                        <ListSubheader sx={{ fontWeight: 800 }}>OTHER SEMESTERS</ListSubheader>
+                        {[0, 1].map(yearOffset => {
+                            const year = new Date().getFullYear() - yearOffset;
+                            const sem1 = `${year-1}/${String(year).slice(-2)} Semester I`;
+                            const sem2 = `${year-1}/${String(year).slice(-2)} Semester II`;
+                            return [
+                                <MenuItem key={`${year}-1`} value={sem1}>{sem1}</MenuItem>,
+                                <MenuItem key={`${year}-2`} value={sem2}>{sem2}</MenuItem>
+                            ];
+                        }).flat()}
                     </TextField>
 
                     {selectedCourseId && (
@@ -843,7 +911,7 @@ function InstructorGradebookView() {
                             <Button
                                 variant="outlined"
                                 startIcon={<DownloadIcon />}
-                                onClick={() => gradesService.exportExcel(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name)}
+                                onClick={() => gradesService.exportExcel(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name, selectedSemester)}
                                 sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
                             >
                                 Export Excel
@@ -851,7 +919,7 @@ function InstructorGradebookView() {
                             <Button
                                 variant="outlined"
                                 startIcon={<PictureAsPdfIcon />}
-                                onClick={() => gradesService.exportPdf(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name)}
+                                onClick={() => gradesService.exportPdf(selectedCourseId, courses?.find((c: any) => c.id === selectedCourseId)?.name, selectedSemester)}
                                 sx={{ borderRadius: 2, height: 40, fontWeight: 700, color: 'error.main', borderColor: 'error.main', '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.05), borderColor: 'error.main' } }}
                             >
                                 Export PDF

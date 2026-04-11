@@ -19,6 +19,7 @@ import { CheckCircle as ApproveIcon, Cancel as RejectIcon } from '@mui/icons-mat
 import { transfersService } from '@/app/lib/api/transfers.service';
 import { HRTransfer, TransferStatus } from '@/app/lib/types/entities';
 import { toast } from 'react-hot-toast';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 
 export default function ApprovalsPage() {
     const [loading, setLoading] = useState(true);
@@ -40,6 +41,10 @@ export default function ApprovalsPage() {
             setLoading(false);
         }
     };
+
+    useRealTime('transfer_updated', () => {
+        fetchData();
+    });
 
     useEffect(() => {
         fetchData();

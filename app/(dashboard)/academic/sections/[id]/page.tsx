@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import {
     Box,
     Typography,
     Button,
-    Grid,
     Card,
     CardContent,
     Avatar,
@@ -29,6 +28,7 @@ import {
     Menu,
     MenuItem,
     ListItemIcon,
+    LinearProgress,
 } from '@mui/material';
 import {
     ArrowBack as ArrowBackIcon,
@@ -40,66 +40,91 @@ import {
     PersonRemove as PersonRemoveIcon,
     AutoFixHigh as AutoIcon,
     Refresh as RefreshIcon,
+    Group as GroupsIcon,
 } from '@mui/icons-material';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { sectionsService } from '@/app/lib/api/sections.service';
 import { useAuthStore } from '@/app/lib/store/auth-store';
 import { BulkEnrollmentDialog } from '@/app/components/management/BulkEnrollmentDialog';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-// Refined Section Detail View with Real-Time Updates
 export default function SectionDetailPage() {
     const theme = useTheme();
     const router = useRouter();
-    const { id } = useParams();
+    const { id } = useParams<{ id: string }>();
+    const queryClient = useQueryClient();
     const user = useAuthStore(state => state.user);
-    const [section, setSection] = useState<any>(null);
-    const [unassigned, setUnassigned] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+    
     const [openAddDialog, setOpenAddDialog] = useState(false);
     const [openEnrollDialog, setOpenEnrollDialog] = useState(false);
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-    const [saving, setSaving] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
     
     // For the student list actions menu
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [selectedActionStudent, setSelectedActionStudent] = useState<string | null>(null);
 
-    const fetchData = useCallback(async (isBackground = false) => {
-        if (isBackground) setRefreshing(true);
-        else setLoading(true);
+    // Queries
+    const { data: section, isLoading: isLoadingSection, isFetching: isFetchingSection, refetch: refetchSection } = useQuery({
+        queryKey: ['section', id],
+        queryFn: () => sectionsService.getById(id as string),
+        enabled: !!id,
+    });
 
-        try {
-            const sectionData = await sectionsService.getById(id as string);
-            setSection(sectionData);
-            
-            if (user?.tenantId) {
-                const unassignedData = await sectionsService.getUnassignedStudents(user.tenantId, {
-                    year: sectionData.gradeLevel,
-                    program: sectionData.program
-                });
-                setUnassigned(unassignedData);
-            }
-        } catch (error) {
-            console.error('Error fetching section details:', error);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
+    const { data: unassigned = [], isLoading: isLoadingUnassigned, refetch: refetchUnassigned } = useQuery({
+        queryKey: ['unassigned-students', user?.tenantId, section?.gradeLevel],
+        queryFn: () => sectionsService.getUnassignedStudents(user?.tenantId || '', {
+            year: section?.gradeLevel,
+            program: section?.program
+        }),
+        enabled: !!user?.tenantId && !!section,
+    });
+
+    // Real-time synchronization
+    useRealTime('STATS_UPDATED', () => {
+        queryClient.invalidateQueries({ queryKey: ['section', id] });
+        queryClient.invalidateQueries({ queryKey: ['unassigned-students'] });
+    });
+
+    // Mutations
+    const assignMutation = useMutation({
+        mutationFn: (studentIds: string[]) => sectionsService.assignStudents(id as string, studentIds),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['section', id] });
+            queryClient.invalidateQueries({ queryKey: ['unassigned-students'] });
+            toast.success('Students assigned successfully');
+            setOpenAddDialog(false);
+            setSelectedStudents([]);
+            // Auto enrollment is triggered by the backend now, but we can also trigger it manually if needed
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to assign students');
         }
-    }, [id, user?.tenantId]);
+    });
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    const unassignMutation = useMutation({
+        mutationFn: (studentId: string) => sectionsService.unassignStudent(id as string, studentId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['section', id] });
+            queryClient.invalidateQueries({ queryKey: ['unassigned-students'] });
+            toast.success('Student removed successfully');
+            handleMenuClose();
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to remove student');
+        }
+    });
 
-    // Polling fallback every 15s
-    useEffect(() => {
-        const interval = setInterval(() => { fetchData(true); }, 15000);
-        return () => clearInterval(interval);
-    }, [fetchData]);
-
-    useRealTime('STATS_UPDATED', () => fetchData(true));
+    const autoEnrollMutation = useMutation({
+        mutationFn: () => sectionsService.autoEnroll(id as string),
+        onSuccess: (result) => {
+            toast.success(result.message || 'Curriculum synced successfully');
+            queryClient.invalidateQueries({ queryKey: ['section', id] });
+        },
+        onError: (error: any) => {
+            toast.error(error.response?.data?.message || 'Failed to sync curriculum');
+        }
+    });
 
     const handleToggleStudent = (studentId: string) => {
         setSelectedStudents(prev => 
@@ -107,22 +132,6 @@ export default function SectionDetailPage() {
                 ? prev.filter(id => id !== studentId) 
                 : [...prev, studentId]
         );
-    };
-
-    const handleAssignStudents = async () => {
-        setSaving(true);
-        try {
-            await sectionsService.assignStudents(id as string, selectedStudents);
-            setOpenAddDialog(false);
-            setSelectedStudents([]);
-            await fetchData();
-            // Automatically trigger regional curriculum sync after assigning students
-            await handleAutoEnroll();
-        } catch (error) {
-            console.error('Error assigning students:', error);
-        } finally {
-            setSaving(false);
-        }
     };
 
     const handleMenuOpen = (event: React.MouseEvent<HTMLButtonElement>, studentId: string) => {
@@ -135,103 +144,89 @@ export default function SectionDetailPage() {
         setSelectedActionStudent(null);
     };
 
-    const handleAutoEnroll = async () => {
-        setSaving(true);
-        try {
-            const result = await sectionsService.autoEnroll(id as string);
-            toast.success(result.message || 'Curriculum synced successfully');
-            fetchData();
-        } catch (error: any) {
-            console.error('Error auto-enrolling students:', error);
-            toast.error(error.response?.data?.message || 'Failed to sync curriculum');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleRemoveStudent = async () => {
-        if (!selectedActionStudent) return;
-        
-        try {
-            await sectionsService.unassignStudent(id as string, selectedActionStudent);
-            handleMenuClose();
-            fetchData();
-        } catch (error) {
-            console.error('Error removing student:', error);
-        }
-    };
-
-    if (loading && !section) {
+    if (isLoadingSection) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-                <CircularProgress />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 15, gap: 2 }}>
+                <CircularProgress size={48} thickness={4} />
+                <Typography variant="body1" color="text.secondary" fontWeight={600}>Loading Section Details...</Typography>
             </Box>
         );
     }
 
+    if (!section) {
+        return (
+            <Box sx={{ p: 5, textAlign: 'center' }}>
+                <Typography variant="h5" color="error" fontWeight={700}>Section Not Found</Typography>
+                <Button onClick={() => router.back()} sx={{ mt: 2 }}>Go Back</Button>
+            </Box>
+        );
+    }
+
+    const isFull = (section._count?.students ?? 0) >= (section.capacity || 50);
+
     return (
-        <Box>
+        <Box sx={{ p: { xs: 2.5, md: 3, lg: 5 }, className: "animate-fade-in" }}>
+            {/* Header */}
             <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <IconButton onClick={() => router.back()} sx={{ bgcolor: alpha(theme.palette.divider, 0.05) }}>
                     <ArrowBackIcon />
                 </IconButton>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexGrow: 1 }}>
                     <Box>
-                        <Typography variant="h4" fontWeight={800} color="text.primary">
-                            {section?.name}
+                        <Typography variant="h4" fontWeight={800} color="text.primary" sx={{ letterSpacing: -1.5 }}>
+                            {section.name}
                         </Typography>
-                        <Typography variant="body1" color="text.secondary">
+                        <Typography variant="body1" color="text.secondary" fontWeight={500}>
                             Roster Management & Student Assignments
                         </Typography>
                     </Box>
-                    {refreshing && <CircularProgress size={20} />}
+                    {(isFetchingSection || assignMutation.isPending || unassignMutation.isPending) && <CircularProgress size={20} thickness={5} />}
                 </Box>
-                <IconButton onClick={() => fetchData(true)} disabled={refreshing}>
+                <IconButton onClick={() => refetchSection()} disabled={isFetchingSection}>
                     <RefreshIcon />
                 </IconButton>
             </Box>
 
-            <Grid container spacing={4}>
+            <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', md: '350px 1fr' },
+                gap: 4 
+            }}>
                 {/* Stats Sidebar */}
-                <Grid size={{ xs: 12, md: 4 }}>
-                    <Card sx={{ borderRadius: '24px', position: 'sticky', top: 24 }}>
+                <Box>
+                    <Card sx={{ borderRadius: '24px', border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, boxShadow: '0 10px 40px rgba(0,0,0,0.04)', position: 'sticky', top: 24 }}>
                         <CardContent sx={{ p: 4 }}>
-                            <Typography variant="h6" fontWeight={700} gutterBottom>Section Overview</Typography>
+                            <Typography variant="h6" fontWeight={800} gutterBottom>Section Overview</Typography>
                             <Divider sx={{ my: 2 }} />
                             
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                <Box sx={{ mb: 3 }}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
                                         Section Details
                                     </Typography>
-                                    <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                        <Chip label={`Grade ${section?.gradeLevel}`} size="small" sx={{ fontWeight: 800, bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }} />
-                                        <Chip label={section?.program} size="small" variant="outlined" sx={{ fontWeight: 700, px: 1 }} />
-                                    </Box>
-                                    <Box sx={{ mt: 1.5 }}>
-                                        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'success.main', fontWeight: 600 }}>
-                                            <BadgeIcon sx={{ fontSize: 14 }} /> Regional Curriculum Managed
-                                        </Typography>
+                                    <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                        <Chip label={`Grade ${section.gradeLevel}`} size="small" sx={{ fontWeight: 800, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main' }} />
+                                        <Chip label={section.program || 'General'} size="small" variant="outlined" sx={{ fontWeight: 700 }} />
                                     </Box>
                                 </Box>
 
-                                <Box sx={{ mb: 4 }}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
                                         Enrollment Status
                                     </Typography>
                                     <Box sx={{ mt: 1, display: 'flex', alignItems: 'flex-end', gap: 1 }}>
-                                        <Typography variant="h3" fontWeight={900} color={(section?._count?.students ?? 0) >= (section?.capacity || 50) ? 'error.main' : 'primary.main'}>
-                                            {section?._count?.students ?? 0}
+                                        <Typography variant="h3" fontWeight={900} color={isFull ? 'error.main' : 'primary.main'}>
+                                            {section._count?.students ?? 0}
                                         </Typography>
-                                        <Typography variant="h6" color="text.secondary" sx={{ mb: 0.5 }}>
-                                            / {section?.capacity || 50} Students
+                                        <Typography variant="h6" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                                            / {section.capacity || 50}
                                         </Typography>
                                     </Box>
                                     <Box sx={{ mt: 1.5, width: '100%', height: 8, bgcolor: alpha(theme.palette.divider, 0.1), borderRadius: 4, overflow: 'hidden' }}>
                                         <Box sx={{ 
-                                            width: `${Math.min(100, ((section?._count?.students ?? 0) / (section?.capacity || 50)) * 100)}%`, 
+                                            width: `${Math.min(100, ((section._count?.students ?? 0) / (section.capacity || 50)) * 100)}%`, 
                                             height: '100%', 
-                                            bgcolor: (section?._count?.students ?? 0) >= (section?.capacity || 50) ? 'error.main' : 'primary.main',
+                                            bgcolor: isFull ? 'error.main' : 'primary.main',
                                             borderRadius: 4,
                                             transition: 'width 0.5s ease-in-out'
                                         }} />
@@ -244,318 +239,216 @@ export default function SectionDetailPage() {
                                     size="large"
                                     startIcon={<PersonAddIcon />}
                                     onClick={() => setOpenAddDialog(true)}
-                                    disabled={(section?._count?.students ?? 0) >= (section?.capacity || 50)}
+                                    disabled={isFull || assignMutation.isPending}
                                     sx={{ 
                                         borderRadius: '16px', 
                                         py: 2, 
                                         fontWeight: 800, 
-                                        mb: 1.5,
-                                        boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                        boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.2)}`
                                     }}
                                 >
-                                    {(section?._count?.students ?? 0) >= (section?.capacity || 50) ? 'Section Full' : 'Add Students'}
+                                    {isFull ? 'Section Full' : 'Assign Students'}
                                 </Button>
 
                                 <Divider sx={{ my: 1 }} />
                                 
-                                <Box sx={{ mt: 1 }}>
+                                <Box>
                                     <Typography variant="caption" color="text.secondary" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        Curriculum & Enrollment
+                                        Curriculum Management
                                     </Typography>
                                     
                                     <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <Box>
-                                            <Button
-                                                fullWidth
-                                                variant="outlined"
-                                                size="large"
-                                                startIcon={<AutoIcon />}
-                                                onClick={handleAutoEnroll}
-                                                disabled={saving || !section?.gradeLevel}
-                                                sx={{ 
-                                                    borderRadius: '12px', 
-                                                    py: 1.5, 
-                                                    fontWeight: 800, 
-                                                    bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                                    border: `1px dashed ${theme.palette.primary.main}`,
-                                                    '&:hover': {
-                                                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                                        border: `1px dashed ${theme.palette.primary.main}`,
-                                                    }
-                                                }}
-                                            >
-                                                Sync Regional Curriculum
-                                            </Button>
-                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', px: 1 }}>
-                                                Automatically enroll students into all regional courses assigned to Grade {section?.gradeLevel}.
-                                            </Typography>
-                                        </Box>
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            size="large"
+                                            startIcon={autoEnrollMutation.isPending ? <CircularProgress size={18} /> : <AutoIcon />}
+                                            onClick={() => autoEnrollMutation.mutate()}
+                                            disabled={autoEnrollMutation.isPending || !section.gradeLevel}
+                                            sx={{ 
+                                                borderRadius: '12px', 
+                                                py: 1.5, 
+                                                fontWeight: 800, 
+                                                bgcolor: alpha(theme.palette.primary.main, 0.03),
+                                                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) }
+                                            }}
+                                        >
+                                            Sync Regional Curriculum
+                                        </Button>
 
-                                        <Box>
-                                            <Button
-                                                fullWidth
-                                                variant="outlined"
-                                                color="secondary"
-                                                size="large"
-                                                startIcon={<SchoolIcon />}
-                                                onClick={() => setOpenEnrollDialog(true)}
-                                                sx={{ 
-                                                    borderRadius: '12px', 
-                                                    py: 1.5, 
-                                                    fontWeight: 800, 
-                                                    borderWidth: 2, 
-                                                    '&:hover': { borderWidth: 2 } 
-                                                }}
-                                            >
-                                                Bulk Course Enrollment
-                                            </Button>
-                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', px: 1 }}>
-                                                Manually select institutional courses to enroll the entire section roster into.
-                                            </Typography>
-                                        </Box>
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            color="secondary"
+                                            size="large"
+                                            startIcon={<SchoolIcon />}
+                                            onClick={() => setOpenEnrollDialog(true)}
+                                            sx={{ borderRadius: '12px', py: 1.5, fontWeight: 800 }}
+                                        >
+                                            Bulk Course Enrollment
+                                        </Button>
                                     </Box>
                                 </Box>
                             </Box>
                         </CardContent>
                     </Card>
-                </Grid>
+                </Box>
 
                 {/* Student List */}
-                <Grid size={{ xs: 12, md: 8 }}>
-                    <Card sx={{ borderRadius: '24px', overflow: 'hidden', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-                        <CardContent sx={{ p: 0 }}>
-                            <Box sx={{ 
-                                p: 3, 
-                                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`, 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center',
-                                bgcolor: alpha(theme.palette.background.default, 0.5)
-                            }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Typography variant="h6" fontWeight={800}>Current Roster</Typography>
-                                    <IconButton 
-                                        size="small" 
-                                        onClick={() => fetchData(true)} 
-                                        disabled={refreshing}
-                                        sx={{ 
-                                            bgcolor: alpha(theme.palette.action.selected, 0.05),
-                                            transition: 'transform 0.5s ease',
-                                            '&:hover': { transform: 'rotate(180deg)' }
-                                        }}
-                                    >
-                                        <RefreshIcon sx={{ fontSize: 18 }} />
-                                    </IconButton>
-                                </Box>
+                <Box>
+                    <Card sx={{ borderRadius: '24px', overflow: 'hidden', border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, boxShadow: '0 10px 40px rgba(0,0,0,0.04)' }}>
+                        <Box sx={{ 
+                            p: 3, 
+                            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}`, 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            bgcolor: alpha(theme.palette.primary.main, 0.02)
+                        }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Typography variant="h6" fontWeight={800}>Current Roster</Typography>
                                 <Chip 
-                                    label={`${section?._count?.students ?? 0} / ${section?.capacity || 50} Enrolled`} 
-                                    color={(section?._count?.students ?? 0) >= (section?.capacity || 50) ? 'error' : 'success'} 
+                                    label={`${section.students?.length || 0} Students`} 
                                     size="small" 
-                                    sx={{ fontWeight: 800, borderRadius: '6px' }} 
+                                    sx={{ fontWeight: 800, borderRadius: '6px', bgcolor: 'primary.main', color: '#fff' }} 
                                 />
-                                </Box>
-                            
-                            <List sx={{ py: 0 }}>
-                                {section?.students?.length === 0 ? (
-                                    <Box sx={{ p: 12, textAlign: 'center' }}>
-                                        <Box sx={{ 
-                                            width: 80, 
-                                            height: 80, 
-                                            borderRadius: '50%', 
-                                            bgcolor: alpha(theme.palette.divider, 0.1), 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            justifyContent: 'center',
-                                            margin: '0 auto 24px'
-                                        }}>
-                                            <BadgeIcon sx={{ fontSize: 40, color: alpha(theme.palette.text.secondary, 0.3) }} />
-                                        </Box>
-                                        <Typography variant="h6" color="text.secondary" fontWeight={700}>Empty Roster</Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>This section has no students assigned yet.</Typography>
-                                        <Button variant="outlined" startIcon={<PersonAddIcon />} onClick={() => setOpenAddDialog(true)}>Assign Students</Button>
-                                    </Box>
-                                ) : (
-                                    section?.students?.map((student: any, index: number) => (
-                                        <React.Fragment key={student.id}>
-                                            <ListItem 
-                                                secondaryAction={
-                                                    <IconButton 
-                                                        edge="end" 
-                                                        onClick={(e) => handleMenuOpen(e, student.id)}
-                                                        sx={{ '&:hover': { color: 'error.main' } }}
-                                                    >
-                                                        <MoreVertIcon />
-                                                    </IconButton>
-                                                }
-                                                sx={{ 
-                                                    px: 3, 
-                                                    py: 2.5,
-                                                    transition: 'all 0.2s ease',
-                                                    '&:hover': { 
-                                                        bgcolor: alpha(theme.palette.primary.main, 0.02),
-                                                        cursor: 'default'
-                                                    }
-                                                }}
-                                            >
-                                                <ListItemAvatar>
-                                                    <Avatar sx={{ 
-                                                        width: 52, 
-                                                        height: 52, 
-                                                        bgcolor: alpha(theme.palette.primary.main, 0.1), 
-                                                        color: theme.palette.primary.main, 
-                                                        fontWeight: 800,
-                                                        fontSize: '1.2rem',
-                                                        border: `2px solid ${alpha(theme.palette.primary.main, 0.05)}`
-                                                    }}>
-                                                        {student.user?.firstName?.charAt(0) || student.user?.username?.charAt(0)?.toUpperCase() || '?'}
-                                                    </Avatar>
-                                                </ListItemAvatar>
-                                                <ListItemText 
-                                                    primary={
-                                                        <Typography variant="subtitle1" fontWeight={800} color="text.primary">
-                                                            {student.user?.firstName 
-                                                                ? `${student.user.firstName} ${student.user.lastName || ''}`.trim() 
-                                                                : student.user?.username || 'Unknown User'
-                                                            }
-                                                        </Typography>
-                                                    }
-                                                    secondary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
-                                                            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', fontWeight: 500 }}>
-                                                                <EmailIcon sx={{ fontSize: 16 }} /> {student.user?.email}
-                                                            </Typography>
-                                                        </Box>
-                                                    }
-                                                    sx={{ ml: 1 }}
-                                                    secondaryTypographyProps={{ component: 'div' } as any}
-                                                />
-                                            </ListItem>
-                                            {index < section.students.length - 1 && <Divider component="li" sx={{ opacity: 0.6 }} />}
-                                        </React.Fragment>
-                                    ))
-                                )}
-                            </List>
-                            
-                            {/* Student Action Menu */}
-                            <Menu
-                                anchorEl={anchorEl}
-                                open={Boolean(anchorEl)}
-                                onClose={handleMenuClose}
-                                PaperProps={{
-                                    elevation: 0,
-                                    sx: {
-                                        overflow: 'visible',
-                                        filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.1))',
-                                        mt: 1.5,
-                                        '& .MuiAvatar-root': {
-                                            width: 32,
-                                            height: 32,
-                                            ml: -0.5,
-                                            mr: 1,
-                                        },
-                                        '&:before': {
-                                            content: '""',
-                                            display: 'block',
-                                            position: 'absolute',
-                                            top: 0,
-                                            right: 14,
-                                            width: 10,
-                                            height: 10,
-                                            bgcolor: 'background.paper',
-                                            transform: 'translateY(-50%) rotate(45deg)',
-                                            zIndex: 0,
-                                        },
-                                    },
-                                }}
-                                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                            >
-                                <MenuItem onClick={handleRemoveStudent} sx={{ color: 'error.main' }}>
-                                    <ListItemIcon>
-                                        <PersonRemoveIcon fontSize="small" color="error" />
-                                    </ListItemIcon>
-                                    Remove from Section
-                                </MenuItem>
-                            </Menu>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
-
-            {/* Add Students Dialog */}
-            <Dialog 
-                open={openAddDialog} 
-                onClose={() => setOpenAddDialog(false)} 
-                maxWidth="sm" 
-                fullWidth
-                PaperProps={{ sx: { borderRadius: '24px' } }}
-            >
-                <DialogTitle sx={{ fontWeight: 800 }}>Assign Students to {section?.name}</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Showing students at {user?.tenantName} who are not currently assigned to any section.
-                    </Typography>
-                    
-                    <Box sx={{ maxHeight: '400px', overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: '16px' }}>
-                        <List>
-                            {unassigned.length === 0 ? (
-                                <Box sx={{ p: 4, textAlign: 'center' }}>
-                                    <Typography variant="body2" color="text.secondary">All students have been assigned to sections!</Typography>
+                            </Box>
+                            <IconButton size="small" onClick={() => refetchSection()} disabled={isFetchingSection}>
+                                <RefreshIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                        </Box>
+                        
+                        <List sx={{ py: 0 }}>
+                            {!section.students || section.students.length === 0 ? (
+                                <Box sx={{ p: 12, textAlign: 'center' }}>
+                                    <GroupsIcon sx={{ fontSize: 64, color: alpha(theme.palette.text.secondary, 0.1), mb: 2 }} />
+                                    <Typography variant="h6" color="text.secondary" fontWeight={700}>Empty Roster</Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>No students assigned yet.</Typography>
+                                    <Button variant="outlined" startIcon={<PersonAddIcon />} onClick={() => setOpenAddDialog(true)}>Assign Now</Button>
                                 </Box>
                             ) : (
-                                unassigned.map((student) => (
-                                    <ListItem 
-                                        key={student.id} 
-                                        disablePadding
-                                        secondaryAction={
-                                            <Checkbox 
-                                                edge="end" 
-                                                checked={selectedStudents.includes(student.id)} 
-                                                onChange={() => handleToggleStudent(student.id)}
-                                            />
-                                        }
-                                    >
-                                        <ListItemButton onClick={() => handleToggleStudent(student.id)} sx={{ px: 3 }}>
+                                section.students.map((student: any, index: number) => (
+                                    <React.Fragment key={student.id}>
+                                        <ListItem 
+                                            secondaryAction={
+                                                <IconButton edge="end" onClick={(e) => handleMenuOpen(e, student.id)}>
+                                                    <MoreVertIcon />
+                                                </IconButton>
+                                            }
+                                            sx={{ px: 3, py: 2.5, '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.01) } }}
+                                        >
                                             <ListItemAvatar>
-                                                <Avatar sx={{ bgcolor: alpha(theme.palette.grey[500], 0.1), color: theme.palette.text.primary, fontSize: 14 }}>
-                                                    {student.user?.firstName?.charAt(0) || student.user?.username?.charAt(0)?.toUpperCase() || '?'}
+                                                <Avatar sx={{ 
+                                                    width: 48, 
+                                                    height: 48, 
+                                                    bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                                                    color: 'primary.main', 
+                                                    fontWeight: 800,
+                                                    border: `2px solid ${alpha(theme.palette.primary.main, 0.05)}`
+                                                }}>
+                                                    {(student.user?.firstName || student.user?.username || 'S').charAt(0).toUpperCase()}
                                                 </Avatar>
                                             </ListItemAvatar>
                                             <ListItemText 
                                                 primary={
-                                                    student.user?.firstName 
-                                                        ? `${student.user.firstName} ${student.user.lastName || ''}`.trim() 
-                                                        : student.user?.username || 'Unknown User'
-                                                } 
-                                                secondary={student.user?.email} 
+                                                    <Typography variant="subtitle1" fontWeight={800}>
+                                                        {student.user?.firstName 
+                                                            ? `${student.user.firstName} ${student.user.lastName || ''}`.trim() 
+                                                            : student.user?.username || 'Unknown User'
+                                                        }
+                                                    </Typography>
+                                                }
+                                                primaryTypographyProps={{ component: 'div' }}
+                                                secondary={
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
+                                                        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', fontWeight: 600 }}>
+                                                            <EmailIcon sx={{ fontSize: 14 }} /> {student.user?.email || 'No email'}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                                            ID: {student.id.substring(0, 8).toUpperCase()}
+                                                        </Typography>
+                                                    </Box>
+                                                }
+                                                secondaryTypographyProps={{ component: 'div' }}
                                             />
-                                        </ListItemButton>
-                                    </ListItem>
+                                        </ListItem>
+                                        {index < (section.students?.length || 0) - 1 && <Divider component="li" sx={{ opacity: 0.6 }} />}
+                                    </React.Fragment>
                                 ))
                             )}
                         </List>
-                    </Box>
+                    </Card>
+                </Box>
+            </Box>
+
+            {/* Add Students Dialog */}
+            <Dialog open={openAddDialog} onClose={() => !assignMutation.isPending && setOpenAddDialog(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+                <DialogTitle sx={{ fontWeight: 800 }}>Assign Students to {section.name}</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        Select students to assign to this section. Only showing unassigned students matching this section's grade level.
+                    </Typography>
+                    
+                    {isLoadingUnassigned ? (
+                        <Box sx={{ py: 10, textAlign: 'center' }}><CircularProgress /></Box>
+                    ) : (
+                        <Box sx={{ maxHeight: 400, overflow: 'auto', border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+                            <List>
+                                {unassigned.length === 0 ? (
+                                    <Box sx={{ p: 4, textAlign: 'center' }}>
+                                        <Typography variant="body2" color="text.secondary">All eligible students are already assigned.</Typography>
+                                    </Box>
+                                ) : (
+                                    unassigned.map((student: any) => (
+                                        <ListItem key={student.id} disablePadding secondaryAction={
+                                            <Checkbox edge="end" checked={selectedStudents.includes(student.id)} onChange={() => handleToggleStudent(student.id)} />
+                                        }>
+                                            <ListItemButton onClick={() => handleToggleStudent(student.id)} sx={{ px: 3 }}>
+                                                <ListItemAvatar>
+                                                    <Avatar sx={{ bgcolor: alpha(theme.palette.grey[500], 0.1), color: 'text.primary', fontSize: 14 }}>
+                                                        {(student.user?.firstName || student.user?.username || '?').charAt(0).toUpperCase()}
+                                                    </Avatar>
+                                                </ListItemAvatar>
+                                                <ListItemText 
+                                                    primary={student.user?.firstName ? `${student.user.firstName} ${student.user.lastName || ''}`.trim() : student.user?.username} 
+                                                    secondary={student.user?.email} 
+                                                />
+                                            </ListItemButton>
+                                        </ListItem>
+                                    ))
+                                )}
+                            </List>
+                        </Box>
+                    )}
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setOpenAddDialog(false)} sx={{ fontWeight: 700 }}>Cancel</Button>
+                    <Button onClick={() => setOpenAddDialog(false)} disabled={assignMutation.isPending}>Cancel</Button>
                     <Button 
-                        onClick={handleAssignStudents} 
+                        onClick={() => assignMutation.mutate(selectedStudents)} 
                         variant="contained" 
-                        disabled={selectedStudents.length === 0 || saving}
-                        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <PersonAddIcon />}
-                        sx={{ borderRadius: '12px', px: 3, fontWeight: 700 }}
+                        disabled={selectedStudents.length === 0 || assignMutation.isPending}
+                        startIcon={assignMutation.isPending && <CircularProgress size={16} color="inherit" />}
+                        sx={{ borderRadius: 2.5, px: 3, fontWeight: 700 }}
                     >
-                        Assign {selectedStudents.length > 0 ? selectedStudents.length : ''} Students
+                        Assign {selectedStudents.length} Students
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Menu */}
+            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose} PaperProps={{ sx: { borderRadius: 3, minWidth: 180, mt: 1.5, boxShadow: theme.shadows[4] } }}>
+                <MenuItem onClick={() => selectedActionStudent && unassignMutation.mutate(selectedActionStudent)} sx={{ color: 'error.main', py: 1.5 }}>
+                    <ListItemIcon><PersonRemoveIcon fontSize="small" color="error" /></ListItemIcon>
+                    <Typography fontWeight={600}>Remove from Section</Typography>
+                </MenuItem>
+            </Menu>
 
             {/* Bulk Enrollment Dialog */}
             {section && (
                 <BulkEnrollmentDialog
                     open={openEnrollDialog}
                     onClose={() => setOpenEnrollDialog(false)}
-                    onSuccess={fetchData}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: ['section', id] })}
                     section={section}
                 />
             )}

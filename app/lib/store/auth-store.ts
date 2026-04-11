@@ -57,7 +57,7 @@ interface AuthState {
 
     // Actions
     setUser: (user: User | null) => void;
-    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    login: (email: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     initialize: () => Promise<void>;
 
@@ -73,17 +73,12 @@ interface AuthState {
 function setCookie(name: string, value: string, days: number = 1) {
     const expires = new Date();
     expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-    const cookieStr = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-    document.cookie = cookieStr;
-    console.log('[auth-store] Cookie set:', name, '| Expires:', expires.toUTCString());
-    console.log('[auth-store] Cookie string:', cookieStr);
-    console.log('[auth-store] All cookies:', document.cookie);
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
 }
 
 // Helper to delete cookie
 function deleteCookie(name: string) {
     document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
-    console.log('[auth-store] Cookie deleted:', name);
 }
 
 // NO PERSISTENCE - users must login every time
@@ -99,19 +94,19 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         isAuthenticated: !!user
     }),
 
-    login: async (email: string, password: string) => {
+    login: async (email: string, password: string, rememberMe = false) => {
         set({ isLoading: true });
 
         try {
             // Call real backend API
             const response: LoginResponse = await authApi.login({ email, password });
-            console.log('[auth-store] Login successful, received token and user data');
 
-            // Store token in BOTH sessionStorage (client-side) AND cookie (server-side middleware)
-            console.log('[auth-store] Storing token in sessionStorage and cookie...');
-            sessionStorage.setItem('access_token', response.access_token);
-            setCookie('access_token', response.access_token, 1); // Expires in 1 day
-            console.log('[auth-store] Token stored successfully');
+            // rememberMe: persist in localStorage (survives tab close) or sessionStorage (cleared on tab close)
+            const storage = rememberMe ? localStorage : sessionStorage;
+            storage.setItem('access_token', response.access_token);
+
+            // Also set cookie for SSR middleware — longer expiry when rememberMe is checked
+            setCookie('access_token', response.access_token, rememberMe ? 30 : 1);
 
             // Map backend user to frontend User type
             const user = mapBackendUserToFrontendUser(response.user);
@@ -120,6 +115,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
             return { success: true };
         } catch (error) {
             sessionStorage.removeItem('access_token');
+            localStorage.removeItem('access_token');
             deleteCookie('access_token');
             set({ isLoading: false, user: null, isAuthenticated: false });
 
@@ -133,53 +129,38 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
 
     logout: async () => {
         try {
-            console.log('[auth-store] Logging out...');
             await authApi.logout();
-        } catch (error) {
-            console.error('Backend logout failed:', error);
+        } catch {
+            // Ignore backend logout errors — still clear local session
         } finally {
-            console.log('[auth-store] Clearing tokens and cookies...');
             sessionStorage.removeItem('access_token');
+            localStorage.removeItem('access_token');
             deleteCookie('access_token');
             set({ user: null, isAuthenticated: false, token: null });
-            console.log('[auth-store] Logout complete');
         }
     },
 
     initialize: async () => {
         const { isInitialized } = get();
-        console.log('[auth-store] initialize() called, isInitialized:', isInitialized);
+        if (isInitialized) return;
 
-        if (isInitialized) {
-            console.log('[auth-store] Already initialized, skipping');
-            return;
-        }
-
-        const token = sessionStorage.getItem('access_token');
-        console.log('[auth-store] Token from sessionStorage:', token ? 'EXISTS (length: ' + token.length + ')' : 'NULL');
+        // Check both storages — localStorage (rememberMe) takes priority over sessionStorage
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
         if (!token) {
-            console.log('[auth-store] No token found, marking as initialized');
             set({ isInitialized: true });
             return;
         }
 
         try {
-            console.log('[auth-store] Fetching user profile from /auth/me...');
             // Verify token is still valid by fetching current user
             const response = await authApi.getMe();
-            console.log('[auth-store] Profile fetched successfully:', response);
-
-            // Map backend user to frontend User type
             const user = mapBackendUserToFrontendUser(response);
-
-            console.log('[auth-store] Restored role:', user.roles[0]?.name);
             set({ user, isAuthenticated: true, isInitialized: true, token });
-            console.log('[auth-store] State updated, user is now authenticated');
-        } catch (error) {
-            // Token is invalid or expired, clear it
-            console.error('[auth-store] Failed to restore session, error:', error);
+        } catch {
+            // Token is invalid or expired — clear everything
             sessionStorage.removeItem('access_token');
+            localStorage.removeItem('access_token');
             deleteCookie('access_token');
             set({ user: null, isAuthenticated: false, isInitialized: true, token: null });
         }

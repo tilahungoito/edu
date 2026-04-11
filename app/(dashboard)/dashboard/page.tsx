@@ -238,7 +238,6 @@ export default function Dashboard() {
     });
 
     const roles = user?.roles?.map(r => r.name) || [];
-    console.log('[Dashboard] User roles:', roles, 'Tenant:', user?.tenantType);
     const filteredZones = useScopedData(zones, user?.tenantType as any);
 
     const dashboardTitle = user?.tenantType === 'bureau'
@@ -314,30 +313,25 @@ export default function Dashboard() {
         }
 
         if (roles.includes('INSTRUCTOR')) {
-            console.log('[renderRoleDashboard] ✓ Rendering InstructorDashboard');
             return <InstructorDashboard stats={stats} loading={loading} user={user} />;
         }
 
         if (roles.includes('STUDENT')) {
-            console.log('[renderRoleDashboard] ✓ Rendering StudentDashboard');
             return <StudentDashboard stats={stats} loading={loading} user={user} />;
         }
 
         // Check REGISTRAR and ACCOUNTANT before INSTITUTION_ADMIN/school tenant
         // because they also have tenantType === 'school'
         if (roles.includes('REGISTRAR')) {
-            console.log('[renderRoleDashboard] ✓ Rendering RegistrarDashboard');
             return <RegistrarDashboard stats={stats} loading={loading} user={user} />;
         }
 
         if (roles.includes('ACCOUNTANT')) {
-            console.log('[renderRoleDashboard] ✓ Rendering AccountantDashboard');
             return <AccountantDashboard stats={stats} loading={loading} user={user} />;
         }
 
         // INSTITUTION_ADMIN or generic school tenant users
         if (roles.includes('INSTITUTION_ADMIN') || user?.tenantType === 'school') {
-            console.log('[renderRoleDashboard] ✓ Rendering InstitutionDashboard (INSTITUTION_ADMIN or school tenant)');
             return <InstitutionDashboard stats={stats} loading={loading} user={user} />;
         }
 

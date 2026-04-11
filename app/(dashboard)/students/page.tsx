@@ -170,6 +170,9 @@ export default function StudentsPage() {
         }
     });
 
+    useRealTime('student_registered', () => { refetch(); });
+    useRealTime('student_updated', () => { refetch(); });
+    useRealTime('student_deleted', () => { refetch(); });
     useRealTime('STATS_UPDATED', () => { refetch(); });
 
     const scopedStudents = useScopedData(students || [], 'student');

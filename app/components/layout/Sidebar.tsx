@@ -114,6 +114,7 @@ const iconConfig: Record<string, { icon: React.ReactNode, color: string }> = {
     History: { icon: <HistoryIcon />, color: '#64748b' },
     SupportAgent: { icon: <SupportAgentIcon />, color: '#06b6d4' },
     AccountTree: { icon: <AccountTreeIcon />, color: '#8b5cf6' },
+    VerifiedUser: { icon: <VerifiedIcon />, color: '#10b981' },
 };
 
 interface SidebarProps {
@@ -188,10 +189,10 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
                 }
 
                 // Role check - if allowedRoles is specified and user has one of them, allow access
-                const hasMatchingRole = item.allowedRoles && item.allowedRoles.length > 0 
-                    ? item.allowedRoles.some(role => hasRole(role)) 
+                const hasMatchingRole = item.allowedRoles && item.allowedRoles.length > 0
+                    ? item.allowedRoles.some(role => hasRole(role))
                     : false;
-                
+
                 if (hasMatchingRole) return true;
 
                 // Fall back to permission check if role check didn't pass or wasn't specified
@@ -242,7 +243,7 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
             const hasMatchingRole = child.allowedRoles && child.allowedRoles.length > 0
                 ? child.allowedRoles.some(role => hasRole(role))
                 : false;
-            
+
             if (hasMatchingRole) return true;
 
             // Fallback to permission check

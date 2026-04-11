@@ -55,8 +55,11 @@ export const gradesService = {
         return response.data;
     },
 
-    getByCourse: async (courseId: string) => {
-        const response = await apiClient.get<Grade[]>(`grades/course/${courseId}`);
+    getByCourse: async (courseId: string, semester?: string) => {
+        const url = semester 
+            ? `grades/course/${courseId}?semester=${encodeURIComponent(semester)}`
+            : `grades/course/${courseId}`;
+        const response = await apiClient.get<Grade[]>(url);
         return response.data;
     },
 
@@ -65,18 +68,21 @@ export const gradesService = {
         return response.data;
     },
 
-    getGradeBookStatus: async (courseId: string) => {
-        const response = await apiClient.get<GradeBookRow[]>(`grades/course/${courseId}/gradebook`);
+    getGradeBookStatus: async (courseId: string, semester?: string) => {
+        const url = semester 
+            ? `grades/course/${courseId}/gradebook?semester=${encodeURIComponent(semester)}`
+            : `grades/course/${courseId}/gradebook`;
+        const response = await apiClient.get<GradeBookRow[]>(url);
         return response.data;
     },
 
-    submitForReview: async (courseId: string, remarks?: string) => {
-        const response = await apiClient.post(`grades/course/${courseId}/submit`, { remarks });
+    submitForReview: async (courseId: string, semester: string, remarks?: string) => {
+        const response = await apiClient.post(`grades/course/${courseId}/submit?semester=${encodeURIComponent(semester)}`, { remarks });
         return response.data;
     },
 
-    approveAndLock: async (courseId: string, remarks?: string) => {
-        const response = await apiClient.post(`grades/course/${courseId}/approve`, { remarks });
+    approveAndLock: async (courseId: string, semester: string, remarks?: string) => {
+        const response = await apiClient.post(`grades/course/${courseId}/approve?semester=${encodeURIComponent(semester)}`, { remarks });
         return response.data;
     },
 
@@ -85,23 +91,26 @@ export const gradesService = {
         return response.data;
     },
 
-    unlockGradebook: async (courseId: string, reason: string) => {
-        const response = await apiClient.post(`grades/course/${courseId}/unlock`, { reason });
+    unlockGradebook: async (courseId: string, semester: string, reason?: string) => {
+        const response = await apiClient.post(`grades/course/${courseId}/unlock?semester=${encodeURIComponent(semester)}`, { reason });
         return response.data;
     },
 
-    exportExcel: async (courseId: string, courseName?: string) => {
-        const response = await apiClient.get(`grades/course/${courseId}/export/excel`, {
+    exportExcel: async (courseId: string, courseName?: string, semester?: string) => {
+        const url = semester
+            ? `grades/course/${courseId}/export/excel?semester=${encodeURIComponent(semester)}`
+            : `grades/course/${courseId}/export/excel`;
+        const response = await apiClient.get(url, {
             responseType: 'blob',
         });
-        const url = URL.createObjectURL(new Blob([response.data]));
+        const blobUrl = URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
-        link.href = url;
-        link.download = `gradebook-${courseName || courseId}.xlsx`;
+        link.href = blobUrl;
+        link.download = `gradebook-${courseName || courseId}${semester ? '-' + semester : ''}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(blobUrl);
     },
 
     downloadTranscriptPdf: async (studentId: string, studentName?: string) => {
@@ -118,18 +127,21 @@ export const gradesService = {
         URL.revokeObjectURL(url);
     },
 
-    exportPdf: async (courseId: string, courseName?: string) => {
-        const response = await apiClient.get(`grades/course/${courseId}/export/pdf`, {
+    exportPdf: async (courseId: string, courseName?: string, semester?: string) => {
+        const url = semester
+            ? `grades/course/${courseId}/export/pdf?semester=${encodeURIComponent(semester)}`
+            : `grades/course/${courseId}/export/pdf`;
+        const response = await apiClient.get(url, {
             responseType: 'blob',
         });
-        const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
         const link = document.createElement('a');
-        link.href = url;
-        link.download = `gradebook-${courseName || courseId}.pdf`;
+        link.href = blobUrl;
+        link.download = `gradebook-${courseName || courseId}${semester ? '-' + semester : ''}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(blobUrl);
     },
 };
 

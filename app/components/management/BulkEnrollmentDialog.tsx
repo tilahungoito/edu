@@ -229,6 +229,7 @@ export function BulkEnrollmentDialog({ open, onClose, onSuccess, section }: Bulk
                                             </Typography>
                                         </Box>
                                     }
+                                    primaryTypographyProps={{ component: 'div' }}
                                     secondary={`${course.code || 'No Code'} | ${course.credit || 0} Credits`}
                                 />
                             </ListItem>

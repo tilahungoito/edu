@@ -27,10 +27,13 @@ import {
     Room as RoomIcon,
     Person as InstructorIcon,
     FilterList as FilterIcon,
+    Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { schedulesService, scheduleConfigService } from '@/app/lib/api/schedules.service';
 import { useAuthStore } from '@/app/lib/store';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
+import toast from 'react-hot-toast';
 
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const DAY_LABELS = {
@@ -46,7 +49,30 @@ const DAY_LABELS = {
 export default function AcademicSchedulePage() {
     const theme = useTheme();
     const user = useAuthStore(state => state.user);
+    const queryClient = useQueryClient();
     const [selectedPeriod, setSelectedPeriod] = useState<string>('');
+
+    // --- Real-time Updates ---
+    useRealTime('schedule_created', (data) => {
+        if (data.institutionId === user?.tenantId) {
+            queryClient.invalidateQueries({ queryKey: ['schedules'] });
+            toast.success(`New session scheduled: ${data.course?.name}`, { id: 'rt-schedule' });
+        }
+    });
+
+    useRealTime('schedule_updated', (data) => {
+        if (data.institutionId === user?.tenantId) {
+            queryClient.invalidateQueries({ queryKey: ['schedules'] });
+            toast(`Schedule updated: ${data.course?.name}`, { id: 'rt-schedule-upd' });
+        }
+    });
+
+    useRealTime('schedule_deleted', (data) => {
+        if (data.institutionId === user?.tenantId) {
+            queryClient.invalidateQueries({ queryKey: ['schedules'] });
+            toast.error('A scheduled session was removed.', { id: 'rt-schedule-del' });
+        }
+    });
 
     // Queries
     const { data: periods } = useQuery({

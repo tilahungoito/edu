@@ -23,7 +23,8 @@ import {
     AccountBalance as BalanceIcon,
     FileDownload as DownloadIcon,
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { GridColDef } from '@mui/x-data-grid';
 import dayjs from 'dayjs';
 import { DataTable } from '@/app/components/tables/DataTable';
@@ -78,7 +79,19 @@ const StatCard = ({ title, value, icon, color, subtitle }: any) => {
 export default function PaymentsPage() {
     const theme = useTheme();
     const user = useAuthStore(state => state.user);
+    const queryClient = useQueryClient();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    // Real-time synchronization
+    useRealTime('payment_recorded', () => {
+        queryClient.invalidateQueries({ queryKey: ['payments'] });
+        queryClient.invalidateQueries({ queryKey: ['financial-report'] });
+    });
+
+    useRealTime('payment_confirmed', () => {
+        queryClient.invalidateQueries({ queryKey: ['payments'] });
+        queryClient.invalidateQueries({ queryKey: ['financial-report'] });
+    });
 
     // Queries
     const { data: payments, isLoading: loadingPayments, refetch: refetchPayments } = useQuery({

@@ -33,8 +33,11 @@ export const enrollmentsService = {
         return response.data;
     },
 
-    getByCourse: async (courseId: string) => {
-        const response = await apiClient.get<Enrollment[]>(`enrollments?courseId=${courseId}`);
+    getByCourse: async (courseId: string, semester?: string) => {
+        const url = semester 
+            ? `enrollments?courseId=${courseId}&semester=${encodeURIComponent(semester)}`
+            : `enrollments?courseId=${courseId}`;
+        const response = await apiClient.get<Enrollment[]>(url);
         return response.data;
     },
 

@@ -155,6 +155,7 @@ export default function ConversationList() {
                                                 </Typography>
                                             </Box>
                                         }
+                                        primaryTypographyProps={{ component: 'div' }}
                                         secondary={
                                             <Typography
                                                 variant="body2"
@@ -169,6 +170,7 @@ export default function ConversationList() {
                                                 {conv.messages?.[0]?.content || 'Start a conversation'}
                                             </Typography>
                                         }
+                                        secondaryTypographyProps={{ component: 'div' }}
                                         sx={{ ml: 0.5 }}
                                     />
                                 </ListItemButton>

@@ -40,24 +40,24 @@ export interface UpdateAnnouncementDto {
     expiresAt?: string;
 }
 
-const announcementsService = {
+export const announcementsService = {
     getAll: async (): Promise<Announcement[]> => {
-        const response = await apiClient.get('announcements');
+        const response = await apiClient.get<Announcement[]>('announcements');
         return response.data;
     },
 
     getById: async (id: string): Promise<Announcement> => {
-        const response = await apiClient.get(`announcements/${id}`);
+        const response = await apiClient.get<Announcement>(`announcements/${id}`);
         return response.data;
     },
 
     create: async (data: CreateAnnouncementDto): Promise<Announcement> => {
-        const response = await apiClient.post('announcements', data);
+        const response = await apiClient.post<Announcement>('announcements', data);
         return response.data;
     },
 
-    update: async (id: string, data: UpdateAnnouncementDto): Promise<Announcement> => {
-        const response = await apiClient.patch(`announcements/${id}`, data);
+    update: async (params: { id: string; data: UpdateAnnouncementDto }): Promise<Announcement> => {
+        const response = await apiClient.patch<Announcement>(`announcements/${params.id}`, params.data);
         return response.data;
     },
 
@@ -70,7 +70,7 @@ const announcementsService = {
     },
 
     getUnreadCount: async (): Promise<{ unreadCount: number }> => {
-        const response = await apiClient.get('announcements/unread-count');
+        const response = await apiClient.get<{ unreadCount: number }>('announcements/unread-count');
         return response.data;
     },
 };

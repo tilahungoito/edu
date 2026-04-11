@@ -71,7 +71,10 @@ export type ResourceType =
     | 'backup'
     | 'calendar'
     | 'subject'
-    | 'section';
+    | 'section'
+    | 'inventory_request'
+    | 'budget_allocation'
+    | 'budget_request';
 
 // Single permission
 export interface Permission {
