@@ -5,7 +5,7 @@ export interface BehaviorRecord {
     studentId: string;
     title: string;
     description: string;
-    type: 'POSITIVE' | 'WARNING' | 'DISCIPLINARY' | 'CRITICAL';
+    type: 'POSITIVE' | 'WARNING' | 'DISCIPLINARY' | 'CRITICAL' | 'COUNSELING' | 'OBSERVATION';
     date: string;
     isPrivate: boolean;
     recordedById: string;
@@ -28,7 +28,7 @@ export interface CreateBehaviorData {
     institutionId: string;
     title: string;
     description: string;
-    type: 'POSITIVE' | 'WARNING' | 'DISCIPLINARY' | 'CRITICAL';
+    type: 'POSITIVE' | 'WARNING' | 'DISCIPLINARY' | 'CRITICAL' | 'COUNSELING' | 'OBSERVATION';
     date?: string;
     isPrivate?: boolean;
 }
@@ -87,6 +87,11 @@ export const classroomService = {
 
     createBehavior: async (data: CreateBehaviorData) => {
         const response = await apiClient.post<BehaviorRecord>('/classroom/behavior', data);
+        return response.data;
+    },
+
+    updateBehavior: async (id: string, data: Partial<CreateBehaviorData>) => {
+        const response = await apiClient.patch<BehaviorRecord>(`/classroom/behavior/${id}`, data);
         return response.data;
     },
 

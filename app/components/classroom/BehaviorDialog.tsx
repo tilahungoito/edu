@@ -106,8 +106,13 @@ export function BehaviorDialog({ open, onClose, onSuccess, record, studentId, in
         setError(null);
 
         try {
-            await classroomService.createBehavior(formData);
-            toast.success(record ? 'Behavior record updated' : 'Behavior record created');
+            if (record?.id) {
+                await classroomService.updateBehavior(record.id, formData);
+                toast.success('Behavior record updated');
+            } else {
+                await classroomService.createBehavior(formData);
+                toast.success('Behavior record created');
+            }
             onSuccess();
             onClose();
         } catch (err: any) {
