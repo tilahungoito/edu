@@ -32,6 +32,20 @@ export interface InstructorStats {
     courses: any[];
     totalStudents: number;
     recentAttendance: any[];
+    avgAttendance?: string;
+    activityFeed?: any[];
+    schedule?: any[];
+    atRiskCount?: number;
+    milestones?: any[];
+    studentPerformance?: any[];
+    attendanceTrends?: any[];
+    attendanceByDay?: any[];
+    behaviorSummary?: any[];
+    comparisonRadar?: any[];
+    assessmentAverages?: any[];
+    gradeDistribution?: any[];
+    peerAvgScore?: number;
+    syllabusCompletion?: number;
 }
 
 export interface RegistrarStats {

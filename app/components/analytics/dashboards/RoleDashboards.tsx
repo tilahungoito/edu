@@ -167,7 +167,9 @@ export function InstructorDashboard({ stats, loading, user }: any) {
         const baseStudents = stats.studentPerformance || [];
         const currentFiltered = selectedCourse === 'all'
             ? baseStudents
-            : baseStudents.filter((s: any) => s.courseCode === stats?.courses?.find((c: any) => c.id === selectedCourse)?.code);
+            : baseStudents.filter((s: any) => 
+                s.courseCode?.split(', ').includes(stats?.courses?.find((c: any) => c.id === selectedCourse)?.code)
+              );
 
         // 2. Dynamically Re-calculate Grade Distribution from filtered students
         const allScores = currentFiltered.map((s: any) => s.total);
@@ -212,7 +214,9 @@ export function InstructorDashboard({ stats, loading, user }: any) {
     const baseStudents = stats?.studentPerformance || [];
     const filteredStudents = selectedCourse === 'all'
         ? baseStudents
-        : baseStudents.filter((s: any) => s.courseCode === stats?.courses?.find((c: any) => c.id === selectedCourse)?.code);
+        : baseStudents.filter((s: any) => 
+            s.courseCode?.split(', ').includes(stats?.courses?.find((c: any) => c.id === selectedCourse)?.code)
+          );
 
     const kpis = [
         {
@@ -613,7 +617,7 @@ export function InstructorDashboard({ stats, loading, user }: any) {
                                 {[
                                     { label: 'Take Attendance', desc: 'Record student presence for today', icon: <PeopleIcon />, color: theme.palette.primary.main, link: '/academic/attendance' },
                                     { label: 'Manage Grades', desc: 'Input scores and finalize transcripts', icon: <AwardsIcon />, color: theme.palette.success.main, link: '/academic/grades' },
-                                    { label: 'Assessment Plan', desc: 'Define quizzes, exams and weights', icon: <CourseIcon />, color: theme.palette.info.main, link: '/academic/assessments' },
+                                    { label: 'Course Catalog', desc: 'Manage courses and evaluation weights', icon: <CourseIcon />, color: theme.palette.info.main, link: '/academic/courses' },
                                 ].map((action, i) => (
                                     <Box
                                         key={i}
