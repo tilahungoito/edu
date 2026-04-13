@@ -58,8 +58,12 @@ export interface RegistrarStats {
 }
 
 export const dashboardService = {
-    getStats: async (): Promise<DashboardStats | InstitutionStats | StudentStats | InstructorStats | RegistrarStats> => {
-        const response = await apiClient.get<DashboardStats | InstitutionStats | StudentStats | InstructorStats | RegistrarStats>('dashboard/stats');
+    getStats: async (scopeType?: string, scopeId?: string): Promise<DashboardStats | InstitutionStats | StudentStats | InstructorStats | RegistrarStats | any> => {
+        const params = new URLSearchParams();
+        if (scopeType) params.append('scopeType', scopeType);
+        if (scopeId) params.append('scopeId', scopeId);
+        
+        const response = await apiClient.get<any>(`dashboard/stats${params.toString() ? `?${params.toString()}` : ''}`);
         return response.data;
     }
 };

@@ -135,14 +135,34 @@ const woredaColumns: GridColDef[] = [
 // Kebele columns
 const kebeleColumns: GridColDef[] = [
     { field: 'name', headerName: 'Kebele Name', flex: 1, minWidth: 150 },
+    { field: 'code', headerName: 'Code', width: 80 },
     {
         field: 'totalSchools',
         headerName: 'Institutions',
         width: 120,
         type: 'number',
-        valueGetter: (params: any) => params?.row?._count?.institutions || 0
     },
-    { field: 'createdAt', headerName: 'Created At', width: 150, type: 'date', valueGetter: (value) => value ? new Date(value) : null },
+    {
+        field: 'totalStudents',
+        headerName: 'Students',
+        width: 120,
+        type: 'number',
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
+    },
+    { 
+        field: 'status', 
+        headerName: 'Status', 
+        width: 100,
+        renderCell: (params) => (
+            <Chip 
+                label={params.value ? params.value.charAt(0).toUpperCase() + params.value.slice(1) : 'Active'} 
+                size="small" 
+                color="success" 
+                variant="soft" 
+                sx={{ fontWeight: 700 }}
+            />
+        )
+    },
 ];
 
 // Institution columns
@@ -351,6 +371,7 @@ export default function Dashboard() {
                         onView={(row: any) => {
                             if (currentResourceType === 'zone') router.push(`/dashboard/zone?id=${row.id}`);
                             else if (currentResourceType === 'woreda') router.push(`/dashboard/woreda?id=${row.id}`);
+                            else if (currentResourceType === 'kebele') router.push(`/dashboard/kebele?id=${row.id}`);
                         }}
                         resourceType={currentResourceType}
                     />

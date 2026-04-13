@@ -13,33 +13,62 @@ import { useAuthStore } from '@/app/lib/store';
 import { KPIData } from '@/app/lib/types';
 import { UserDialog } from '@/app/components/management/UserDialog';
 
+import { useSearchParams } from 'next/navigation';
+import { dashboardService } from '@/app/lib/api/dashboard.service';
+import { woredasService } from '@/app/lib/api/woredas.service';
+
 export default function WoredaAdminDashboard() {
     const { user } = useAuthStore();
+    const searchParams = useSearchParams();
     const [openUserDialog, setOpenUserDialog] = React.useState(false);
+    const [stats, setStats] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
+    const [woredaName, setWoredaName] = React.useState('');
+
+    const woredaId = searchParams.get('id') || user?.tenantId;
+
+    React.useEffect(() => {
+        const fetchData = async () => {
+            if (!woredaId) return;
+            setLoading(true);
+            try {
+                const [statsData, woredaData] = await Promise.all([
+                    dashboardService.getStats('WOREDA', woredaId),
+                    woredasService.getById(woredaId)
+                ]);
+                setStats(statsData);
+                setWoredaName(woredaData.name);
+            } catch (error) {
+                console.error('Error fetching woreda data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [woredaId]);
 
     const kpis: KPIData[] = [
         {
             label: 'Woreda Schools',
-            value: 24,
+            value: stats?.institutions || 0,
             icon: 'School',
             trend: 'stable'
         },
         {
             label: 'Total Students',
-            value: 8200,
+            value: stats?.students || 0,
             icon: 'People',
             trend: 'up',
-            change: 145
         },
         {
-            label: 'Avg Class Size',
-            value: 45,
-            icon: 'Groups',
-            trend: 'down',
-            change: -2
+            label: 'Total Teachers',
+            value: stats?.teachers || 0,
+            icon: 'Badge',
+            trend: 'stable'
         },
         {
-            label: 'Attendance Rate',
+            label: 'Level Match',
             value: '94.2%',
             icon: 'EventAvailable',
             trend: 'up'
@@ -59,7 +88,7 @@ export default function WoredaAdminDashboard() {
             <Box sx={{ mb: 4 }}>
                 <Typography variant="h4" fontWeight={700} gutterBottom>
                     Woreda Dashboard
-                    {user?.tenantName && <Typography component="span" variant="h4" color="primary">: {user.tenantName}</Typography>}
+                    {(woredaName || user?.tenantName) && <Typography component="span" variant="h4" color="primary">: {woredaName || user?.tenantName}</Typography>}
                 </Typography>
                 <Typography variant="body1" color="text.secondary">
                     Local management of schools and educational outcomes. Welcome, {user?.firstName}.
@@ -67,17 +96,18 @@ export default function WoredaAdminDashboard() {
             </Box>
 
             <Box sx={{ mb: 4 }}>
-                <KPIGrid kpis={kpis} columns={4} />
+                <KPIGrid kpis={kpis} columns={4} loading={loading} />
             </Box>
 
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12, lg: 8 }}>
                     <AnalyticsChart
-                        title="School Performance & Attendance"
-                        subtitle="Key metrics for schools in this Woreda"
-                        data={schoolPerformanceData}
-                        type="bar"
-                        dataKeys={['performance', 'attendance']}
+                        title="Enrollment Trends"
+                        subtitle="Students and Teachers in this Woreda"
+                        data={stats?.enrollmentTrends || []}
+                        type="area"
+                        dataKeys={['students', 'teachers']}
+                        loading={loading}
                         height={350}
                     />
                 </Grid>
