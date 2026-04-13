@@ -907,22 +907,34 @@ export function AccountantDashboard({ stats, loading }: any) {
     const theme = useTheme();
 
     const kpis = [
-        { label: 'Total Revenue', value: `${stats?.totalRevenue?.toLocaleString() || 0} ETB`, icon: 'Budget', trend: 'up' as const },
-        { label: 'Active Students', value: stats?.students || 0, icon: 'People', trend: 'stable' as const },
-        { label: 'Active Courses', value: stats?.courses || 0, icon: 'School', trend: 'up' as const },
-        { label: 'Total Enrollments', value: stats?.enrollments || 0, icon: 'Groups', trend: 'stable' as const },
+        { label: 'Net Revenue', value: `${stats?.totalRevenue?.toLocaleString() || 0} ETB`, icon: 'Budget', trend: stats?.totalRevenue > 10000 ? 'up' as const : 'stable' as const },
+        { label: 'Budget Balance', value: `${((stats?.totalBudget || 0) - (stats?.totalExpenses || 0))?.toLocaleString() || 0} ETB`, icon: 'AccountBalanceIcon', trend: 'stable' as const },
+        { label: 'Outstanding Dues', value: `${stats?.pendingRevenue?.toLocaleString() || 0} ETB`, icon: 'WarningIcon', trend: stats?.pendingRevenue > 5000 ? 'down' as const : 'stable' as const },
+        { 
+            label: 'Collection Rate', 
+            value: `${stats?.totalRevenue + stats?.pendingRevenue > 0 ? Math.round((stats.totalRevenue / (stats.totalRevenue + stats.pendingRevenue)) * 100) : 0}%`, 
+            icon: 'TrendingUpIcon', 
+            trend: 'up' as const 
+        },
     ];
 
     const paymentColumns: GridColDef[] = [
-        { field: 'id', headerName: 'Transaction ID', width: 120 },
+        { field: 'id', headerName: 'ID', width: 90 },
+        { field: 'studentName', headerName: 'Student', width: 180 },
         { field: 'amount', headerName: 'Amount', width: 130, type: 'number', valueFormatter: (value: any) => `${value?.toLocaleString()} ETB` },
-        { field: 'type', headerName: 'Type', width: 120 },
+        { field: 'type', headerName: 'Purpose', width: 120 },
         { 
             field: 'status', 
             headerName: 'Status', 
             width: 120,
             renderCell: (params) => (
-                <Chip label={params.value} size="small" color="success" variant="soft" sx={{ fontWeight: 700 }} />
+                <Chip 
+                    label={params.value} 
+                    size="small" 
+                    color={params.value === 'COMPLETED' ? 'success' : 'warning'} 
+                    variant="soft" 
+                    sx={{ fontWeight: 700 }} 
+                />
             )
         },
         { 
@@ -938,28 +950,45 @@ export function AccountantDashboard({ stats, loading }: any) {
             <KPIGrid kpis={kpis} loading={loading} columns={4} />
             <Box sx={{ mt: 4, display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, gap: 3 }}>
                 <AnalyticsChart
-                    title="Finances & Collections"
-                    subtitle="Daily Revenue Collection Trends"
-                    data={stats?.attendanceAndRevenue || []}
+                    title="Revenue Performance"
+                    subtitle="Weekly actual collections trend"
+                    data={stats?.financialTrends || []}
                     type="area"
                     dataKeys={['revenue']}
                     loading={loading}
                     height={350}
                 />
 
-                <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {stats?.revenueBreakdown?.length > 0 && (
+                        <AnalyticsChart
+                            title="Revenue Breakdown"
+                            subtitle="Distribution by payment purpose"
+                            data={stats.revenueBreakdown}
+                            type="pie"
+                            loading={loading}
+                            height={250}
+                        />
+                    )}
+
+                    <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                     <CardContent>
                         <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Financial Actions</Typography>
                         <Stack spacing={2}>
                             {[
-                                { label: 'Record Payment', icon: <ReceiptIcon />, color: theme.palette.success.main },
-                                { label: 'Revenue Report', icon: <TimelineIcon />, color: theme.palette.primary.main },
-                                { label: 'Outstanding Dues', icon: <WarningIcon />, color: theme.palette.warning.main },
+                                { label: 'Record Payment', icon: <ReceiptIcon />, color: theme.palette.success.main, href: '/finance/payments' },
+                                { label: 'Revenue Report', icon: <TimelineIcon />, color: theme.palette.primary.main, href: '/reports/financial' },
+                                { label: 'Outstanding Dues', icon: <WarningIcon />, color: theme.palette.warning.main, href: '/finance/dues' },
                             ].map((action, i) => (
-                                <Box key={i} sx={{
-                                    p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2,
-                                    bgcolor: alpha(action.color, 0.05), border: `1px solid ${alpha(action.color, 0.1)}`
-                                }}>
+                                <Box key={i}
+                                    component="a"
+                                    href={action.href}
+                                    sx={{
+                                        p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2,
+                                        bgcolor: alpha(action.color, 0.05), border: `1px solid ${alpha(action.color, 0.1)}`,
+                                        textDecoration: 'none', color: 'inherit',
+                                        '&:hover': { bgcolor: alpha(action.color, 0.1) }
+                                    }}>
                                     <Avatar sx={{ bgcolor: action.color, width: 32, height: 32 }}>{action.icon}</Avatar>
                                     <Typography variant="body2" fontWeight={700}>{action.label}</Typography>
                                 </Box>
@@ -968,8 +997,9 @@ export function AccountantDashboard({ stats, loading }: any) {
                     </CardContent>
                 </Card>
             </Box>
+        </Box>
 
-            <Box sx={{ mt: 4 }}>
+        <Box sx={{ mt: 4 }}>
                 <DataTable
                     title="Recent Revenue Transactions"
                     subtitle="Latest completed payments and fees"
