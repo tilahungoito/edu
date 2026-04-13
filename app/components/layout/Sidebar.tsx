@@ -294,7 +294,7 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
                                     color: active ? theme.palette.primary.main : (item.icon ? iconConfig[item.icon]?.color || theme.palette.text.secondary : theme.palette.text.secondary),
                                     transition: 'all 0.2s',
                                     '& .MuiSvgIcon-root': {
-                                        fontSize: 22,
+                                        fontSize: 20,
                                         filter: active ? 'none' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.05))'
                                     }
                                 }}
@@ -306,7 +306,7 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
                                     <ListItemText
                                         primary={item.label}
                                         primaryTypographyProps={{
-                                            fontSize: '0.875rem',
+                                            fontSize: '0.8125rem',
                                             fontWeight: active ? 700 : 500,
                                             noWrap: true,
                                         }}
@@ -440,7 +440,7 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
                                         sx={{
                                             flex: 1,
                                             fontWeight: 800,
-                                            fontSize: '10px',
+                                            fontSize: '9px',
                                             letterSpacing: 1.5,
                                             color: categoryHasActive
                                                 ? theme.palette.primary.main
