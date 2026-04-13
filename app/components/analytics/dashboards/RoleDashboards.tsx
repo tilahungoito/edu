@@ -375,6 +375,11 @@ export function InstructorDashboard({ stats, loading, user }: any) {
         document.body.removeChild(link);
     };
 
+    const selectionAvg = filteredStudents.length > 0
+        ? Math.round(filteredStudents.reduce((a: any, b: any) => a + b.total, 0) / filteredStudents.length)
+        : 0;
+    const performanceDelta = selectionAvg - (displayStats?.peerAvgScore || 65);
+
     return (
         <Box>
             {/* Professional Filter Header */}
@@ -576,8 +581,18 @@ export function InstructorDashboard({ stats, loading, user }: any) {
 
                             <Stack spacing={2}>
                                 {[
-                                    { title: "Class Performance Benchmark", text: `Your ${selectedCourse === 'all' ? 'active selection' : 'current class'} is performing ${(displayStats?.peerAvgScore - 65).toFixed(1)}% above the school benchmark of ${displayStats?.peerAvgScore}%.`, type: 'success' },
-                                    { title: "At-Risk Alert", text: displayStats?.atRiskCount > 0 ? `${displayStats?.atRiskCount} student(s) show signs of disengagement. One-on-one intervention recommended.` : "All students are current on their coursework. Keep up the high engagement!", type: displayStats?.atRiskCount > 0 ? 'warning' : 'success' }
+                                    { 
+                                        title: "Class Performance Benchmark", 
+                                        text: `Your ${selectedCourse === 'all' ? 'classes are' : 'current class is'} performing ${Math.abs(performanceDelta).toFixed(1)}% ${performanceDelta >= 0 ? 'above' : 'below'} the school benchmark of ${displayStats?.peerAvgScore || 65}%.`, 
+                                        type: performanceDelta >= 0 ? 'success' : 'warning' 
+                                    },
+                                    { 
+                                        title: "At-Risk Alert", 
+                                        text: displayStats?.atRiskCount > 0 
+                                            ? `${displayStats?.atRiskCount} student(s) show signs of disengagement or failing grades. Targeted intervention recommended.` 
+                                            : "All students are currently exceeding passing thresholds. Maintain current instructional pace.", 
+                                        type: displayStats?.atRiskCount > 0 ? 'warning' : 'success' 
+                                    }
                                 ].map((note, i) => (
                                     <Box key={i} sx={{ p: 2, borderRadius: 2, bgcolor: alpha((theme.palette as any)[note.type].main, 0.05), borderLeft: `4px solid ${(theme.palette as any)[note.type].main}` }}>
                                         <Typography variant="subtitle2" fontWeight={800} color={`${note.type}.main`}>{note.title}</Typography>
