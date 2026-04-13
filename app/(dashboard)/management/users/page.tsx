@@ -30,7 +30,7 @@ import { toast } from 'react-hot-toast';
 
 const CREATE_ROLES = [
     'SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN',
-    'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN'
+    'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR'
 ];
 
 // Color per role
@@ -80,8 +80,8 @@ export default function UsersManagementPage() {
         if (userRoles.includes('REGIONAL_ADMIN')) return roleOrder.slice(roleOrder.indexOf('ZONE_ADMIN'));
         if (userRoles.includes('ZONE_ADMIN')) return roleOrder.slice(roleOrder.indexOf('WOREDA_ADMIN'));
         if (userRoles.includes('WOREDA_ADMIN')) return roleOrder.slice(roleOrder.indexOf('KEBELE_ADMIN'));
-        if (userRoles.includes('KEBELE_ADMIN')) return roleOrder.slice(roleOrder.indexOf('INSTITUTION_ADMIN'));
         if (userRoles.includes('INSTITUTION_ADMIN')) return ['REGISTRAR', 'INSTRUCTOR', 'ACCOUNTANT', 'STUDENT'];
+        if (userRoles.includes('REGISTRAR')) return ['INSTRUCTOR', 'ACCOUNTANT', 'STUDENT'];
         return [];
     }, [userRoles]);
 

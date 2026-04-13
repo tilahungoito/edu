@@ -33,6 +33,10 @@ const SCOPE_MAP: Partial<Record<Role, string>> = {
     // The previous UserDialog had 'KEBELE_ADMIN': 'KEBELE' but no kebeleService.
     // Let's assume for now we use what was there, but I should check if kebele service exists.
     'INSTITUTION_ADMIN': 'INSTITUTION',
+    'REGISTRAR': 'INSTITUTION',
+    'INSTRUCTOR': 'INSTITUTION',
+    'ACCOUNTANT': 'INSTITUTION',
+    'STUDENT': 'INSTITUTION',
 };
 
 export function ScopeSelector({
