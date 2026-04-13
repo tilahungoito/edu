@@ -25,7 +25,7 @@ import {
 import { KPIGrid, AnalyticsChart } from '../';
 import { DataTable } from '../../tables';
 
-export function BureauDashboard({ stats, loading, zones, columns, tableTitle, onAdd, resourceType }: any) {
+export function BureauDashboard({ stats, loading, zones, columns, tableTitle, onAdd, onView, onEdit, onDelete, resourceType }: any) {
     const theme = useTheme();
 
     const kpis = stats ? [
@@ -68,7 +68,9 @@ export function BureauDashboard({ stats, loading, zones, columns, tableTitle, on
                 module="management"
                 resourceType={resourceType}
                 onAdd={onAdd}
-                onView={() => { }}
+                onView={onView}
+                onEdit={onEdit}
+                onDelete={onDelete}
             />
         </Box>
     );

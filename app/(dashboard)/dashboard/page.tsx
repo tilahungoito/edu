@@ -12,6 +12,7 @@ import {
     alpha,
     Tabs,
     Tab,
+    Chip,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -41,6 +42,7 @@ import { notificationsService } from '@/app/lib/api/notifications.service';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
+import { useRouter } from 'next/navigation';
 import type { Zone, KPIData, TenantType, ResourceType } from '@/app/lib/types';
 import { Notifications as NotificationsIcon, DoneAll as DoneAllIcon } from '@mui/icons-material';
 
@@ -106,15 +108,28 @@ const woredaColumns: GridColDef[] = [
         headerName: 'Schools',
         width: 100,
         type: 'number',
-        valueGetter: (params: any) => params?.row?._count?.institutions || 0
     },
     {
         field: 'totalStudents',
         headerName: 'Students',
         width: 120,
-        type: 'number'
+        type: 'number',
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
-    { field: 'status', headerName: 'Status', width: 100 },
+    { 
+        field: 'status', 
+        headerName: 'Status', 
+        width: 100,
+        renderCell: (params) => (
+            <Chip 
+                label={params.value ? params.value.charAt(0).toUpperCase() + params.value.slice(1) : 'Active'} 
+                size="small" 
+                color="success" 
+                variant="soft" 
+                sx={{ fontWeight: 700 }}
+            />
+        )
+    },
 ];
 
 // Kebele columns
@@ -152,6 +167,7 @@ const institutionColumns: GridColDef[] = [
 
 export default function Dashboard() {
     const theme = useTheme();
+    const router = useRouter();
     const user = useAuthStore(state => state.user);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState<any>(null);
@@ -159,6 +175,7 @@ export default function Dashboard() {
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogType, setDialogType] = useState<TenantType>('school');
+    const [editingEntity, setEditingEntity] = useState<any>(null);
     const [notifications, setNotifications] = useState<any[]>([]);
 
     const fetchNotifications = async () => {
@@ -204,21 +221,51 @@ export default function Dashboard() {
         else if (user.tenantType === 'woreda') typeToAdd = 'kebele';
         else if (user.tenantType === 'kebele') typeToAdd = 'school';
 
+        setEditingEntity(null);
         setDialogType(typeToAdd);
         setDialogOpen(true);
     };
 
-    const handleAddEntity = async (data: any) => {
-        try {
-            if (dialogType === 'zone') await zonesService.create(data);
-            else if (dialogType === 'woreda') await woredasService.create(data);
-            else if (dialogType === 'kebele') await kebelesService.create(data);
-            else if (dialogType === 'school') await institutionsService.create(data);
+    const handleEditEntity = (row: any) => {
+        setEditingEntity(row);
+        setDialogType(user?.tenantType === 'bureau' ? 'zone' : 
+                     user?.tenantType === 'zone' ? 'woreda' : 
+                     user?.tenantType === 'woreda' ? 'kebele' : 'school');
+        setDialogOpen(true);
+    };
 
-            setDialogOpen(false);
+    const handleDeleteEntity = async (row: any) => {
+        try {
+            if (user?.tenantType === 'bureau') await zonesService.delete(row.id);
+            else if (user?.tenantType === 'zone') await woredasService.delete(row.id);
+            else if (user?.tenantType === 'woreda') await kebelesService.delete(row.id);
+            else if (user?.tenantType === 'kebele') await institutionsService.delete(row.id);
+
             fetchData();
         } catch (error) {
-            console.error(`Error creating ${dialogType}:`, error);
+            console.error('Error deleting entity:', error);
+        }
+    };
+
+    const handleAddEntity = async (data: any, id?: string) => {
+        try {
+            if (id) {
+                if (dialogType === 'zone') await zonesService.update(id, data);
+                else if (dialogType === 'woreda') await woredasService.update(id, data);
+                else if (dialogType === 'kebele') await kebelesService.update(id, data);
+                else if (dialogType === 'school') await institutionsService.update(id, data);
+            } else {
+                if (dialogType === 'zone') await zonesService.create(data);
+                else if (dialogType === 'woreda') await woredasService.create(data);
+                else if (dialogType === 'kebele') await kebelesService.create(data);
+                else if (dialogType === 'school') await institutionsService.create(data);
+            }
+
+            setDialogOpen(false);
+            setEditingEntity(null);
+            fetchData();
+        } catch (error) {
+            console.error(`Error processing ${dialogType}:`, error);
         }
     };
 
@@ -238,7 +285,16 @@ export default function Dashboard() {
     });
 
     const roles = user?.roles?.map(r => r.name) || [];
-    const filteredZones = useScopedData(zones, user?.tenantType as any);
+
+    const resourceTypeMap: Record<string, ResourceType> = {
+        'bureau': 'zone',
+        'zone': 'woreda',
+        'woreda': 'kebele',
+        'kebele': 'institution'
+    };
+
+    const currentResourceType = resourceTypeMap[user?.tenantType || 'bureau'];
+    const filteredZones = useScopedData(zones, currentResourceType as any);
 
     const dashboardTitle = user?.tenantType === 'bureau'
         ? (roles.includes('SYSTEM_ADMIN') ? 'System Administration Dashboard' : 'Regional Education Bureau Dashboard')
@@ -280,13 +336,6 @@ export default function Dashboard() {
                         user?.tenantType === 'kebele' ? institutionColumns :
                             zoneColumns;
 
-            const resourceTypeMap: Record<string, ResourceType> = {
-                'bureau': 'zone',
-                'zone': 'woreda',
-                'woreda': 'kebele',
-                'kebele': 'institution'
-            };
-
             return (
                 <>
                     <BureauDashboard
@@ -297,12 +346,22 @@ export default function Dashboard() {
                         columns={currentColumns}
                         tableTitle={tableTitle}
                         onAdd={handleOpenAddDialog}
-                        resourceType={resourceTypeMap[user?.tenantType || 'bureau']}
+                        onEdit={handleEditEntity}
+                        onDelete={handleDeleteEntity}
+                        onView={(row: any) => {
+                            if (currentResourceType === 'zone') router.push(`/dashboard/zone?id=${row.id}`);
+                            else if (currentResourceType === 'woreda') router.push(`/dashboard/woreda?id=${row.id}`);
+                        }}
+                        resourceType={currentResourceType}
                     />
                     <TenantDialog
                         open={dialogOpen}
-                        onClose={() => setDialogOpen(false)}
+                        onClose={() => {
+                            setDialogOpen(false);
+                            setEditingEntity(null);
+                        }}
                         onSubmit={handleAddEntity}
+                        editData={editingEntity}
                         type={dialogType as any}
                         parentId={user?.tenantId}
                         parentType={user?.tenantType as any}

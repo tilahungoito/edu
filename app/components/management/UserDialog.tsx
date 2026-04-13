@@ -36,11 +36,12 @@ import type { User } from '@/app/lib/api/api-client';
 interface UserDialogProps {
     open: boolean;
     user?: User | null;
+    defaultRole?: Role;
     onClose: () => void;
     onSuccess: () => void;
 }
 
-export function UserDialog({ open, user: editingUser, onClose, onSuccess }: UserDialogProps) {
+export function UserDialog({ open, user: editingUser, defaultRole, onClose, onSuccess }: UserDialogProps) {
     const user = useAuthStore(state => state.user);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -87,7 +88,7 @@ export function UserDialog({ open, user: editingUser, onClose, onSuccess }: User
                     phone: '',
                     firstName: '',
                     lastName: '',
-                    targetRole: '' as Role | '',
+                    targetRole: defaultRole || '' as Role | '',
                     scopeId: '',
                     program: '',
                     year: 1,
