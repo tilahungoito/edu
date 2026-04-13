@@ -750,38 +750,102 @@ export function RegistrarDashboard({ stats, loading }: any) {
     const theme = useTheme();
 
     const kpis = [
-        { label: 'New Enrollments', value: stats?.recentEnrollments || 0, icon: 'People', trend: 'up' as const },
-        { label: 'Unassigned Students', value: stats?.unassignedCount || 0, icon: 'Warning', trend: (stats?.unassignedCount > 0 ? 'down' : 'stable') as any, color: 'warning' },
+        { label: 'New Students (30d)', value: stats?.recentEnrollments || 0, icon: 'People', trend: 'up' as const },
+        { label: 'Unassigned', value: stats?.unassignedCount || 0, icon: 'Warning', trend: (stats?.unassignedCount > 0 ? 'down' : 'stable') as any, color: 'warning' },
         { label: 'Transcripts Issued', value: stats?.transcriptsIssued || 0, icon: 'School', trend: 'up' as const },
-        { label: 'Active Students', value: stats?.totalStudents || 0, icon: 'Groups', trend: 'stable' as const },
+        { label: 'Total Enrollment', value: stats?.totalStudents || 0, icon: 'Groups', trend: 'stable' as const },
+    ];
+
+    const studentColumns = [
+        { field: 'name', headerName: 'Full Name', flex: 1, minWidth: 200 },
+        { field: 'id', headerName: 'Student ID', width: 120 },
+        { field: 'program', headerName: 'Program', width: 150 },
+        { field: 'year', headerName: 'Year', width: 80, type: 'number' },
+        { 
+            field: 'createdAt', 
+            headerName: 'Registered On', 
+            width: 150, 
+            valueFormatter: (value: any) => value ? new Date(value).toLocaleDateString() : '-' 
+        },
     ];
 
     return (
         <Box>
             <KPIGrid kpis={kpis} loading={loading} columns={4} />
-            <Box sx={{ mt: 4, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3 }}>
+            
+            <Box sx={{ mt: 4, display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
                 <AnalyticsChart
-                    title="Enrollment Trends"
-                    subtitle="Processed applications this month"
+                    title="Student Growth Trend"
+                    subtitle="New registrations per week (Last 4 weeks)"
                     data={stats?.enrollmentTrends || []}
                     type="area"
                     dataKeys={['value']}
                     loading={loading}
-                    height={300}
+                    height={320}
                 />
-                <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-                    <CardContent>
-                        <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Recent Activities</Typography>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            {stats?.recentActivities?.map((act: any, i: number) => (
-                                <Box key={i} sx={{ p: 2, borderRadius: 3, bgcolor: alpha(theme.palette.action.hover, 0.04) }}>
-                                    <Typography variant="body2" fontWeight={700}>{act.action}</Typography>
-                                    <Typography variant="caption" color="text.secondary">{act.target} • {act.time}</Typography>
-                                </Box>
-                            )) || <Typography variant="body2" color="text.secondary">No recent activities.</Typography>}
-                        </Box>
-                    </CardContent>
-                </Card>
+                
+                <Stack spacing={3}>
+                    <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                        <CardContent>
+                            <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Quick Actions</Typography>
+                            <Stack spacing={1.5}>
+                                {[
+                                    { label: 'Register New Student', icon: <PeopleIcon />, color: theme.palette.primary.main, href: '/students?action=add' },
+                                    { label: 'Academic Records', icon: <SchoolIcon />, color: theme.palette.secondary.main, href: '/academic/history' },
+                                    { label: 'Manage Sections', icon: <CourseIcon />, color: theme.palette.info.main, href: '/academic/sections' },
+                                ].map((action, i) => (
+                                    <Box key={i}
+                                        component="a"
+                                        href={action.href}
+                                        sx={{
+                                            p: 1.5, borderRadius: 2, cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: 1.5,
+                                            bgcolor: alpha(action.color, 0.05),
+                                            border: `1px solid ${alpha(action.color, 0.1)}`,
+                                            textDecoration: 'none', color: 'inherit',
+                                            '&:hover': { bgcolor: alpha(action.color, 0.1) }
+                                        }}>
+                                        <Avatar sx={{ bgcolor: action.color, width: 32, height: 32 }}>
+                                            {action.icon}
+                                        </Avatar>
+                                        <Typography variant="body2" fontWeight={700}>{action.label}</Typography>
+                                    </Box>
+                                ))}
+                            </Stack>
+                        </CardContent>
+                    </Card>
+
+                    <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                        <CardContent>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6" fontWeight={800}>Logs</Typography>
+                                <Button size="small">View All</Button>
+                            </Box>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {stats?.recentActivities?.map((act: any, i: number) => (
+                                    <Box key={i} sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.action.hover, 0.04) }}>
+                                        <Typography variant="caption" fontWeight={800} color="primary.main">{act.action}</Typography>
+                                        <Typography variant="body2" sx={{ display: 'block' }}>{act.target}</Typography>
+                                        <Typography variant="caption" color="text.secondary">{act.time}</Typography>
+                                    </Box>
+                                )) || <Typography variant="body2" color="text.secondary">No recent activities.</Typography>}
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Stack>
+            </Box>
+
+            <Box sx={{ mt: 4 }}>
+                <DataTable
+                    title="Recently Registered Students"
+                    subtitle="Most recent student enrollments in this institution"
+                    columns={studentColumns}
+                    rows={stats?.recentStudents || []}
+                    loading={loading}
+                    module="management"
+                    resourceType="student"
+                    onView={() => { }}
+                />
             </Box>
         </Box>
     );
