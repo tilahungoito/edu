@@ -70,6 +70,7 @@ export type ResourceType =
     | 'help_request'
     | 'backup'
     | 'calendar'
+    | 'student'
     | 'subject'
     | 'section'
     | 'inventory_request'

@@ -5,6 +5,7 @@ import {
     Box, Typography, alpha, useTheme, Card, CardHeader, CardContent, Avatar, Divider, Stack,
     Grid, Paper, FormControl, InputLabel, Select, MenuItem, Button, Chip, Tooltip, LinearProgress
 } from '@mui/material';
+import { GridColDef } from '@mui/x-data-grid';
 import {
     School as SchoolIcon,
     Groups as PeopleIcon,
@@ -76,22 +77,27 @@ export function BureauDashboard({ stats, loading, zones, columns, tableTitle, on
     );
 }
 
-export function InstitutionDashboard({ stats, loading, user }: any) {
+export function InstitutionDashboard({ stats, loading }: any) {
     const theme = useTheme();
 
     const kpis = [
         { label: 'Total Students', value: stats?.students || 0, icon: 'People', trend: 'up' as const },
-        { label: 'Courses', value: stats?.courses || 0, icon: 'School', trend: 'stable' as const },
+        { label: 'Classes/Sections', value: stats?.sectionsCount || 0, icon: 'School', trend: 'stable' as const },
         { label: 'At-Risk Students', value: stats?.atRiskCount || 0, icon: 'Warning', trend: (stats?.atRiskCount > 0 ? 'down' : 'stable') as any, color: 'error' },
-        { label: 'Revenue (ETB)', value: stats?.totalRevenue || 0, icon: 'Budget', trend: 'up' as const },
+        { label: 'Total Revenue', value: `${(stats?.totalRevenue || 0).toLocaleString()} ETB`, icon: 'Budget', trend: 'up' as const },
     ];
 
-    const chartData = [
-        { name: 'Mon', attendance: 92, revenue: 4500 },
-        { name: 'Tue', attendance: 88, revenue: 3200 },
-        { name: 'Wed', attendance: 95, revenue: 5100 },
-        { name: 'Thu', attendance: 91, revenue: 2800 },
-        { name: 'Fri', attendance: 89, revenue: 3900 },
+    const studentColumns: GridColDef[] = [
+        { field: 'name', headerName: 'Student Name', flex: 1, minWidth: 200 },
+        { field: 'id', headerName: 'Student ID', width: 120 },
+        { field: 'program', headerName: 'Program', width: 150 },
+        { field: 'year', headerName: 'Grade', width: 80, type: 'number' },
+        { 
+            field: 'createdAt', 
+            headerName: 'Registered On', 
+            width: 150, 
+            valueFormatter: (value: any) => value ? new Date(value).toLocaleDateString() : '-' 
+        },
     ];
 
     return (
@@ -101,45 +107,86 @@ export function InstitutionDashboard({ stats, loading, user }: any) {
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3, mt: 4 }}>
                 <AnalyticsChart
                     title="Daily Attendance & Collections"
-                    subtitle="Last 5 business days"
+                    subtitle="Week-over-week financial and presence tracking"
                     data={stats?.attendanceAndRevenue || []}
                     type="area"
                     dataKeys={['attendance', 'revenue']}
                     loading={loading}
-                    height={300}
+                    height={350}
                 />
 
-                <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-                    <CardContent>
-                        <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Quick Actions</Typography>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            {[
-                                { label: 'Register Student', icon: <PeopleIcon />, color: theme.palette.primary.main, href: '/students' },
-                                { label: 'Course Catalog', icon: <SchoolIcon />, color: theme.palette.secondary.main, href: '/academic/courses' },
-                                { label: 'Transfers', icon: <CourseIcon />, color: theme.palette.success.main, href: '/hr/transfers' },
-                            ].map((action, i) => (
-                                <Box key={i}
-                                    component="a"
-                                    href={action.href}
-                                    sx={{
-                                        p: 2, borderRadius: 3, cursor: 'pointer',
-                                        display: 'flex', alignItems: 'center', gap: 2,
-                                        bgcolor: alpha(action.color, 0.05),
-                                        border: `1px solid ${alpha(action.color, 0.1)}`,
-                                        textDecoration: 'none',
-                                        color: 'inherit',
-                                        '&:hover': { bgcolor: alpha(action.color, 0.1) }
-                                    }}>
-                                    <Avatar sx={{ bgcolor: action.color, width: 32, height: 32 }}>
-                                        {action.icon}
-                                    </Avatar>
-                                    <Typography variant="body2" fontWeight={700}>{action.label}</Typography>
-                                </Box>
-                            ))}
-                        </Box>
-                    </CardContent>
-                </Card>
+                <Stack spacing={3}>
+                    <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                        <CardContent>
+                            <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Quick Actions</Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {[
+                                    { label: 'Register Student', icon: <PeopleIcon />, color: theme.palette.primary.main, href: '/students' },
+                                    { label: 'Course Catalog', icon: <SchoolIcon />, color: theme.palette.secondary.main, href: '/academic/courses' },
+                                    { label: 'Attendance Log', icon: <ScheduleIcon />, color: theme.palette.success.main, href: '/academic/attendance' },
+                                ].map((action, i) => (
+                                    <Box key={i}
+                                        component="a"
+                                        href={action.href}
+                                        sx={{
+                                            p: 2, borderRadius: 3, cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: 2,
+                                            bgcolor: alpha(action.color, 0.05),
+                                            border: `1px solid ${alpha(action.color, 0.1)}`,
+                                            textDecoration: 'none',
+                                            color: 'inherit',
+                                            '&:hover': { bgcolor: alpha(action.color, 0.1) }
+                                        }}>
+                                        <Avatar sx={{ bgcolor: action.color, width: 32, height: 32 }}>
+                                            {action.icon}
+                                        </Avatar>
+                                        <Typography variant="body2" fontWeight={700}>{action.label}</Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </CardContent>
+                    </Card>
+
+                    <AnalyticsChart
+                        title="Grade Distribution"
+                        subtitle="School breakdown"
+                        data={stats?.gradeDistribution || []}
+                        type="pie"
+                        loading={loading}
+                        height={230}
+                    />
+                </Stack>
             </Box>
+
+            <Box sx={{ mt: 4 }}>
+                <DataTable
+                    title="Recent Enrollments"
+                    subtitle="Monitor and manage the latest student registrations"
+                    columns={studentColumns}
+                    rows={stats?.recentStudents || []}
+                    loading={loading}
+                    module="academic"
+                    resourceType="student"
+                    onView={() => {}}
+                    onAdd={() => window.location.href = '/students?action=add'}
+                    onEdit={(row: any) => window.location.href = `/students/edit/${row.id}`}
+                    onDelete={() => {}} // Integration pending global confirm modal
+                    showSearch
+                />
+            </Box>
+
+            {stats?.sectionUtilization?.length > 0 && (
+                <Box sx={{ mt: 4 }}>
+                    <AnalyticsChart
+                        title="Section Capacity Utilization"
+                        subtitle="Student population vs classroom capacity"
+                        data={stats.sectionUtilization}
+                        type="bar"
+                        loading={loading}
+                        height={300}
+                    />
+                </Box>
+            )}
         </Box>
     );
 }
@@ -758,7 +805,7 @@ export function RegistrarDashboard({ stats, loading }: any) {
         { label: 'Total Enrollment', value: stats?.totalStudents || 0, icon: 'Groups', trend: 'stable' as const },
     ];
 
-    const studentColumns = [
+    const studentColumns: GridColDef[] = [
         { field: 'name', headerName: 'Full Name', flex: 1, minWidth: 200 },
         { field: 'id', headerName: 'Student ID', width: 120 },
         { field: 'program', headerName: 'Program', width: 150 },
@@ -840,13 +887,16 @@ export function RegistrarDashboard({ stats, loading }: any) {
             <Box sx={{ mt: 4 }}>
                 <DataTable
                     title="Recently Registered Students"
-                    subtitle="Most recent student enrollments in this institution"
+                    subtitle="Administrative view of recent enrollments"
                     columns={studentColumns}
                     rows={stats?.recentStudents || []}
                     loading={loading}
                     module="management"
                     resourceType="student"
                     onView={() => { }}
+                    onAdd={() => { }}
+                    onEdit={() => { }}
+                    onDelete={() => { }}
                 />
             </Box>
         </Box>
@@ -854,7 +904,7 @@ export function RegistrarDashboard({ stats, loading }: any) {
 }
 
 export function AccountantDashboard({ stats, loading }: any) {
-    // const theme = useTheme(); // Unused
+    const theme = useTheme();
 
     const kpis = [
         { label: 'Total Revenue', value: `${stats?.totalRevenue?.toLocaleString() || 0} ETB`, icon: 'Budget', trend: 'up' as const },
@@ -863,18 +913,71 @@ export function AccountantDashboard({ stats, loading }: any) {
         { label: 'Total Enrollments', value: stats?.enrollments || 0, icon: 'Groups', trend: 'stable' as const },
     ];
 
+    const paymentColumns: GridColDef[] = [
+        { field: 'id', headerName: 'Transaction ID', width: 120 },
+        { field: 'amount', headerName: 'Amount', width: 130, type: 'number', valueFormatter: (value: any) => `${value?.toLocaleString()} ETB` },
+        { field: 'type', headerName: 'Type', width: 120 },
+        { 
+            field: 'status', 
+            headerName: 'Status', 
+            width: 120,
+            renderCell: (params) => (
+                <Chip label={params.value} size="small" color="success" variant="soft" sx={{ fontWeight: 700 }} />
+            )
+        },
+        { 
+            field: 'date', 
+            headerName: 'Date', 
+            width: 150,
+            valueFormatter: (value: any) => new Date(value).toLocaleDateString()
+        },
+    ];
+
     return (
         <Box>
             <KPIGrid kpis={kpis} loading={loading} columns={4} />
-            <Box sx={{ mt: 4 }}>
+            <Box sx={{ mt: 4, display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, gap: 3 }}>
                 <AnalyticsChart
-                    title="Financial Overview"
-                    subtitle="Daily Revenue Collection"
+                    title="Finances & Collections"
+                    subtitle="Daily Revenue Collection Trends"
                     data={stats?.attendanceAndRevenue || []}
-                    type="bar"
+                    type="area"
                     dataKeys={['revenue']}
                     loading={loading}
-                    height={300}
+                    height={350}
+                />
+
+                <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                    <CardContent>
+                        <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Financial Actions</Typography>
+                        <Stack spacing={2}>
+                            {[
+                                { label: 'Record Payment', icon: <ReceiptIcon />, color: theme.palette.success.main },
+                                { label: 'Revenue Report', icon: <TimelineIcon />, color: theme.palette.primary.main },
+                                { label: 'Outstanding Dues', icon: <WarningIcon />, color: theme.palette.warning.main },
+                            ].map((action, i) => (
+                                <Box key={i} sx={{
+                                    p: 2, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 2,
+                                    bgcolor: alpha(action.color, 0.05), border: `1px solid ${alpha(action.color, 0.1)}`
+                                }}>
+                                    <Avatar sx={{ bgcolor: action.color, width: 32, height: 32 }}>{action.icon}</Avatar>
+                                    <Typography variant="body2" fontWeight={700}>{action.label}</Typography>
+                                </Box>
+                            ))}
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Box>
+
+            <Box sx={{ mt: 4 }}>
+                <DataTable
+                    title="Recent Revenue Transactions"
+                    subtitle="Latest completed payments and fees"
+                    columns={paymentColumns}
+                    rows={stats?.recentPayments || []}
+                    loading={loading}
+                    module="finance"
+                    resourceType="payment"
                 />
             </Box>
         </Box>

@@ -39,6 +39,7 @@ import { kebelesService } from '@/app/lib/api/kebeles.service';
 import { institutionsService } from '@/app/lib/api/institutions.service';
 import { regionsService } from '@/app/lib/api/regions.service';
 import { notificationsService } from '@/app/lib/api/notifications.service';
+import { studentsService } from '@/app/lib/api/students.service';
 import { TenantDialog } from '@/app/components/management/TenantDialog';
 import { useRealTime } from '@/app/lib/hooks/useRealTime';
 import { useScopedData } from '@/app/lib/hooks/useScopedData';
@@ -168,21 +169,35 @@ const kebeleColumns: GridColDef[] = [
 // Institution columns
 const institutionColumns: GridColDef[] = [
     { field: 'name', headerName: 'Institution Name', flex: 1, minWidth: 200 },
+    { field: 'code', headerName: 'School ID', width: 100 },
+    { field: 'level', headerName: 'Level', width: 120 },
     {
         field: 'totalStudents',
         headerName: 'Students',
         width: 120,
         type: 'number',
-        valueGetter: (params: any) => params?.row?._count?.students || 0
+        valueFormatter: (value) => typeof value === 'number' ? (value as number).toLocaleString() : '-',
     },
     {
-        field: 'totalTeachers',
-        headerName: 'Teachers',
-        width: 120,
+        field: 'totalSections',
+        headerName: 'Sections',
+        width: 100,
         type: 'number'
     },
-    { field: 'type', headerName: 'Level', width: 120 },
-    { field: 'ownership', headerName: 'Type', width: 120 },
+    { 
+        field: 'status', 
+        headerName: 'Status', 
+        width: 100,
+        renderCell: (params) => (
+            <Chip 
+                label={params.value ? params.value.charAt(0).toUpperCase() + params.value.slice(1) : 'Active'} 
+                size="small" 
+                color="success" 
+                variant="soft" 
+                sx={{ fontWeight: 700 }}
+            />
+        )
+    },
 ];
 
 export default function Dashboard() {
@@ -219,7 +234,9 @@ export default function Dashboard() {
             } else if (user?.tenantType === 'woreda') {
                 listData = await kebelesService.getAll();
             } else if (user?.tenantType === 'kebele') {
-                listData = await institutionsService.getAll({ kebeleId: user.tenantId });
+                listData = await institutionsService.getAll({ kebeleId: user.scopeId || user.tenantId });
+            } else if (user?.tenantType === 'school') {
+                listData = await studentsService.getAll({ institutionId: user.scopeId || user.tenantId });
             }
 
             setStats(statsData);
@@ -310,7 +327,8 @@ export default function Dashboard() {
         'bureau': 'zone',
         'zone': 'woreda',
         'woreda': 'kebele',
-        'kebele': 'institution'
+        'kebele': 'institution',
+        'school': 'student'
     };
 
     const currentResourceType = resourceTypeMap[user?.tenantType || 'bureau'];
@@ -372,6 +390,7 @@ export default function Dashboard() {
                             if (currentResourceType === 'zone') router.push(`/dashboard/zone?id=${row.id}`);
                             else if (currentResourceType === 'woreda') router.push(`/dashboard/woreda?id=${row.id}`);
                             else if (currentResourceType === 'kebele') router.push(`/dashboard/kebele?id=${row.id}`);
+                            else if (currentResourceType === 'institution') router.push(`/dashboard/institution?id=${row.id}`);
                         }}
                         resourceType={currentResourceType}
                     />
