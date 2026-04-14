@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Typography, Grid, Paper, FormControl, InputLabel, Select, MenuItem, Stack, Skeleton, alpha, Drawer, Table, TableBody, TableCell, TableHead, TableRow, Chip, Button, Switch, FormControlLabel, IconButton, Divider, useTheme } from '@mui/material';
+import { 
+    Box, Typography, Grid, Paper, FormControl, InputLabel, Select, 
+    MenuItem, Stack, Skeleton, alpha, Drawer, Table, TableBody, 
+    TableCell, TableHead, TableRow, Chip, Button, Switch, 
+    FormControlLabel, IconButton, Divider, useTheme 
+} from '@mui/material';
 import { Close as CloseIcon, FilterList as FilterIcon } from '@mui/icons-material';
 import { AnalyticsChart, KPIGrid } from '@/app/components/analytics';
 import { AdvancedPerformanceDashboard } from '@/app/components/analytics/AdvancedPerformanceDashboard';
@@ -11,9 +16,12 @@ import { regionsService } from '@/app/lib/api/regions.service';
 import { zonesService } from '@/app/lib/api/zones.service';
 import { woredasService } from '@/app/lib/api/woredas.service';
 import { kebelesService } from '@/app/lib/api/kebeles.service';
+import { useAuthStore } from '@/app/lib/store';
 
 export default function PerformanceAnalyticsPage() {
+    const user = useAuthStore(state => state.user);
     const [scope, setScope] = useState<{ type: string; id: string | null }>({ type: 'SYSTEM', id: null });
+    const [isInitialized, setIsInitialized] = useState(false);
     
     // Drilldown State
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -32,6 +40,67 @@ export default function PerformanceAnalyticsPage() {
     const [compScope, setCompScope] = useState<{ type: string; id: string | null }>({ type: 'SYSTEM', id: null });
     const [compRegionId, setCompRegionId] = useState<string>('');
     const [compZoneId, setCompZoneId] = useState<string>('');
+
+    // --- Data Isolation Logic ---
+    React.useEffect(() => {
+        const initializeScope = async () => {
+            if (!user || isInitialized) return;
+
+            const { scopeType, scopeId } = user;
+            if (scopeType === 'SYSTEM' || !scopeId) {
+                setIsInitialized(true);
+                return;
+            }
+
+            try {
+                // Initialize based on scope level
+                if (scopeType === 'REGION') {
+                    setRegionId(scopeId);
+                    setScope({ type: 'REGION', id: scopeId });
+                } 
+                else if (scopeType === 'ZONE') {
+                    const zone = await zonesService.getById(scopeId);
+                    setRegionId(zone.regionId);
+                    setZoneId(scopeId);
+                    setScope({ type: 'ZONE', id: scopeId });
+                }
+                else if (scopeType === 'WOREDA') {
+                    const woreda = await woredasService.getById(scopeId);
+                    const zone = await zonesService.getById(woreda.zoneId);
+                    setRegionId(zone.regionId);
+                    setZoneId(woreda.zoneId);
+                    setWoredaId(scopeId);
+                    setScope({ type: 'WOREDA', id: scopeId });
+                }
+                else if (scopeType === 'KEBELE') {
+                    const kebele = await kebelesService.getById(scopeId);
+                    const woreda = await woredasService.getById(kebele.woredaId);
+                    const zone = await zonesService.getById(woreda.zoneId);
+                    setRegionId(zone.regionId);
+                    setZoneId(woreda.zoneId);
+                    setWoredaId(kebele.woredaId);
+                    setKebeleId(scopeId);
+                    setScope({ type: 'KEBELE', id: scopeId });
+                }
+            } catch (error) {
+                console.error('Error initializing scope hierarchy:', error);
+            } finally {
+                setIsInitialized(true);
+            }
+        };
+
+        initializeScope();
+    }, [user, isInitialized]);
+
+    const isLevelRestricted = (level: 'REGION' | 'ZONE' | 'WOREDA' | 'KEBELE') => {
+        if (!user || user.roles?.some(r => r.name === 'SYSTEM_ADMIN')) return false;
+        
+        const priority = { 'SYSTEM': 0, 'REGION': 1, 'ZONE': 2, 'WOREDA': 3, 'KEBELE': 4, 'INSTITUTION': 5 };
+        const userLevel = priority[user.scopeType as keyof typeof priority] || 0;
+        const targetLevel = priority[level];
+        
+        return userLevel >= targetLevel;
+    };
 
     // Geographical Data Fetching
     const { data: regions } = useQuery({ queryKey: ['regions'], queryFn: () => regionsService.getAll() });
@@ -111,28 +180,48 @@ export default function PerformanceAnalyticsPage() {
                 <Paper elevation={0} sx={{ p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', minWidth: 300, borderRadius: 3, border: '1px solid', borderColor: 'divider', background: (theme) => alpha(theme.palette.background.paper, 0.8), backdropFilter: 'blur(8px)' }}>
                     <FormControl size="small" sx={{ minWidth: 120 }}>
                         <InputLabel>Region</InputLabel>
-                        <Select value={regionId} label="Region" onChange={(e) => handleRegionChange(e.target.value)}>
+                        <Select 
+                            value={regionId} 
+                            label="Region" 
+                            onChange={(e) => handleRegionChange(e.target.value)}
+                            disabled={isLevelRestricted('REGION')}
+                        >
                             <MenuItem value=""><em>All Systems</em></MenuItem>
                             {regions?.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
                         </Select>
                     </FormControl>
-                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!regionId}>
+                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!regionId || isLevelRestricted('ZONE')}>
                         <InputLabel>Zone</InputLabel>
-                        <Select value={zoneId} label="Zone" onChange={(e) => handleZoneChange(e.target.value)}>
+                        <Select 
+                            value={zoneId} 
+                            label="Zone" 
+                            onChange={(e) => handleZoneChange(e.target.value)}
+                            disabled={isLevelRestricted('ZONE')}
+                        >
                             <MenuItem value=""><em>All Zones</em></MenuItem>
                             {zones?.map(z => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
                         </Select>
                     </FormControl>
-                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!zoneId}>
+                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!zoneId || isLevelRestricted('WOREDA')}>
                         <InputLabel>Woreda</InputLabel>
-                        <Select value={woredaId} label="Woreda" onChange={(e) => handleWoredaChange(e.target.value)}>
+                        <Select 
+                            value={woredaId} 
+                            label="Woreda" 
+                            onChange={(e) => handleWoredaChange(e.target.value)}
+                            disabled={isLevelRestricted('WOREDA')}
+                        >
                             <MenuItem value=""><em>All Woredas</em></MenuItem>
                             {woredas?.map(w => <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>)}
                         </Select>
                     </FormControl>
-                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!woredaId}>
+                    <FormControl size="small" sx={{ minWidth: 120 }} disabled={!woredaId || isLevelRestricted('KEBELE')}>
                         <InputLabel>Kebele</InputLabel>
-                        <Select value={kebeleId} label="Kebele" onChange={(e) => handleKebeleChange(e.target.value)}>
+                        <Select 
+                            value={kebeleId} 
+                            label="Kebele" 
+                            onChange={(e) => handleKebeleChange(e.target.value)}
+                            disabled={isLevelRestricted('KEBELE')}
+                        >
                             <MenuItem value=""><em>All Kebeles</em></MenuItem>
                             {kebeles?.map(k => <MenuItem key={k.id} value={k.id}>{k.name}</MenuItem>)}
                         </Select>
@@ -189,16 +278,26 @@ export default function PerformanceAnalyticsPage() {
                         <Box sx={{ p: 2, mb: 2, borderRadius: 3, bgcolor: alpha(theme.palette.secondary.main, 0.05), border: '1px solid', borderColor: 'secondary.main' }}>
                             <Typography variant="subtitle2" fontWeight={800} color="secondary.main" sx={{ mb: 2 }}>COMPARISON ENTITY</Typography>
                             <Stack direction="row" spacing={1}>
-                                <FormControl size="small" fullWidth>
+                                <FormControl size="small" fullWidth disabled={isLevelRestricted('REGION')}>
                                     <InputLabel>Region</InputLabel>
-                                    <Select value={compRegionId} label="Region" onChange={(e) => setCompRegionId(e.target.value)}>
+                                    <Select 
+                                        value={compRegionId} 
+                                        label="Region" 
+                                        onChange={(e) => setCompRegionId(e.target.value)}
+                                        disabled={isLevelRestricted('REGION')}
+                                    >
                                         <MenuItem value=""><em>All Systems</em></MenuItem>
                                         {regions?.map(r => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
                                     </Select>
                                 </FormControl>
-                                <FormControl size="small" fullWidth disabled={!compRegionId}>
+                                <FormControl size="small" fullWidth disabled={!compRegionId || isLevelRestricted('ZONE')}>
                                     <InputLabel>Zone</InputLabel>
-                                    <Select value={compZoneId} label="Zone" onChange={(e) => setCompZoneId(e.target.value)}>
+                                    <Select 
+                                        value={compZoneId} 
+                                        label="Zone" 
+                                        onChange={(e) => setCompZoneId(e.target.value)}
+                                        disabled={isLevelRestricted('ZONE')}
+                                    >
                                         <MenuItem value=""><em>All Zones</em></MenuItem>
                                         {compZones?.map(z => <MenuItem key={z.id} value={z.id}>{z.name}</MenuItem>)}
                                     </Select>
