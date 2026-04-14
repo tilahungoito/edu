@@ -25,6 +25,7 @@ import {
 } from '@mui/icons-material';
 import { KPIGrid, AnalyticsChart } from '../';
 import { DataTable } from '../../tables';
+import { ErrorBoundary } from '../../common/ErrorBoundary';
 
 export function BureauDashboard({ stats, loading, zones, columns, tableTitle, onAdd, onView, onEdit, onDelete, resourceType }: any) {
     const theme = useTheme();
@@ -38,26 +39,32 @@ export function BureauDashboard({ stats, loading, zones, columns, tableTitle, on
 
     return (
         <Box>
-            <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            <ErrorBoundary fallbackMessage="Failed to load Overview Stats">
+                <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            </ErrorBoundary>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3, my: 4 }}>
-                <AnalyticsChart
-                    title="Enrollment Trends"
-                    subtitle="Students and teachers over time"
-                    data={stats?.enrollmentTrends || []}
-                    type="area"
-                    dataKeys={['students', 'teachers']}
-                    loading={loading}
-                    height={300}
-                />
-                <AnalyticsChart
-                    title="Institution Levels"
-                    subtitle="Distribution by tier"
-                    data={stats?.institutionLevels || []}
-                    type="pie"
-                    loading={loading}
-                    height={300}
-                />
+                <ErrorBoundary fallbackMessage="Failed to load Enrollment Trends">
+                    <AnalyticsChart
+                        title="Enrollment Trends"
+                        subtitle="Students and teachers over time"
+                        data={stats?.enrollmentTrends || []}
+                        type="area"
+                        dataKeys={['students', 'teachers']}
+                        loading={loading}
+                        height={300}
+                    />
+                </ErrorBoundary>
+                <ErrorBoundary fallbackMessage="Failed to load Tier Distribution">
+                    <AnalyticsChart
+                        title="Institution Levels"
+                        subtitle="Distribution by tier"
+                        data={stats?.institutionLevels || []}
+                        type="pie"
+                        loading={loading}
+                        height={300}
+                    />
+                </ErrorBoundary>
             </Box>
 
             <DataTable
@@ -102,18 +109,22 @@ export function InstitutionDashboard({ stats, loading }: any) {
 
     return (
         <Box>
-            <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            <ErrorBoundary fallbackMessage="Failed to load Performance Overview">
+                <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            </ErrorBoundary>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3, mt: 4 }}>
-                <AnalyticsChart
-                    title="Daily Attendance & Collections"
-                    subtitle="Week-over-week financial and presence tracking"
-                    data={stats?.attendanceAndRevenue || []}
-                    type="area"
-                    dataKeys={['attendance', 'revenue']}
-                    loading={loading}
-                    height={350}
-                />
+                <ErrorBoundary fallbackMessage="Failed to load Collections Trend">
+                    <AnalyticsChart
+                        title="Daily Collections Trend"
+                        subtitle="Week-over-week financial tracking"
+                        data={stats?.financialTrends || []}
+                        type="area"
+                        dataKeys={['revenue']}
+                        loading={loading}
+                        height={350}
+                    />
+                </ErrorBoundary>
 
                 <Stack spacing={3}>
                     <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
@@ -147,14 +158,16 @@ export function InstitutionDashboard({ stats, loading }: any) {
                         </CardContent>
                     </Card>
 
-                    <AnalyticsChart
-                        title="Grade Distribution"
-                        subtitle="School breakdown"
-                        data={stats?.gradeDistribution || []}
-                        type="pie"
-                        loading={loading}
-                        height={230}
-                    />
+                    <ErrorBoundary fallbackMessage="Failed to load Grade Breakdown">
+                        <AnalyticsChart
+                            title="Grade Distribution"
+                            subtitle="School breakdown"
+                            data={stats?.gradeDistribution || []}
+                            type="pie"
+                            loading={loading}
+                            height={230}
+                        />
+                    </ErrorBoundary>
                 </Stack>
             </Box>
 
@@ -177,14 +190,16 @@ export function InstitutionDashboard({ stats, loading }: any) {
 
             {stats?.sectionUtilization?.length > 0 && (
                 <Box sx={{ mt: 4 }}>
-                    <AnalyticsChart
-                        title="Section Capacity Utilization"
-                        subtitle="Student population vs classroom capacity"
-                        data={stats.sectionUtilization}
-                        type="bar"
-                        loading={loading}
-                        height={300}
-                    />
+                    <ErrorBoundary fallbackMessage="Failed to load Capacity Utilization">
+                        <AnalyticsChart
+                            title="Section Capacity Utilization"
+                            subtitle="Student population vs classroom capacity"
+                            data={stats.sectionUtilization}
+                            type="bar"
+                            loading={loading}
+                            height={300}
+                        />
+                    </ErrorBoundary>
                 </Box>
             )}
         </Box>
@@ -465,42 +480,46 @@ export function InstructorDashboard({ stats, loading, user }: any) {
             </Paper>
 
             {/* KPI Section */}
-            <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            <ErrorBoundary fallbackMessage="Failed to load Metric Summary">
+                <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            </ErrorBoundary>
 
             <Grid container spacing={3} sx={{ mt: 1 }}>
                 {/* Main Trends Chart */}
                 <Grid size={{ xs: 12, lg: 8 }}>
-                    <AnalyticsChart
-                        title="Attendance Tracking"
-                        subtitle={attendanceView === 'week' ? "Weekly presence percentage (Last 6 weeks)" : "Daily presence tracking (Current week)"}
-                        data={attendanceData || []}
-                        type="area"
-                        dataKeys={['attendance', 'target']}
-                        colors={[theme.palette.primary.main, theme.palette.divider]}
-                        loading={loading}
-                        height={350}
-                        onExport={handleExport}
-                        extraActions={
-                            <Stack direction="row" spacing={1} sx={{ bgcolor: alpha(theme.palette.action.hover, 0.1), p: 0.5, borderRadius: 2 }}>
-                                <Button
-                                    size="small"
-                                    variant={attendanceView === 'day' ? 'contained' : 'text'}
-                                    onClick={() => setAttendanceView('day')}
-                                    sx={{ minWidth: 60, borderRadius: 1.5, fontSize: '0.7rem', py: 0 }}
-                                >
-                                    Daily
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant={attendanceView === 'week' ? 'contained' : 'text'}
-                                    onClick={() => setAttendanceView('week')}
-                                    sx={{ minWidth: 60, borderRadius: 1.5, fontSize: '0.7rem', py: 0 }}
-                                >
-                                    Weekly
-                                </Button>
-                            </Stack>
-                        }
-                    />
+                    <ErrorBoundary fallbackMessage="Failed to load Attendance Analytics">
+                        <AnalyticsChart
+                            title="Attendance Tracking"
+                            subtitle={attendanceView === 'week' ? "Weekly presence percentage (Last 6 weeks)" : "Daily presence tracking (Current week)"}
+                            data={attendanceData || []}
+                            type="area"
+                            dataKeys={['attendance', 'target']}
+                            colors={[theme.palette.primary.main, theme.palette.divider]}
+                            loading={loading}
+                            height={350}
+                            onExport={handleExport}
+                            extraActions={
+                                <Stack direction="row" spacing={1} sx={{ bgcolor: alpha(theme.palette.action.hover, 0.1), p: 0.5, borderRadius: 2 }}>
+                                    <Button
+                                        size="small"
+                                        variant={attendanceView === 'day' ? 'contained' : 'text'}
+                                        onClick={() => setAttendanceView('day')}
+                                        sx={{ minWidth: 60, borderRadius: 1.5, fontSize: '0.7rem', py: 0 }}
+                                    >
+                                        Daily
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        variant={attendanceView === 'week' ? 'contained' : 'text'}
+                                        onClick={() => setAttendanceView('week')}
+                                        sx={{ minWidth: 60, borderRadius: 1.5, fontSize: '0.7rem', py: 0 }}
+                                    >
+                                        Weekly
+                                    </Button>
+                                </Stack>
+                            }
+                        />
+                    </ErrorBoundary>
                     {!loading && (!attendanceData || attendanceData.length === 0) && (
                         <Box sx={{ mt: -2, pb: 2, textAlign: 'center' }}>
                             <Typography variant="caption" color="text.secondary">No attendance trends found for current selections.</Typography>
@@ -559,14 +578,16 @@ export function InstructorDashboard({ stats, loading, user }: any) {
             {/* Smart Insights & Classroom Wellness */}
             <Grid container spacing={3} sx={{ mt: 1 }}>
                 <Grid size={{ xs: 12, md: 5 }}>
-                    <AnalyticsChart
-                        title="Classroom Wellness"
-                        subtitle="Engagement trends by behavioral records"
-                        data={behaviorData || []}
-                        type="pie"
-                        loading={loading}
-                        height={320}
-                    />
+                    <ErrorBoundary fallbackMessage="Failed to load Wellness Metrics">
+                        <AnalyticsChart
+                            title="Classroom Wellness"
+                            subtitle="Engagement trends by behavioral records"
+                            data={behaviorData || []}
+                            type="pie"
+                            loading={loading}
+                            height={320}
+                        />
+                    </ErrorBoundary>
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 7 }}>
@@ -611,16 +632,18 @@ export function InstructorDashboard({ stats, loading, user }: any) {
             {/* Course Comparison & Activity Stream */}
             <Grid container spacing={3} sx={{ mt: 1 }}>
                 <Grid size={{ xs: 12, md: 7 }}>
-                    <AnalyticsChart
-                        title="Subject Comparison"
-                        subtitle="Benchmarking performance across all assigned subjects"
-                        data={displayStats?.comparisonRadar || []}
-                        type="radar"
-                        dataKeys={['Academic', 'Attendance', 'Engagement']}
-                        colors={[theme.palette.primary.main, theme.palette.secondary.main, theme.palette.warning.main]}
-                        loading={loading}
-                        height={350}
-                    />
+                    <ErrorBoundary fallbackMessage="Failed to load Subject Comparison">
+                        <AnalyticsChart
+                            title="Subject Comparison"
+                            subtitle="Benchmarking performance across all assigned subjects"
+                            data={displayStats?.comparisonRadar || []}
+                            type="radar"
+                            dataKeys={['Academic', 'Attendance', 'Engagement']}
+                            colors={[theme.palette.primary.main, theme.palette.secondary.main, theme.palette.warning.main]}
+                            loading={loading}
+                            height={350}
+                        />
+                    </ErrorBoundary>
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 5 }}>
@@ -655,16 +678,18 @@ export function InstructorDashboard({ stats, loading, user }: any) {
             <Grid container spacing={3} sx={{ mt: 1 }}>
                 {/* Grade Distribution */}
                 <Grid size={{ xs: 12, md: 4 }}>
-                    <AnalyticsChart
-                        title="Grade Distribution"
-                        subtitle="Performance breakdown for the selected cohort"
-                        data={gradeDistribution.length > 0 ? gradeDistribution : []}
-                        type="pie"
-                        dataKeys={['value']}
-                        loading={loading}
-                        height={320}
-                        onExport={handleExport}
-                    />
+                    <ErrorBoundary fallbackMessage="Failed to load Grade Analytics">
+                        <AnalyticsChart
+                            title="Grade Distribution"
+                            subtitle="Performance breakdown for the selected cohort"
+                            data={gradeDistribution.length > 0 ? gradeDistribution : []}
+                            type="pie"
+                            dataKeys={['value']}
+                            loading={loading}
+                            height={320}
+                            onExport={handleExport}
+                        />
+                    </ErrorBoundary>
                     {!loading && gradeDistribution.every((d: any) => d.value === 0) && (
                         <Box sx={{ mt: -2, pb: 2, textAlign: 'center' }}>
                             <Typography variant="caption" color="text.secondary">No graded assessments found.</Typography>
@@ -726,16 +751,18 @@ export function InstructorDashboard({ stats, loading, user }: any) {
 
                 {/* Assessment Performance chart */}
                 <Grid size={{ xs: 12, md: 4 }}>
-                    <AnalyticsChart
-                        title="Assessment Performance"
-                        subtitle="Average results per evaluation type"
-                        data={displayStats?.assessmentAverages || []}
-                        type="bar"
-                        dataKeys={['score']}
-                        loading={loading}
-                        height={320}
-                        onExport={handleExport}
-                    />
+                    <ErrorBoundary fallbackMessage="Failed to load Assessment Data">
+                        <AnalyticsChart
+                            title="Assessment Performance"
+                            subtitle="Average results per evaluation type"
+                            data={displayStats?.assessmentAverages || []}
+                            type="bar"
+                            dataKeys={['score']}
+                            loading={loading}
+                            height={320}
+                            onExport={handleExport}
+                        />
+                    </ErrorBoundary>
                 </Grid>
             </Grid>
 
@@ -768,6 +795,11 @@ export function StudentDashboard({ stats, loading, user }: any) {
         { label: 'Pending Dues', value: '0 ETB', icon: 'Budget', trend: 'stable' as const },
     ];
 
+    const coursePerformance = stats?.enrollments?.map((e: any) => ({
+        name: e.course?.code?.slice(0, 8) || e.course?.name?.slice(0, 8) || 'Unknown',
+        score: e.gradeBook?.totalScore || 0
+    })) || [];
+
     return (
         <Box>
             <KPIGrid kpis={kpis} loading={loading} columns={4} />
@@ -789,19 +821,22 @@ export function StudentDashboard({ stats, loading, user }: any) {
 
                 <Card sx={{ borderRadius: 4, height: '100%', border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                     <CardContent>
-                        <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Grade Distribution</Typography>
-                        <AnalyticsChart
-                            title=""
-                            data={[
-                                { name: 'A', count: 4 },
-                                { name: 'B', count: 2 },
-                                { name: 'C', count: 0 },
-                            ]}
-                            type="pie"
-                            dataKeys={['count']}
-                            loading={loading}
-                            height={250}
-                        />
+                        <Typography variant="h6" fontWeight={800} sx={{ mb: 2 }}>Course Performance</Typography>
+                        <ErrorBoundary fallbackMessage="Failed to load Learning Analytics">
+                            <AnalyticsChart
+                                title=""
+                                data={coursePerformance}
+                                type="bar"
+                                dataKeys={['score']}
+                                loading={loading}
+                                height={250}
+                            />
+                        </ErrorBoundary>
+                        {!loading && coursePerformance.length === 0 && (
+                            <Box sx={{ mt: -2, pb: 2, textAlign: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">No graded enrollments found.</Typography>
+                            </Box>
+                        )}
                     </CardContent>
                 </Card>
             </Box>
@@ -835,18 +870,22 @@ export function RegistrarDashboard({ stats, loading }: any) {
 
     return (
         <Box>
-            <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            <ErrorBoundary fallbackMessage="Failed to load Metrics">
+                <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            </ErrorBoundary>
             
             <Box sx={{ mt: 4, display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 3 }}>
-                <AnalyticsChart
-                    title="Student Growth Trend"
-                    subtitle="New registrations per week (Last 4 weeks)"
-                    data={stats?.enrollmentTrends || []}
-                    type="area"
-                    dataKeys={['value']}
-                    loading={loading}
-                    height={320}
-                />
+                <ErrorBoundary fallbackMessage="Failed to load Growth Analytics">
+                    <AnalyticsChart
+                        title="Student Growth Trend"
+                        subtitle="New registrations per week (Last 4 weeks)"
+                        data={stats?.enrollmentTrends || []}
+                        type="area"
+                        dataKeys={['value']}
+                        loading={loading}
+                        height={320}
+                    />
+                </ErrorBoundary>
                 
                 <Stack spacing={3}>
                     <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
@@ -962,28 +1001,34 @@ export function AccountantDashboard({ stats, loading }: any) {
 
     return (
         <Box>
-            <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            <ErrorBoundary fallbackMessage="Failed to load Financial Metrics">
+                <KPIGrid kpis={kpis} loading={loading} columns={4} />
+            </ErrorBoundary>
             <Box sx={{ mt: 4, display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.5fr 1fr' }, gap: 3 }}>
-                <AnalyticsChart
-                    title="Revenue Performance"
-                    subtitle="Weekly actual collections trend"
-                    data={stats?.financialTrends || []}
-                    type="area"
-                    dataKeys={['revenue']}
-                    loading={loading}
-                    height={350}
-                />
+                <ErrorBoundary fallbackMessage="Failed to load Revenue Trends">
+                    <AnalyticsChart
+                        title="Revenue Performance"
+                        subtitle="Weekly actual collections trend"
+                        data={stats?.financialTrends || []}
+                        type="area"
+                        dataKeys={['revenue']}
+                        loading={loading}
+                        height={350}
+                    />
+                </ErrorBoundary>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {stats?.revenueBreakdown?.length > 0 && (
-                        <AnalyticsChart
-                            title="Revenue Breakdown"
-                            subtitle="Distribution by payment purpose"
-                            data={stats.revenueBreakdown}
-                            type="pie"
-                            loading={loading}
-                            height={250}
-                        />
+                        <ErrorBoundary fallbackMessage="Failed to load Allocation Breakdown">
+                            <AnalyticsChart
+                                title="Revenue Breakdown"
+                                subtitle="Distribution by payment purpose"
+                                data={stats.revenueBreakdown}
+                                type="pie"
+                                loading={loading}
+                                height={250}
+                            />
+                        </ErrorBoundary>
                     )}
 
                     <Card sx={{ borderRadius: 4, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>

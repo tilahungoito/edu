@@ -7,9 +7,19 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000';
 let sharedSocket: Socket | null = null;
 let connectionCount = 0;
 
+import { useAuthStore } from '../store';
+
 function getSocket(): Socket {
+    const token = useAuthStore.getState().token;
+    
     if (!sharedSocket || !sharedSocket.connected) {
-        sharedSocket = io(SOCKET_URL, { reconnection: true, reconnectionDelay: 1000 });
+        sharedSocket = io(SOCKET_URL, { 
+            reconnection: true, 
+            reconnectionDelay: 1000,
+            auth: {
+                token: token ? `Bearer ${token}` : undefined
+            }
+        });
         sharedSocket.on('connect', () => console.log('[RealTime] Connected:', sharedSocket?.id));
         sharedSocket.on('disconnect', () => console.log('[RealTime] Disconnected'));
     }

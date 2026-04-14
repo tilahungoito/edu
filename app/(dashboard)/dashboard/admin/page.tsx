@@ -126,7 +126,7 @@ export default function SystemAdminDashboard() {
                             size="large"
                             startIcon={<AddIcon />}
                             sx={{ py: 1.5 }}
-                            onClick={() => window.location.href = '/dashboard/management/regions'}
+                            onClick={() => window.location.href = '/management/regions'}
                         >
                             Manage Regions
                         </Button>

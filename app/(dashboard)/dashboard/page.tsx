@@ -47,31 +47,7 @@ import { useRouter } from 'next/navigation';
 import type { Zone, KPIData, TenantType, ResourceType } from '@/app/lib/types';
 import { Notifications as NotificationsIcon, DoneAll as DoneAllIcon } from '@mui/icons-material';
 
-// Sample chart data
-const enrollmentTrendData = [
-    { name: 'Jan', students: 420000, teachers: 14200 },
-    { name: 'Feb', students: 425000, teachers: 14350 },
-    { name: 'Mar', students: 430000, teachers: 14500 },
-    { name: 'Apr', students: 435000, teachers: 14650 },
-    { name: 'May', students: 440000, teachers: 14800 },
-    { name: 'Jun', students: 447000, teachers: 15150 },
-];
-
-const zoneDistributionData = [
-    { name: 'Mekelle', value: 125000 },
-    { name: 'Adigrat', value: 85000 },
-    { name: 'Axum', value: 78000 },
-    { name: 'Shire', value: 62000 },
-    { name: 'Wukro', value: 45000 },
-    { name: 'Adwa', value: 52000 },
-];
-
-// School level type mapping
-const schoolTypeData = [
-    { name: 'Primary', value: 620 },
-    { name: 'Secondary', value: 245 },
-    { name: 'Preparatory', value: 83 },
-];
+// Deleted mock properties. Replaced with dynamic API responses bounded through DashboardService.
 
 // Zone columns
 const zoneColumns: GridColDef[] = [

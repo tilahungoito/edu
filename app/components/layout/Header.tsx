@@ -53,6 +53,9 @@ interface HeaderProps {
     onMenuClick?: () => void;
 }
 
+import { useRealTime } from '@/app/lib/hooks/useRealTime';
+import { toast } from 'react-hot-toast';
+
 export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
     const theme = useTheme();
     const router = useRouter();
@@ -69,17 +72,30 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
     const [searchAnchor, setSearchAnchor] = useState<null | HTMLElement>(null);
     const [mounted, setMounted] = useState(false);
 
+    // --- Real-Time Sync ---
+    useRealTime('notification_created', (notif) => {
+        console.log('[RealTime] New notification received:', notif);
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+        toast.success(`New Alert: ${notif.title}`, { icon: '🔔' });
+    });
+
+    useRealTime('announcement_created', (announcement) => {
+        console.log('[RealTime] New announcement received:', announcement);
+        queryClient.invalidateQueries({ queryKey: ['announcements'] });
+        queryClient.invalidateQueries({ queryKey: ['announcements', 'unread-count'] });
+        toast.success(`News: ${announcement.title}`, { icon: '📢' });
+    });
+
     const { data: unreadAnnouncements } = useQuery({
         queryKey: ['announcements', 'unread-count'],
         queryFn: () => announcementsService.getUnreadCount(),
-        refetchInterval: 30000,
         enabled: !!user,
     });
 
     const { data: unreadNotifications } = useQuery({
         queryKey: ['notifications', 'unread-count'],
         queryFn: () => notificationsService.getUnreadCount(),
-        refetchInterval: 30000,
         enabled: !!user,
     });
 
@@ -88,14 +104,12 @@ export function Header({ sidebarCollapsed, onMenuClick }: HeaderProps) {
     const { data: announcements = [] } = useQuery({
         queryKey: ['announcements'],
         queryFn: () => announcementsService.getAll(),
-        refetchInterval: 60000,
         enabled: Boolean(notificationAnchor),
     });
 
     const { data: notifications = [] } = useQuery({
         queryKey: ['notifications'],
         queryFn: () => notificationsService.getAll(),
-        refetchInterval: 60000,
         enabled: Boolean(notificationAnchor),
     });
 

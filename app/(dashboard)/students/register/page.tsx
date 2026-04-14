@@ -27,6 +27,19 @@ import { useAuthStore } from '@/app/lib/store';
 import studentsService from '@/app/lib/api/students.service';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+const registrationSchema = z.object({
+    firstName: z.string().min(2, 'First name must be at least 2 characters').max(50),
+    lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
+    program: z.string().min(1, 'Please select a program'),
+    year: z.string().min(1, 'Please select a grade/year'),
+    gender: z.enum(['MALE', 'FEMALE'] as const, 'Please select a gender'),
+});
+
+type RegistrationFormData = z.infer<typeof registrationSchema>;
 
 export default function StudentRegistrationPage() {
     const theme = useTheme();
@@ -37,31 +50,26 @@ export default function StudentRegistrationPage() {
     const [success, setSuccess] = useState(false);
     const [registeredStudent, setRegisteredStudent] = useState<any>(null);
 
-    // Form State
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        program: '',
-        year: '1',
-        gender: '' as 'MALE' | 'FEMALE' | '',
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+        watch,
+        reset
+    } = useForm<RegistrationFormData>({
+        resolver: zodResolver(registrationSchema),
+        defaultValues: {
+            firstName: '',
+            lastName: '',
+            program: '',
+            year: '1',
+            gender: undefined as any
+        }
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSubmit = async (data: RegistrationFormData) => {
         if (!user?.tenantId) {
             setError('System Error: Administrator institution ID missing');
-            return;
-        }
-
-        if (!formData.firstName || !formData.lastName || !formData.program || !formData.gender) {
-            setError('Please fill in all required fields');
             return;
         }
 
@@ -70,17 +78,17 @@ export default function StudentRegistrationPage() {
 
         try {
             const result = await studentsService.create({
-                firstName: formData.firstName,
-                lastName: formData.lastName,
+                firstName: data.firstName,
+                lastName: data.lastName,
                 institutionId: user.tenantId,
-                program: formData.program,
-                year: parseInt(formData.year),
-                gender: formData.gender as 'MALE' | 'FEMALE',
+                program: data.program,
+                year: parseInt(data.year),
+                gender: data.gender,
             });
 
             setRegisteredStudent(result);
             setSuccess(true);
-            toast.success(`${formData.firstName} registered${result?.section ? ` → ${result.section.name}` : ''}!`);
+            toast.success(`${data.firstName} registered${result?.section ? ` → ${result.section.name}` : ''}!`);
         } catch (err: any) {
             console.error('Registration failed:', err);
             setError(err.response?.data?.message || err.message || 'Registration failed');
@@ -88,6 +96,9 @@ export default function StudentRegistrationPage() {
             setLoading(false);
         }
     };
+
+    const studentFirstName = watch('firstName');
+    const studentLastName = watch('lastName');
 
     if (success) {
         return (
@@ -98,7 +109,7 @@ export default function StudentRegistrationPage() {
                         Registration Successful!
                     </Typography>
                     <Typography color="text.secondary" paragraph>
-                        <b>{formData.firstName} {formData.lastName}</b> has been added to the student directory.
+                        <b>{studentFirstName} {studentLastName}</b> has been added to the student directory.
                     </Typography>
                     
                     {registeredStudent?.section ? (
@@ -134,7 +145,7 @@ export default function StudentRegistrationPage() {
                             onClick={() => {
                                 setSuccess(false);
                                 setRegisteredStudent(null);
-                                setFormData({ firstName: '', lastName: '', program: '', year: '1', gender: '' });
+                                reset();
                             }}
                             sx={{ borderRadius: 2.5, px: 3 }}
                         >
@@ -176,7 +187,7 @@ export default function StudentRegistrationPage() {
                 </Typography>
             </Box>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit(onSubmit)}>
                 <Paper sx={{ p: 4, borderRadius: 4 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
                         <PersonIcon color="primary" />
@@ -188,10 +199,10 @@ export default function StudentRegistrationPage() {
                             <TextField
                                 fullWidth
                                 label="First Name"
-                                name="firstName"
                                 required
-                                value={formData.firstName}
-                                onChange={handleChange}
+                                {...register('firstName')}
+                                error={!!errors.firstName}
+                                helperText={errors.firstName?.message}
                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                             />
                         </Grid>
@@ -199,10 +210,10 @@ export default function StudentRegistrationPage() {
                             <TextField
                                 fullWidth
                                 label="Last Name"
-                                name="lastName"
                                 required
-                                value={formData.lastName}
-                                onChange={handleChange}
+                                {...register('lastName')}
+                                error={!!errors.lastName}
+                                helperText={errors.lastName?.message}
                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                             />
                         </Grid>
@@ -211,12 +222,15 @@ export default function StudentRegistrationPage() {
                                 fullWidth
                                 select
                                 label="Gender"
-                                name="gender"
                                 required
-                                value={formData.gender}
-                                onChange={handleChange}
+                                defaultValue=""
+                                {...register('gender')}
+                                error={!!errors.gender}
+                                helperText={errors.gender?.message}
+                                slotProps={{ select: { displayEmpty: true } }}
                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                             >
+                                <MenuItem value="" disabled>Select Gender</MenuItem>
                                 <MenuItem value="MALE">Male</MenuItem>
                                 <MenuItem value="FEMALE">Female</MenuItem>
                             </TextField>
@@ -226,10 +240,11 @@ export default function StudentRegistrationPage() {
                                 fullWidth
                                 select
                                 label="Grade / Year"
-                                name="year"
                                 required
-                                value={formData.year}
-                                onChange={handleChange}
+                                defaultValue="1"
+                                {...register('year')}
+                                error={!!errors.year}
+                                helperText={errors.year?.message}
                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                             >
                                 {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
@@ -242,12 +257,14 @@ export default function StudentRegistrationPage() {
                                 fullWidth
                                 select
                                 label="Program / Stream"
-                                name="program"
                                 required
-                                value={formData.program}
-                                onChange={handleChange}
+                                defaultValue=""
+                                {...register('program')}
+                                error={!!errors.program}
+                                helperText={errors.program?.message}
                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                             >
+                                <MenuItem value="" disabled>Select Program</MenuItem>
                                 <MenuItem value="Natural Science">Natural Science</MenuItem>
                                 <MenuItem value="Social Science">Social Science</MenuItem>
                                 <MenuItem value="General">General</MenuItem>
