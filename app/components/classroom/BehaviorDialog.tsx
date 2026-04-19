@@ -94,23 +94,41 @@ export function BehaviorDialog({
             // Instructor-scoped: fetch students via their courses
             classroomService.getInstructorCourses()
                 .then(async (courses: any[]) => {
-                    // Collect unique students across all courses
                     const studentMap = new Map<string, Student>();
-                    await Promise.all(
-                        courses.map(async (course: any) => {
-                            try {
-                                const courseStudents = await classroomService.getStudentsInCourse(course.id);
-                                (courseStudents as any[]).forEach((s: any) => {
-                                    // courseStudents items have a student sub-object
-                                    const student = s.student ?? s;
-                                    if (student?.id) studentMap.set(student.id, student);
-                                });
-                            } catch { /* skip inaccessible courses */ }
-                        })
-                    );
-                    setStudents(Array.from(studentMap.values()));
+                    
+                    if (courses && courses.length > 0) {
+                        await Promise.all(
+                            courses.map(async (course: any) => {
+                                try {
+                                    const result = await classroomService.getStudentsInCourse(course.id);
+                                    const courseStudents = (result as any).students || [];
+                                    courseStudents.forEach((s: any) => {
+                                        const student = s.student ?? s;
+                                        if (student?.id) studentMap.set(student.id, student);
+                                    });
+                                } catch (err) {
+                                    console.error(`Failed to fetch students for course ${course.id}:`, err);
+                                }
+                            })
+                        );
+                    }
+
+                    const list = Array.from(studentMap.values());
+                    
+                    // FALLBACK: If instructor has no students in courses, try fetching institution-wide
+                    if (list.length === 0) {
+                        const allStudents = await studentsService.getAll({ institutionId: effectiveInstitutionId });
+                        setStudents(allStudents);
+                    } else {
+                        setStudents(list);
+                    }
                 })
-                .catch(() => setStudents([]))
+                .catch(async (err) => {
+                    console.error('Failed to fetch instructor courses, falling back to all students:', err);
+                    // Fallback to all students on error too
+                    const allStudents = await studentsService.getAll({ institutionId: effectiveInstitutionId });
+                    setStudents(allStudents);
+                })
                 .finally(() => setFetchingStudents(false));
         } else {
             // Admin / Registrar: all institution students

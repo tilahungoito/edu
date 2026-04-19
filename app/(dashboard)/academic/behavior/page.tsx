@@ -92,16 +92,7 @@ export default function BehaviorPage() {
     const { data: records, isLoading, refetch } = useQuery({
         queryKey: ['behavior-records', user?.tenantId, userRole, userId, selectedType],
         queryFn: async () => {
-            if (isInstructor) {
-                // Fetch all institution records then filter client-side by recordedById
-                // This keeps the API surface small — the backend already enforces auth
-                const all = await classroomService.getBehaviorByInstitution(
-                    user?.tenantId || '',
-                    selectedType === 'all' ? undefined : selectedType,
-                );
-                // Data isolation: instructors only see records they created
-                return all.filter(r => (r as any).recordedById === userId);
-            }
+            // The backend securely handles instructor data isolation based on their role
             return classroomService.getBehaviorByInstitution(
                 user?.tenantId || '',
                 selectedType === 'all' ? undefined : selectedType,
