@@ -19,6 +19,7 @@ import {
     FormControlLabel,
     Switch,
     Divider,
+    Autocomplete,
 } from '@mui/material';
 import { classroomService, BehaviorRecord, CreateBehaviorData } from '@/app/lib/api/classroom.service';
 import { studentsService, Student } from '@/app/lib/api/students.service';
@@ -199,35 +200,54 @@ export function BehaviorDialog({
                         {/* Student selector — hidden when studentId is fixed */}
                         {!studentId && (
                             <Grid size={{ xs: 12 }}>
-                                <TextField
-                                    select
-                                    label="Target Student *"
-                                    fullWidth
-                                    required
-                                    value={formData.studentId}
-                                    onChange={e => setFormData({ ...formData, studentId: e.target.value })}
-                                    disabled={fetchingStudents || !!record?.id}
-                                    helperText={
-                                        restrictToInstructor
-                                            ? 'Showing only students enrolled in your courses'
-                                            : 'All students in this institution'
+                                <Autocomplete
+                                    options={students}
+                                    getOptionLabel={(option) => 
+                                        `${option.user?.firstName} ${option.user?.lastName} ${option.user?.username ? `(@${option.user.username})` : ''}`
                                     }
-                                >
-                                    {fetchingStudents ? (
-                                        <MenuItem disabled>
-                                            <CircularProgress size={16} sx={{ mr: 1 }} /> Loading students…
-                                        </MenuItem>
-                                    ) : students.length === 0 ? (
-                                        <MenuItem disabled>No students found</MenuItem>
-                                    ) : (
-                                        students.map(s => (
-                                            <MenuItem key={s.id} value={s.id}>
-                                                {s.user?.firstName} {s.user?.lastName}
-                                                {s.user?.username ? ` — @${s.user.username}` : ''}
-                                            </MenuItem>
-                                        ))
+                                    loading={fetchingStudents}
+                                    value={students.find(s => s.id === formData.studentId) || null}
+                                    onChange={(_, newValue) => {
+                                        setFormData({ ...formData, studentId: newValue?.id || '' });
+                                    }}
+                                    disabled={fetchingStudents || !!record?.id}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Target Student *"
+                                            required={!formData.studentId}
+                                            placeholder="Search by name or username..."
+                                            helperText={
+                                                restrictToInstructor
+                                                    ? 'Showing only students enrolled in your courses'
+                                                    : 'All students in this institution'
+                                            }
+                                            slotProps={{
+                                                input: {
+                                                    ...params.InputProps,
+                                                    endAdornment: (
+                                                        <React.Fragment>
+                                                            {fetchingStudents ? <CircularProgress color="inherit" size={20} /> : null}
+                                                            {params.InputProps.endAdornment}
+                                                        </React.Fragment>
+                                                    ),
+                                                }
+                                            }}
+                                        />
                                     )}
-                                </TextField>
+                                    renderOption={(props, option) => (
+                                        <Box component="li" {...props} key={option.id} sx={{ py: 1, px: 2 }}>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                                <Typography variant="body2" fontWeight={700}>
+                                                    {option.user?.firstName} {option.user?.lastName}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {option.user?.username ? `@${option.user.username}` : `ID: ${option.id.slice(0, 8)}`}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    )}
+                                />
                             </Grid>
                         )}
 

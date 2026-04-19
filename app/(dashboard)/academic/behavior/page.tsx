@@ -42,12 +42,12 @@ import { toast } from 'react-hot-toast';
 // ─── Types & Config ───────────────────────────────────────────────────────────
 
 const BEHAVIOR_CONFIG: Record<string, { color: string; label: string }> = {
-    POSITIVE:      { color: '#10b981', label: 'Positive'     },
-    WARNING:       { color: '#f59e0b', label: 'Warning'      },
-    DISCIPLINARY:  { color: '#ef4444', label: 'Disciplinary' },
-    CRITICAL:      { color: '#7f1d1d', label: 'Critical'     },
-    COUNSELING:    { color: '#8b5cf6', label: 'Counseling'   },
-    OBSERVATION:   { color: '#3b82f6', label: 'Observation'  },
+    POSITIVE: { color: '#10b981', label: 'Positive' },
+    WARNING: { color: '#f59e0b', label: 'Warning' },
+    DISCIPLINARY: { color: '#ef4444', label: 'Disciplinary' },
+    CRITICAL: { color: '#7f1d1d', label: 'Critical' },
+    COUNSELING: { color: '#8b5cf6', label: 'Counseling' },
+    OBSERVATION: { color: '#3b82f6', label: 'Observation' },
 };
 
 // Roles that can write behavior records
@@ -62,15 +62,22 @@ export default function BehaviorPage() {
     const user = useAuthStore(state => state.user);
 
     // Derive role helper from store
-    const userRole = user?.roles?.[0]?.name || '';
-    const userId   = user?.id || '';
-    const isInstructor     = userRole === 'INSTRUCTOR';
-    const isAdminOrHigher  = ADMIN_DELETE_ROLES.includes(userRole);
-    const canWrite         = WRITE_ROLES.includes(userRole);
+    const rawRole = user?.roles?.[0]?.name || '';
+    const userRole = rawRole.toUpperCase().replace(' ', '_');
+    const userId = user?.id || '';
+
+    // Explicit role checks
+    const isInstructor = userRole === 'INSTRUCTOR';
+    const isRegistrar = userRole === 'REGISTRAR';
+    const isInstAdmin = userRole === 'INSTITUTION_ADMIN';
+    const isSysAdmin = userRole === 'SYSTEM_ADMIN';
+
+    const isAdminOrHigher = isSysAdmin || isInstAdmin || isRegistrar;
+    const canWrite = isAdminOrHigher || isInstructor;
 
     // State
     const [selectedType, setSelectedType] = useState<string>('all');
-    const [searchQuery, setSearchQuery]   = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
@@ -105,8 +112,8 @@ export default function BehaviorPage() {
 
     // Real-time updates
     useRealTime('behavior_recorded', () => { refetch(); });
-    useRealTime('behavior_updated',  () => { refetch(); });
-    useRealTime('behavior_deleted',  () => { refetch(); });
+    useRealTime('behavior_updated', () => { refetch(); });
+    useRealTime('behavior_deleted', () => { refetch(); });
 
     // ─── Derived data ─────────────────────────────────────────────────────────
 
@@ -125,10 +132,10 @@ export default function BehaviorPage() {
     const stats = useMemo(() => {
         if (!records) return { critical: 0, positive: 0, warning: 0, total: 0 };
         return {
-            total:    records.length,
+            total: records.length,
             critical: records.filter(r => r.type === 'CRITICAL').length,
             positive: records.filter(r => r.type === 'POSITIVE').length,
-            warning:  records.filter(r => r.type === 'WARNING' || r.type === 'DISCIPLINARY').length,
+            warning: records.filter(r => r.type === 'WARNING' || r.type === 'DISCIPLINARY').length,
         };
     }, [records]);
 
@@ -315,9 +322,9 @@ export default function BehaviorPage() {
             {/* ── Stats ── */}
             <Grid container spacing={3} sx={{ mb: 4 }}>
                 {[
-                    { label: 'Total Observations', value: stats.total,    color: 'primary', icon: <ObserveIcon /> },
-                    { label: 'Critical / Warning',  value: stats.warning,  color: 'error',   icon: <WarningIcon /> },
-                    { label: 'Positive Records',    value: stats.positive, color: 'success', icon: <AwardsIcon /> },
+                    { label: 'Total Observations', value: stats.total, color: 'primary', icon: <ObserveIcon /> },
+                    { label: 'Critical / Warning', value: stats.warning, color: 'error', icon: <WarningIcon /> },
+                    { label: 'Positive Records', value: stats.positive, color: 'success', icon: <AwardsIcon /> },
                 ].map((stat, i) => (
                     <Grid size={{ xs: 12, sm: 4 }} key={i}>
                         <Paper elevation={0} sx={{
