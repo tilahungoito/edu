@@ -93,11 +93,11 @@ function BetweenFilterInput(props: any) {
 
 // --- Custom Column Menu ---
 function CustomColumnMenu(props: any) {
-    const { hideMenu, colDef, assessments, setAssessmentToEdit, setEditAssessmentOpen, isInstructor, isGradebookLocked, ...otherProps } = props;
+    const { hideMenu, colDef, assessments, setAssessmentToEdit, setEditAssessmentOpen, isInstructor, isAdmin, isGradebookLocked, ...otherProps } = props;
 
     const assessment = assessments?.find((a: any) => a.id === colDef.field);
 
-    if (assessment && isInstructor && !isGradebookLocked) {
+    if (assessment && (isInstructor || isAdmin) && !isGradebookLocked) {
         return (
             <GridColumnMenu
                 hideMenu={hideMenu}
@@ -267,8 +267,9 @@ function InstructorGradebookView() {
 
     const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
 
-    const isInstructor = user?.roles?.some(r => r.name === 'INSTRUCTOR');
-    const isAdmin = user?.roles?.some(r => ['INSTITUTION_ADMIN', 'REGISTRAR', 'SYSTEM_ADMIN'].includes(r.name));
+    const userRoles = useMemo(() => user?.roles?.map(r => (r.name || '').toUpperCase()) || [], [user]);
+    const isInstructor = userRoles.includes('INSTRUCTOR');
+    const isAdmin = userRoles.some(r => ['INSTITUTION_ADMIN', 'REGISTRAR', 'SYSTEM_ADMIN', 'SCHOOL_ADMIN'].includes(r));
     const institutionId = user?.tenantType === 'school' ? user?.tenantId : undefined;
 
 
@@ -276,7 +277,7 @@ function InstructorGradebookView() {
     const { data: courses, isLoading: loadingCourses } = useQuery({
         queryKey: ['courses', user?.id],
         queryFn: () => coursesService.getAll({
-            instructorId: isInstructor ? user?.id : undefined,
+            instructorId: (isInstructor && !isAdmin) ? user?.id : undefined,
             institutionId
         }),
     });
@@ -342,7 +343,13 @@ function InstructorGradebookView() {
         return 'DRAFT';
     }, [gradeBookRows]);
 
-    const isGradebookLocked = courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED' || courseGradeBookStatus === 'PENDING_REVIEW';
+    // isGradebookLocked controls:
+    //   - Instructor: locked at PENDING_REVIEW (submitted), APPROVED, and LOCKED
+    //   - Admin/Registrar: only truly locked at LOCKED state (they can still save in PENDING_REVIEW to correct issues before formal approval)
+    const isGradebookLockedForInstructor = courseGradeBookStatus === 'LOCKED' || courseGradeBookStatus === 'APPROVED' || courseGradeBookStatus === 'PENDING_REVIEW';
+    const isGradebookLockedForAdmin = courseGradeBookStatus === 'LOCKED';
+    const isGradebookLocked = isInstructor ? isGradebookLockedForInstructor : isAdmin ? isGradebookLockedForAdmin : true;
+
     
     // 6. Real-time Synchronization
     useRealTime('assessment_created', (data) => {
@@ -807,27 +814,24 @@ function InstructorGradebookView() {
                         label="Semester"
                         value={selectedSemester}
                         onChange={(e) => setSelectedSemester(e.target.value)}
-                        sx={{ minWidth: 200, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
+                        sx={{ minWidth: 230, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'background.paper' } }}
                     >
-                        <MenuItem value={getCurrentSemester()}>
-                            <Typography variant="body2" fontWeight={600}>Current: {getCurrentSemester()}</Typography>
-                        </MenuItem>
-                        <ListSubheader sx={{ fontWeight: 800 }}>OTHER SEMESTERS</ListSubheader>
-                        {[0, 1].map(yearOffset => {
-                            const year = new Date().getFullYear() - yearOffset;
-                            const sem1 = `${year-1}/${String(year).slice(-2)} Semester I`;
-                            const sem2 = `${year-1}/${String(year).slice(-2)} Semester II`;
-                            return [
-                                <MenuItem key={`${year}-1`} value={sem1}>{sem1}</MenuItem>,
-                                <MenuItem key={`${year}-2`} value={sem2}>{sem2}</MenuItem>
-                            ];
-                        }).flat()}
+                        {getSemesterOptions().map(s => (
+                            <MenuItem key={s} value={s}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2" fontWeight={600}>{s}</Typography>
+                                    {s === getCurrentSemester() && (
+                                        <Chip label="Current" size="small" color="primary" sx={{ height: 16, fontSize: '10px', fontWeight: 800 }} />
+                                    )}
+                                </Box>
+                            </MenuItem>
+                        ))}
                     </TextField>
 
                     {selectedCourseId && (
                         <>
-                            {/* Instructor-only buttons */}
-                            {isInstructor && !isGradebookLocked && (
+                            {/* Shared Edit Actions (Visible to anyone with edit rights) */}
+                            {!isGradebookLocked && (
                                 <>
                                     <Button
                                         variant="outlined"
@@ -843,7 +847,7 @@ function InstructorGradebookView() {
                                         onClick={() => setCsvImportOpen(true)}
                                         sx={{ borderRadius: 2, height: 40, fontWeight: 700 }}
                                     >
-                                        Import Assesment
+                                        Import Scores
                                     </Button>
                                     <Button
                                         variant="contained"
@@ -855,18 +859,21 @@ function InstructorGradebookView() {
                                     >
                                         {saving ? 'Saving...' : 'Save Grades'}
                                     </Button>
-                                    <Button
-                                        variant="contained"
-                                        startIcon={<SendIcon />}
-                                        color="warning"
-                                        disabled={submitting || !rows.length}
-                                        onClick={handleSubmitForReview}
-                                        sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3 }}
-                                    >
-                                        {submitting ? 'Submitting...' : 'Submit for Review'}
-                                    </Button>
-
                                 </>
+                            )}
+
+                            {/* Instructor-only Workflow Actions */}
+                            {isInstructor && !isGradebookLocked && (
+                                <Button
+                                    variant="contained"
+                                    startIcon={<SendIcon />}
+                                    color="warning"
+                                    disabled={submitting || !rows.length}
+                                    onClick={handleSubmitForReview}
+                                    sx={{ borderRadius: 2, height: 40, fontWeight: 800, px: 3 }}
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit for Review'}
+                                </Button>
                             )}
 
                             {/* Instructor: Request Modification when locked */}
@@ -1030,6 +1037,7 @@ function InstructorGradebookView() {
                                 setAssessmentToEdit,
                                 setEditAssessmentOpen,
                                 isInstructor,
+                                isAdmin,
                                 isGradebookLocked
                             } as any
                         }}

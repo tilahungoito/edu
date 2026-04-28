@@ -15,6 +15,7 @@ export interface ModuleConfig {
     isEnabled: boolean;
     order: number;
     category?: string;
+    allowedRoles?: string[];
 }
 
 class ModuleRegistry {
@@ -267,6 +268,7 @@ moduleRegistry.register({
     icon: 'School',
     basePath: '/academic',
     requiredPermission: { module: 'academic', action: 'view' },
+    allowedRoles: ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'INSTITUTION_ADMIN', 'REGISTRAR', 'INSTRUCTOR', 'STUDENT'],
     isEnabled: true,
     order: 6,
     category: 'Academic',
@@ -337,7 +339,7 @@ moduleRegistry.register({
             icon: 'Assessment',
             path: '/academic/grades',
             permission: { module: 'grading', action: 'view' },
-            allowedRoles: ['INSTRUCTOR', 'STUDENT', 'REGISTRAR'],
+            allowedRoles: ['INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'INSTITUTION_ADMIN'],
         },
         {
             id: 'academic-attendance',

@@ -43,7 +43,7 @@ export interface CreateScheduleData {
 
 export const schedulesService = {
     getAll: async (institutionId: string, filters?: { instructorId?: string; roomId?: string; periodId?: string }) => {
-        let url = `/schedules/institution/${institutionId}`;
+        let url = `schedules/institution/${institutionId}`;
         const params = new URLSearchParams();
         if (filters?.instructorId) params.append('instructorId', filters.instructorId);
         if (filters?.roomId) params.append('roomId', filters.roomId);

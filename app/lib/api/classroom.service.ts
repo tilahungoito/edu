@@ -74,82 +74,82 @@ export interface GradeBookRow {
 export const classroomService = {
     // Behavior Records
     getBehaviorByStudent: async (studentId: string) => {
-        const response = await apiClient.get<BehaviorRecord[]>(`/classroom/behavior/student/${studentId}`);
+        const response = await apiClient.get<BehaviorRecord[]>(`classroom/behavior/student/${studentId}`);
         return response.data;
     },
 
     getBehaviorByInstitution: async (institutionId: string, type?: string) => {
-        let url = `/classroom/behavior/institution/${institutionId}`;
+        let url = `classroom/behavior/institution/${institutionId}`;
         if (type) url += `?type=${type}`;
         const response = await apiClient.get<BehaviorRecord[]>(url);
         return response.data;
     },
 
     createBehavior: async (data: CreateBehaviorData) => {
-        const response = await apiClient.post<BehaviorRecord>('/classroom/behavior', data);
+        const response = await apiClient.post<BehaviorRecord>('classroom/behavior', data);
         return response.data;
     },
 
     updateBehavior: async (id: string, data: Partial<CreateBehaviorData>) => {
-        const response = await apiClient.patch<BehaviorRecord>(`/classroom/behavior/${id}`, data);
+        const response = await apiClient.patch<BehaviorRecord>(`classroom/behavior/${id}`, data);
         return response.data;
     },
 
     deleteBehavior: async (id: string) => {
-        const response = await apiClient.delete(`/classroom/behavior/${id}`);
+        const response = await apiClient.delete(`classroom/behavior/${id}`);
         return response.data;
     },
 
     // Assessments
     getAssessmentsByCourse: async (courseId: string) => {
-        const response = await apiClient.get<Assessment[]>(`/classroom/assessments/course/${courseId}`);
+        const response = await apiClient.get<Assessment[]>(`classroom/assessments/course/${courseId}`);
         return response.data;
     },
 
     createAssessment: async (data: Partial<Assessment>) => {
-        const response = await apiClient.post<Assessment>('/classroom/assessments', data);
+        const response = await apiClient.post<Assessment>('classroom/assessments', data);
         return response.data;
     },
 
     updateAssessment: async (id: string, data: Partial<Assessment>) => {
-        const response = await apiClient.patch<Assessment>(`/classroom/assessments/${id}`, data);
+        const response = await apiClient.patch<Assessment>(`classroom/assessments/${id}`, data);
         return response.data;
     },
 
     deleteAssessment: async (id: string) => {
-        return apiClient.delete(`/classroom/assessments/${id}`);
+        return apiClient.delete(`classroom/assessments/${id}`);
     },
 
     // Scores
     getScoresByAssessment: async (assessmentId: string) => {
-        const response = await apiClient.get<any[]>(`/classroom/assessments/${assessmentId}/scores`);
+        const response = await apiClient.get<any[]>(`classroom/assessments/${assessmentId}/scores`);
         return response.data;
     },
 
     bulkRecordScores: async (assessmentId: string, data: BulkScoreData) => {
-        const response = await apiClient.post(`/classroom/assessments/${assessmentId}/scores/bulk`, data);
+        const response = await apiClient.post(`classroom/assessments/${assessmentId}/scores/bulk`, data);
         return response.data;
     },
 
     // GradeBook / Grades Management
     getGradeBookStatus: async (courseId: string) => {
-        const response = await apiClient.get<GradeBookRow[]>(`/grades/course/${courseId}/gradebook`);
+        const response = await apiClient.get<GradeBookRow[]>(`grades/course/${courseId}/gradebook`);
         return response.data;
     },
 
     // Instructor Dashboard
     getInstructorDashboard: async () => {
-        const response = await apiClient.get('/classroom/instructor/dashboard');
+        const response = await apiClient.get('classroom/instructor/dashboard');
         return response.data;
     },
 
     getInstructorCourses: async () => {
-        const response = await apiClient.get('/classroom/instructor/courses');
+        const response = await apiClient.get('classroom/instructor/courses');
         return response.data;
     },
 
     getStudentsInCourse: async (courseId: string) => {
-        const response = await apiClient.get(`/classroom/instructor/courses/${courseId}/students`);
+        const response = await apiClient.get(`classroom/instructor/courses/${courseId}/students`);
         return response.data;
     }
 };

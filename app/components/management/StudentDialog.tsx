@@ -194,7 +194,7 @@ export function StudentDialog({ open, onClose, onSuccess, student }: StudentDial
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>
+            <DialogTitle component="div" sx={{ fontWeight: 800, pb: 1 }}>
                 {isEdit ? `Update Profile: ${formData.firstName} ${formData.lastName}` : 'Register New Student'}
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                     {isEdit ? 'Modify student profile and academic details.' : 'Create a new student profile. Credentials will be auto-generated.'}

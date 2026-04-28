@@ -35,7 +35,9 @@ export interface Student {
         gradeLevel: string;
         finalAverage: number | null;
         promotionStatus: 'PASS' | 'DETAINED' | 'WITHDRAWN' | 'PENDING';
+        rank: number | null;
         remarks: string | null;
+        createdAt: string;
     }[];
 }
 
@@ -73,7 +75,7 @@ export interface UpdateStudentData {
 
 export const studentsService = {
     getAll: async (filters?: { institutionId?: string }) => {
-        let url = '/students';
+        let url = 'students';
         if (filters?.institutionId) {
             url += `?institutionId=${filters.institutionId}`;
         }

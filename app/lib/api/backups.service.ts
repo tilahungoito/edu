@@ -11,17 +11,17 @@ export interface Backup {
 
 export const backupsService = {
     getAll: async (): Promise<Backup[]> => {
-        const response = await apiClient.get('/backups');
+        const response = await apiClient.get('backups');
         return response.data;
     },
 
     create: async (): Promise<Backup> => {
-        const response = await apiClient.post('/backups');
+        const response = await apiClient.post('backups');
         return response.data;
     },
 
     download: async (id: string, filename: string): Promise<void> => {
-        const response = await apiClient.get(`/backups/${id}/download`, {
+        const response = await apiClient.get(`backups/${id}/download`, {
             responseType: 'blob',
         });
         
@@ -36,11 +36,11 @@ export const backupsService = {
     },
 
     restore: async (id: string): Promise<void> => {
-        await apiClient.post(`/backups/${id}/restore`);
+        await apiClient.post(`backups/${id}/restore`);
     },
 
     delete: async (id: string): Promise<void> => {
-        await apiClient.delete(`/backups/${id}`);
+        await apiClient.delete(`backups/${id}`);
     }
 };
 

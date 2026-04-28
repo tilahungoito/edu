@@ -9,6 +9,7 @@ export interface AcademicHistory {
     sectionName: string;
     finalAverage?: number;
     promotionStatus: 'PASS' | 'DETAINED' | 'WITHDRAWN';
+    rank?: number;
     remarks?: string;
     createdAt: string;
 }
@@ -43,7 +44,22 @@ export const promotionsService = {
         });
         return response.data;
     },
+
+    getValidationSection: async (sectionId: string, periodId: string) => {
+        const response = await apiClient.get<PromotionValidationItem[]>(`promotions/validate/section/${sectionId}?periodId=${periodId}`);
+        return response.data;
+    },
 };
 
+export interface PromotionValidationItem {
+    studentId: string;
+    name: string;
+    username: string;
+    year: number;
+    sem1Avg: number | null;
+    sem2Avg: number | null;
+    cumulativeAvg: number | null;
+    suggestedStatus: 'PASS' | 'DETAINED';
+}
 
 export default promotionsService;

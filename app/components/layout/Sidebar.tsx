@@ -163,7 +163,8 @@ export function Sidebar({ collapsed, onToggle, variant = 'permanent', open = tru
 
     // Helper checking role directly from user object to avoidgetState issues in render
     const hasRole = (role: string) => {
-        return user?.roles?.some(r => r.name === role) ?? false;
+        const normalizedRole = role.toUpperCase();
+        return user?.roles?.some(r => (r.name || '').toUpperCase() === normalizedRole) ?? false;
     };
 
     const isSystemAdmin = hasRole('SYSTEM_ADMIN');

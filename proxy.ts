@@ -17,25 +17,36 @@ const routePermissions: Record<string, string[]> = {
     '/dashboard/zone': ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN'],
     '/dashboard/woreda': ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN'],
     '/dashboard/kebele': ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN'],
-    '/dashboard/institution': ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN'],
+    '/dashboard/institution': ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN'],
     '/dashboard/registrar': ['SYSTEM_ADMIN', 'REGISTRAR'],
-    '/dashboard/academic': ['SYSTEM_ADMIN', 'INSTRUCTOR', 'STUDENT'],
+    '/dashboard/academic': ['SYSTEM_ADMIN', 'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN'],
     '/dashboard/teacher': ['SYSTEM_ADMIN', 'INSTRUCTOR'],
     '/dashboard/student': ['SYSTEM_ADMIN', 'STUDENT'],
+    '/students': ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN', 'REGISTRAR'],
+    '/academic': ['SYSTEM_ADMIN', 'REGIONAL_ADMIN',  'INSTRUCTOR', 'STUDENT', 'REGISTRAR', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN'],
+    '/hr': ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN', 'REGISTRAR'],
+    '/finance': ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN'],
+    '/inventory': ['SYSTEM_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN', 'REGISTRAR'],
+    '/management': ['SYSTEM_ADMIN', 'REGIONAL_ADMIN', 'ZONE_ADMIN', 'WOREDA_ADMIN', 'KEBELE_ADMIN', 'INSTITUTION_ADMIN', 'SCHOOL_ADMIN'],
 };
 
 // Public paths that don't require authentication
-const publicPaths = ['/', '/login', '/forgot-password', '/reset-password'];
+const publicPaths = ['/login', '/forgot-password', '/reset-password'];
 
 export function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // 1. Allow public paths (login, forgot-password, reset-password)
+    // 1. Allow root path (it redirects to /dashboard anyway)
+    if (pathname === '/') {
+        return NextResponse.next();
+    }
+
+    // 2. Allow public paths
     if (publicPaths.some(p => pathname === p || pathname.startsWith(p + '/'))) {
         return NextResponse.next();
     }
 
-    // 2. Allow Next.js internals and static assets
+    // 3. Allow Next.js internals and static assets
     if (
         pathname.startsWith('/_next') ||
         pathname.startsWith('/api') ||
@@ -45,10 +56,10 @@ export function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // 3. Get token from cookie
+    // 4. Get token from cookie
     const token = request.cookies.get('access_token')?.value;
 
-    // 4. If no token, redirect to login
+    // 5. If no token, redirect to login
     if (!token) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('from', pathname);
@@ -56,20 +67,19 @@ export function proxy(request: NextRequest) {
     }
 
     try {
-        // 5. Decode and validate token
+        // 6. Decode and validate token
         const decoded = jwtDecode<DecodedToken>(token);
 
         // Check if token is expired
         const currentTime = Math.floor(Date.now() / 1000);
         if (decoded.exp && decoded.exp < currentTime) {
-            const loginUrl = new URL('/login', request.url);
-            loginUrl.searchParams.set('from', pathname);
-            loginUrl.searchParams.set('expired', 'true');
-            return NextResponse.redirect(loginUrl);
+            const response = NextResponse.redirect(new URL('/login', request.url));
+            response.cookies.delete('access_token');
+            return response;
         }
 
-        // 6. Check role-based route access
-        const userRole = decoded.role;
+        // 7. Check role-based route access
+        const userRole = (decoded.role || '').toUpperCase();
 
         // SYSTEM_ADMIN has access to everything
         if (userRole === 'SYSTEM_ADMIN') {
@@ -80,21 +90,20 @@ export function proxy(request: NextRequest) {
         for (const [route, allowedRoles] of Object.entries(routePermissions)) {
             if (pathname.startsWith(route)) {
                 if (!allowedRoles.includes(userRole)) {
-                    const unauthorizedUrl = new URL('/dashboard', request.url);
-                    return NextResponse.redirect(unauthorizedUrl);
+                    // Redirect to general dashboard if unauthorized
+                    return NextResponse.redirect(new URL('/dashboard', request.url));
                 }
-
-                break; // Exit loop once we find matching route
+                return NextResponse.next();
             }
         }
 
-        // Allow access
+        // Default: Allow access if no specific rule matches (might be a common dashboard subpage)
         return NextResponse.next();
     } catch (error) {
-        // Invalid token, redirect to login
-        const loginUrl = new URL('/login', request.url);
-        loginUrl.searchParams.set('from', pathname);
-        return NextResponse.redirect(loginUrl);
+        // Invalid token
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('access_token');
+        return response;
     }
 }
 
@@ -102,7 +111,6 @@ export const config = {
     matcher: [
         /*
          * Match all request paths EXCEPT Next.js internals and static files.
-         * The proxy function handles public vs protected path logic internally.
          */
         '/((?!_next/static|_next/image|favicon.ico).*)',
     ],

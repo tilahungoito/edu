@@ -31,7 +31,7 @@ export interface CreateCourseData {
 
 export const coursesService = {
     getAll: async (filters?: { instructorId?: string; institutionId?: string }) => {
-        let url = '/courses';
+        let url = 'courses';
         if (filters) {
             const params = new URLSearchParams();
             if (filters.instructorId) params.append('instructorId', filters.instructorId);

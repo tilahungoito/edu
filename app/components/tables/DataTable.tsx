@@ -499,7 +499,11 @@ export function DataTable<T extends { id: string }>({
                     <MenuItem
                         sx={{ borderRadius: 1.5, py: 1 }}
                         onClick={() => {
-                            setDetailsModal({ open: true, row: actionMenuAnchor!.row });
+                            if (onView) {
+                                onView(actionMenuAnchor!.row);
+                            } else {
+                                setDetailsModal({ open: true, row: actionMenuAnchor!.row });
+                            }
                             handleActionClose();
                         }}
                     >

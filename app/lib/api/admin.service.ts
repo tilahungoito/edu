@@ -18,14 +18,14 @@ export const adminService = {
      */
     createUser: async (targetRole: string, data: CreateUserDto) => {
         const roleEndpointMap: Record<string, string> = {
-            'REGIONAL_ADMIN': '/admin/regional-admin',
-            'ZONE_ADMIN': '/admin/zone-admin',
-            'WOREDA_ADMIN': '/admin/woreda-admin',
-            'KEBELE_ADMIN': '/admin/kebele-admin',
-            'INSTITUTION_ADMIN': '/admin/institution-admin',
+            'REGIONAL_ADMIN': 'admin/regional-admin',
+            'ZONE_ADMIN': 'admin/zone-admin',
+            'WOREDA_ADMIN': 'admin/woreda-admin',
+            'KEBELE_ADMIN': 'admin/kebele-admin',
+            'INSTITUTION_ADMIN': 'admin/institution-admin',
         };
 
-        const endpoint = roleEndpointMap[targetRole] || '/admin/staff';
+        const endpoint = roleEndpointMap[targetRole] || 'admin/staff';
         const response = await apiClient.post(endpoint, {
             ...data,
             targetRole: !roleEndpointMap[targetRole] ? targetRole : undefined
